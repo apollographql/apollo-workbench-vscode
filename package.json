@@ -1,0 +1,169 @@
+{
+  "name": "apollo-workbench-vscode",
+  "displayName": "Apollo Workbench",
+  "description": "Apollo VS Code extension to design and get started with federated schema development using Apollo Federation",
+  "version": "0.0.1",
+  "publisher": "michael-watson",
+  "engines": {
+    "vscode": "^1.34.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onCommand:extension.newWorkbench",
+    "onCommand:extension.startWorkbench",
+    "onView:current-workbench"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "extension.newWorkbench",
+        "title": "Create New Workbench",
+        "category": "Apollo Workbench",
+        "icon": "$(add)"
+      },
+      {
+        "command": "extension.startWorkbench",
+        "title": "Start Workbench",
+        "category": "Apollo Workbench",
+        "icon": "$(scrollbar-button-right)"
+      },
+      {
+        "command": "extension.stopWorkbench",
+        "title": "Stop Workbench",
+        "category": "Apollo Workbench",
+        "icon": "$(debug-stop)"
+      },
+      {
+        "command": "current-workbench.refreshFile",
+        "title": "Refresh Current Workbench",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "current-workbench.editSchema",
+        "title": "Edit Schema",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "current-workbench.addSchema",
+        "title": "Add Schema",
+        "icon": "$(add)",
+        "enablement": "true"
+      },
+      {
+        "command": "current-workbench.deleteSchema",
+        "title": "Delete Schema",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "local-workbench-files.loadFile",
+        "title": "Load Workbench File"
+      },
+      {
+        "command": "local-workbench-files.refresh",
+        "title": "Refresh local workbench files",
+        "icon": "$(refresh)"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "apollo-workbench",
+          "title": "Apollo Workbench",
+          "icon": "media/logo-apollo.svg"
+        }
+      ]
+    },
+    "views": {
+      "apollo-workbench": [
+        {
+          "id": "current-workbench",
+          "name": "Current Workbench"
+        },
+        {
+          "id": "local-workbench-files",
+          "name": "Local Workbench Files"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "extension.newWorkbench",
+          "when": "view == local-workbench-files",
+          "group": "navigation"
+        },
+        {
+          "command": "local-workbench-files.refresh",
+          "when": "view == local-workbench-files",
+          "group": "navigation"
+        },
+        {
+          "command": "current-workbench.addSchema",
+          "when": "view == current-workbench",
+          "group": "navigation"
+        },
+        {
+          "command": "current-workbench.refreshFile",
+          "when": "view == current-workbench",
+          "group": "navigation"
+        },
+        {
+          "command": "extension.startWorkbench",
+          "when": "view == current-workbench",
+          "group": "navigation"
+        },
+        {
+          "command": "extension.stopWorkbench",
+          "when": "view == current-workbench",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "current-workbench.editSchema",
+          "when": "view == current-workbench && viewItem == workbenchSchemaTreeItem",
+          "group": "inline"
+        },
+        {
+          "command": "current-workbench.editSchema",
+          "when": "view == current-workbench && viewItem == workbenchSchemaTreeItem"
+        },
+        {
+          "command": "current-workbench.deleteSchema",
+          "when": "view == current-workbench && viewItem == workbenchSchemaTreeItem"
+        },
+        {
+          "command": "local-workbench-files.loadFile",
+          "when": "view == local-workbench-files && viewItem == workbenchFileTreeItem",
+          "group": "inline"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "lint": "eslint . --ext .ts,.tsx",
+    "watch": "tsc -watch -p ./",
+    "postinstall": "npm run compile"
+  },
+  "devDependencies": {
+    "@types/graphql": "^14.5.0",
+    "@types/node": "^12.12.0",
+    "@types/vscode": "^1.34.0",
+    "@typescript-eslint/eslint-plugin": "^3.0.2",
+    "@typescript-eslint/parser": "^3.0.2",
+    "eslint": "^7.1.0",
+    "typescript": "^4.0.2"
+  },
+  "dependencies": {
+    "@apollo/federation": "^0.20.4",
+    "@apollo/gateway": "^0.21.0",
+    "apollo-server": "^2.18.2",
+    "chokidar": "^3.4.3",
+    "graphql": "^15.4.0"
+  }
+}
