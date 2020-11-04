@@ -2,7 +2,7 @@
   "name": "apollo-workbench-vscode",
   "displayName": "Apollo Workbench",
   "description": "Apollo VS Code extension to design and get started with federated schema development using Apollo Federation",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "publisher": "michael-watson",
   "engines": {
     "vscode": "^1.34.0"
@@ -13,7 +13,7 @@
   "activationEvents": [
     "onCommand:extension.newWorkbench",
     "onCommand:extension.startWorkbench",
-    "onView:current-workbench"
+    "onView:current-workbench-schemas"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -37,25 +37,56 @@
         "icon": "$(debug-stop)"
       },
       {
-        "command": "current-workbench.refreshFile",
+        "command": "extension.enterStudioApiKey",
+        "title": "Login to Apollo",
+        "category": "Apollo Workbench",
+        "icon": "$(log-in)"
+      },
+      {
+        "command": "extension.deleteStudioApiKey",
+        "title": "Logout of Apollo",
+        "category": "Apollo Workbench",
+        "icon": "$(log-out)"
+      },
+      {
+        "command": "current-workbench-schemas.refreshSchemas",
         "title": "Refresh Current Workbench",
         "icon": "$(refresh)"
       },
       {
-        "command": "current-workbench.editSchema",
+        "command": "current-workbench-schemas.editSchema",
         "title": "Edit Schema",
         "icon": "$(edit)"
       },
       {
-        "command": "current-workbench.addSchema",
+        "command": "current-workbench-schemas.addSchema",
         "title": "Add Schema",
-        "icon": "$(add)",
-        "enablement": "true"
+        "icon": "$(add)"
       },
       {
-        "command": "current-workbench.deleteSchema",
+        "command": "current-workbench-schemas.deleteSchema",
         "title": "Delete Schema",
         "icon": "$(trash)"
+      },
+      {
+        "command": "current-workbench-operations.editOperation",
+        "title": "Edit Operation",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "current-workbench-operations.addOperation",
+        "title": "Add Operation",
+        "icon": "$(add)"
+      },
+      {
+        "command": "current-workbench-operations.viewQueryPlan",
+        "title": "View Operation Query Plan",
+        "icon": "$(compare-changes)"
+      },
+      {
+        "command": "current-workbench-operations.refreshOperations",
+        "title": "Refresh Current Workbench Operations",
+        "icon": "$(refresh)"
       },
       {
         "command": "local-workbench-files.loadFile",
@@ -64,6 +95,23 @@
       {
         "command": "local-workbench-files.refresh",
         "title": "Refresh local workbench files",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "studio-graphs.createWorkbenchFromGraph",
+        "title": "Create Workbench File from Graph"
+      },
+      {
+        "command": "studio-graphs.createWorkbenchFromGraphWithVariant",
+        "title": "Create Workbench File from Graph"
+      },
+      {
+        "command": "studio-graphs.addServiceSchemaToCurrentWorkbench",
+        "title": "Add Schema to Current Workbench"
+      },
+      {
+        "command": "studio-graphs.refresh",
+        "title": "Refresh Graphs",
         "icon": "$(refresh)"
       }
     ],
@@ -79,12 +127,20 @@
     "views": {
       "apollo-workbench": [
         {
-          "id": "current-workbench",
-          "name": "Current Workbench"
+          "id": "current-workbench-schemas",
+          "name": "Current Workbench Schemas"
+        },
+        {
+          "id": "current-workbench-operations",
+          "name": "Current Workbench Operations"
         },
         {
           "id": "local-workbench-files",
           "name": "Local Workbench Files"
+        },
+        {
+          "id": "studio-graphs",
+          "name": "Apollo Studio Graphs"
         }
       ]
     },
@@ -101,50 +157,98 @@
           "group": "navigation"
         },
         {
-          "command": "current-workbench.addSchema",
-          "when": "view == current-workbench",
+          "command": "current-workbench-schemas.addSchema",
+          "when": "view == current-workbench-schemas",
           "group": "navigation"
         },
         {
-          "command": "current-workbench.refreshFile",
-          "when": "view == current-workbench",
+          "command": "current-workbench-schemas.refreshSchemas",
+          "when": "view == current-workbench-schemas",
+          "group": "navigation"
+        },
+        {
+          "command": "current-workbench-operations.addOperation",
+          "when": "view == current-workbench-operations",
+          "group": "navigation"
+        },
+        {
+          "command": "current-workbench-operations.refreshOperations",
+          "when": "view == current-workbench-operations",
           "group": "navigation"
         },
         {
           "command": "extension.startWorkbench",
-          "when": "view == current-workbench",
+          "when": "view == current-workbench-schemas",
           "group": "navigation"
         },
         {
           "command": "extension.stopWorkbench",
-          "when": "view == current-workbench",
+          "when": "view == current-workbench-schemas",
           "group": "navigation"
+        },
+        {
+          "command": "extension.enterStudioApiKey",
+          "when": "view == studio-graphs",
+          "group": "navigation@1"
+        },
+        {
+          "command": "studio-graphs.refresh",
+          "when": "view == studio-graphs",
+          "group": "navigation@2"
+        },
+        {
+          "command": "extension.deleteStudioApiKey",
+          "when": "view == studio-graphs",
+          "group": "navigation@3"
         }
       ],
       "view/item/context": [
         {
-          "command": "current-workbench.editSchema",
-          "when": "view == current-workbench && viewItem == workbenchSchemaTreeItem",
+          "command": "current-workbench-schemas.editSchema",
+          "when": "view == current-workbench-schemas && viewItem == workbenchSchemaTreeItem",
           "group": "inline"
         },
         {
-          "command": "current-workbench.editSchema",
-          "when": "view == current-workbench && viewItem == workbenchSchemaTreeItem"
+          "command": "current-workbench-schemas.editSchema",
+          "when": "view == current-workbench-schemas && viewItem == workbenchSchemaTreeItem"
         },
         {
-          "command": "current-workbench.deleteSchema",
-          "when": "view == current-workbench && viewItem == workbenchSchemaTreeItem"
+          "command": "current-workbench-schemas.deleteSchema",
+          "when": "view == current-workbench-schemas && viewItem == workbenchSchemaTreeItem"
+        },
+        {
+          "command": "current-workbench-operations.editOperation",
+          "when": "view == current-workbench-operations && viewItem == workbenchOperationTreeItem",
+          "group": "inline"
+        },
+        {
+          "command": "current-workbench-operations.editOperation",
+          "when": "view == current-workbench-operations && viewItem == workbenchOperationTreeItem"
         },
         {
           "command": "local-workbench-files.loadFile",
           "when": "view == local-workbench-files && viewItem == workbenchFileTreeItem",
           "group": "inline"
+        },
+        {
+          "command": "studio-graphs.createWorkbenchFromGraph",
+          "when": "view == studio-graphs && viewItem == studioGraphTreeItem"
+        },
+        {
+          "command": "studio-graphs.createWorkbenchFromGraphWithVariant",
+          "when": "view == studio-graphs && viewItem == studioGraphVariantTreeItem"
+        },
+        {
+          "command": "studio-graphs.addServiceSchemaToCurrentWorkbench",
+          "when": "view == studio-graphs && viewItem == studioGraphVariantServiceTreeItem"
         }
       ]
     }
   },
   "scripts": {
+    "codegen": "apollo client:codegen --target=typescript  src/studio-gql/types --outputFlat",
     "vscode:prepublish": "npm run compile",
+    "vscode:package": "vsce package",
     "compile": "tsc -p ./",
     "lint": "eslint . --ext .ts,.tsx",
     "watch": "tsc -watch -p ./",
@@ -152,7 +256,7 @@
   },
   "devDependencies": {
     "@types/graphql": "^14.5.0",
-    "@types/node": "^12.12.0",
+    "@types/node": "^13.13.15",
     "@types/vscode": "^1.34.0",
     "@typescript-eslint/eslint-plugin": "^3.0.2",
     "@typescript-eslint/parser": "^3.0.2",
@@ -160,10 +264,12 @@
     "typescript": "^4.0.2"
   },
   "dependencies": {
+    "@apollo/client": "^3.2.5",
     "@apollo/federation": "^0.20.4",
     "@apollo/gateway": "^0.21.0",
+    "@apollo/query-planner-wasm": "0.0.6",
     "apollo-server": "^2.18.2",
     "chokidar": "^3.4.3",
-    "graphql": "^15.4.0"
+    "graphql": "^14.7.0"
   }
 }

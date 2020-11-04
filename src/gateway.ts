@@ -1,17 +1,14 @@
 import { ApolloGateway, RemoteGraphQLDataSource, GatewayConfig, Experimental_UpdateServiceDefinitions } from "@apollo/gateway";
-import { readFileSync } from 'fs';
-import { join } from 'path';
 import { parse } from 'graphql';
 import { Headers } from "apollo-server-env";
 import { ServiceDefinition } from '@apollo/federation';
-import { getPortMapping } from "./helpers";
+import { portMapping } from "./workbench/setup";
 
 function setupServiceOverrides() {
     let overrides: Array<{ name, url }> = [];
-    let portMappings = getPortMapping();
 
-    for (var key in portMappings) {
-        overrides.push({ name: key, url: `http://localhost:${portMappings[key]}` })
+    for (var key in portMapping) {
+        overrides.push({ name: key, url: `http://localhost:${portMapping[key]}` })
     }
 
     return overrides;

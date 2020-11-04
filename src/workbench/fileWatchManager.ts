@@ -1,23 +1,141 @@
 import * as vscode from 'vscode';
 const chokidar = require('chokidar');
-import { deleteSchema, setupMocks, addSchema, updateSchema } from '../workbench/setup';
+import { setupMocks, stopMocks, stopServer, startServer, getComposedSchemaLogCompositionErrors, startGateway } from '../workbench/setup';
+import { updateQueryPlan } from './updateQueryPlan';
+import { outputChannel } from '../extension';
+import { getLocalSchemaFromFile, getSelectedWorkbenchFile, getWorkbenchFile, saveSelectedWorkbenchFile, saveWorkbenchFile, workspaceSchemasFolderPath } from '../helpers';
+import { existsSync, readdirSync, readFileSync, writeFileSync } from 'fs';
+import { resolve } from 'path';
 
 export class FileWatchManager {
-    private watcher = chokidar.watch();
+    private schemasWatcher = chokidar.watch();
+    private queryWatcher = chokidar.watch();
 
-    start(context: vscode.ExtensionContext) {
+    async start(context: vscode.ExtensionContext) {
+        await this.reset();
+        this.syncGraphQLFilesToWorkbenchFile(context);
+
         const currentFolder = `${(vscode.workspace.workspaceFolders as any)[0].uri.fsPath}`;
-        this.watcher.add(`${currentFolder}/.workbench-schemas`)
-            .on('ready', (path: any) => setupMocks(context))
-            .on('change', (path) => updateSchema(path, context))
-            .on('unlink', (path: any) => deleteSchema(path, context))
-            .on('add', (path: any) => addSchema(path, context));
+        this.schemasWatcher.add(`${currentFolder}/.workbench-schemas`)
+            .on('ready', () => setupMocks(context))
+            .on('change', (path) => this.updateSchema(path, context))
+            .on('unlink', (path: any) => this.deleteSchema(path, context))
+            .on('add', (path: any) => this.addSchema(path, context));
+        this.queryWatcher.add(`${currentFolder}/.workbench-queries`)
+            .on('change', (path: any) => updateQueryPlan(path, context))
+            .on('ready', (path: any) => updateQueryPlan(path, context))
+            .on('add', (path: any) => updateQueryPlan(path, context));
+
+        vscode.window.setStatusBarMessage('Workbench is running');
+        vscode.window.showInformationMessage('Workbench is running in the background', 'Stop').then((value) => {
+            if (value == 'Stop')
+                this.stop();
+        });
     }
 
     async reset() {
-        if (this.watcher?._eventsCount > 0)
-            await this.watcher.close();
+        if (this.schemasWatcher?._eventsCount > 0)
+            await this.schemasWatcher.close();
 
-        this.watcher = chokidar.watch();
+        this.schemasWatcher = chokidar.watch();
+        outputChannel.appendLine('Workbench Reset');
+    }
+
+    async stop() {
+        await this.reset();
+
+        vscode.window.setStatusBarMessage('');
+        vscode.window.setStatusBarMessage('Workbench is stopped', 5000);
+        outputChannel.appendLine('Workbench Stopped');
+
+        stopMocks();
+    }
+
+    syncGraphQLFilesToWorkbenchFile(context: vscode.ExtensionContext) {
+        outputChannel.appendLine('Syncing GraphQL files in schemas folder to workbench file...');
+        let generatedSchemasFolder = workspaceSchemasFolderPath();
+        let selectedWbFile = context.workspaceState.get('selectedWbFile');
+
+        let workbenchFile = getWorkbenchFile((selectedWbFile as any)?.path);
+        let graphqlFilesFolder = readdirSync(generatedSchemasFolder, { encoding: "utf8" });
+
+        graphqlFilesFolder.map(fileName => {
+            if (fileName.includes('.graphql')) {
+                let serviceName = fileName.slice(0, -8);
+                let typeDefsString = readFileSync(resolve(generatedSchemasFolder, fileName), { encoding: "utf8" });
+                if (workbenchFile.schemas[serviceName]) {
+                    if (typeDefsString != workbenchFile.schemas[serviceName]) {
+                        workbenchFile.schemas[serviceName] = typeDefsString;
+                    }
+                } else {
+                    workbenchFile.schemas[serviceName] = typeDefsString;
+                }
+            }
+        });
+
+        for (var key in workbenchFile.schemas) {
+            let localSchemaFilePath = resolve(generatedSchemasFolder, `${key}.graphql`);
+            if (!existsSync(localSchemaFilePath))
+                writeFileSync(localSchemaFilePath, workbenchFile.schemas[key], { encoding: "utf8" });
+        }
+
+        saveSelectedWorkbenchFile(workbenchFile, context);
+
+        outputChannel.appendLine('Workebench file synced with local folders');
+    }
+
+    addSchema(path: string, context: vscode.ExtensionContext) {
+        if (!path || !path.includes('.graphql') || path == '.graphql') return;
+
+        let workbenchFile = getSelectedWorkbenchFile(context);
+        if (workbenchFile) {
+            let path1 = path.split('.graphql')[0];
+            let path2 = path1.split('/');
+            let serviceName = path2[path2.length - 1];
+
+            if (!workbenchFile.schemas[serviceName]) {
+                workbenchFile.schemas[serviceName] = "";
+                writeFileSync(`${workspaceSchemasFolderPath()}/${serviceName}.graphql`, '', { encoding: 'utf-8' })
+                saveSelectedWorkbenchFile(workbenchFile, context);
+            }
+        }
+    }
+
+    deleteSchema(path: string, context: vscode.ExtensionContext) {
+        if (!path || !path.includes('.graphql')) return;
+
+        let workbenchFile = getSelectedWorkbenchFile(context);
+        if (workbenchFile) {
+            let path1 = path.split('.graphql')[0];
+            let path2 = path1.split('/');
+            let serviceName = path2[path2.length - 1];
+
+            stopServer(serviceName);
+
+            saveSelectedWorkbenchFile(workbenchFile, context);
+            getComposedSchemaLogCompositionErrors(workbenchFile);
+        }
+    }
+
+    updateSchema(path: string, context: vscode.ExtensionContext) {
+        if (!path || !path.includes('.graphql') || path == '.graphql') return;
+
+        let workbenchFile = getSelectedWorkbenchFile(context);
+        if (workbenchFile) {
+            let path1 = path.split('.graphql')[0];
+            let path2 = path1.split('/');
+            let serviceName = path2[path2.length - 1];
+
+            console.log(`Setting up ${serviceName}`);
+
+            let localSchemaString = getLocalSchemaFromFile(serviceName);
+            workbenchFile.schemas[serviceName] = localSchemaString;
+
+            startServer(serviceName);
+            saveSelectedWorkbenchFile(workbenchFile, context);
+
+            getComposedSchemaLogCompositionErrors(workbenchFile);
+            startGateway();
+        }
     }
 }

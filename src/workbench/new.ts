@@ -15,7 +15,8 @@ export const newWorkbench = async (localWorkbenchFilesProvider: LocalWorkbenchFi
     } else {
         const workbenchFile = `${vscode.workspace.rootPath}/${workbenchName}.apollo-workbench`;
         let workbenchMaster: ApolloWorkbench = {
-            queries: {},
+            operations: {},
+            queryPlans: {},
             schemas: {},
             composedSchema: '',
             graphName: workbenchFile

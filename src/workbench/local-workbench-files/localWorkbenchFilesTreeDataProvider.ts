@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 import { ApolloWorkbench } from '../../extension';
+import { newWorkbench } from '../new';
 
 export interface WorkbenchFile {
     name: string,
@@ -62,6 +63,13 @@ export class LocalWorkbenchFilesTreeDataProvider implements vscode.TreeDataProvi
                 })
             }
 
+            if (items.length == 0) {
+                vscode.window.showInformationMessage("No workspace files found in current directory", "Create New Workbench").then((value) => {
+                    if (value === "Create New Workbench")
+                        newWorkbench(this);
+                });
+            }
+
             return Promise.resolve(items);
         } else {
             return Promise.resolve(element.children);
@@ -74,20 +82,20 @@ export class WorkbenchFileTreeItem extends vscode.TreeItem {
     children: vscode.TreeItem[] = new Array<vscode.TreeItem>();
 
     constructor(
-        public readonly label: string,
+        public readonly graphVariant: string,
         public readonly filePath: string
     ) {
-        super(label, vscode.TreeItemCollapsibleState.Collapsed);
+        super(graphVariant, vscode.TreeItemCollapsibleState.Collapsed);
 
         let wbFileRaw = fs.readFileSync(filePath, { encoding: 'utf8' });
         let wb: ApolloWorkbench = JSON.parse(wbFileRaw);
 
-        if (this.label.includes(wbExt)) {
-            let index = this.label.indexOf(wbExt);
-            let tooltip = this.label.slice(0, index);
+        if (this.graphVariant.includes(wbExt)) {
+            let index = this.graphVariant.indexOf(wbExt);
+            let tooltip = this.graphVariant.slice(0, index);
             this.tooltip = tooltip
         } else
-            this.tooltip = this.label;
+            this.tooltip = this.graphVariant;
 
         let keys = Object.keys(wb.schemas) ?? 0;
         this.description = `${keys.length}S`;
