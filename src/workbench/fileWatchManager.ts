@@ -18,13 +18,12 @@ export class FileWatchManager {
         await this.reset();
         this.syncGraphQLFilesToWorkbenchFile(context);
 
-        const currentFolder = `${(vscode.workspace.workspaceFolders as any)[0].uri.fsPath}`;
-        this.schemasWatcher.add(`${currentFolder}/.workbench-schemas`)
+        this.schemasWatcher.add(workspaceSchemasFolderPath())
             .on('ready', () => setupMocks(context))
             .on('change', (path) => this.updateSchema(path, context))
             .on('unlink', (path: any) => this.deleteSchema(path, context))
             .on('add', (path: any) => this.addSchema(path, context));
-        this.queryWatcher.add(`${currentFolder}/.workbench-queries`)
+        this.queryWatcher.add(workspaceQueriesFolderPath())
             .on('change', (path: any) => updateQueryPlan(path, context))
             .on('ready', (path: any) => updateQueryPlan(path, context))
             .on('add', (path: any) => updateQueryPlan(path, context));

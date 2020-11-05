@@ -17,6 +17,32 @@
   ],
   "main": "./out/extension.js",
   "contributes": {
+    "configuration": {
+      "title": "Apollo-Workbench",
+      "properties": {
+        "apollo-workbench.apolloApiUrl": {
+          "type": [
+            "string"
+          ],
+          "default": "https://engine-graphql.apollographql.com/api/graphql",
+          "description": "Specifies the url endpoint to be used for the Apollo Studio Graph"
+        },
+        "apollo-workbench.gatewayPort": {
+          "type": [
+            "number"
+          ],
+          "default": 4000,
+          "description": "Specifies the url endpoint to be used for the Apollo Studio Graph"
+        },
+        "apollo-workbench.startingServerPort": {
+          "type": [
+            "number"
+          ],
+          "default": 4001,
+          "description": "Specifies the url endpoint to be used for the Apollo Studio Graph"
+        }
+      }
+    },
     "commands": [
       {
         "command": "extension.newWorkbench",

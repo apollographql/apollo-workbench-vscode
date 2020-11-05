@@ -1,3 +1,14 @@
+## Apollo Workbench VSCode 0.0.4
+
+### Improvements
+
+- Introduce settings for extension:
+  - `apollo-workbench.apolloApiUrl`: URL used for Apollo Studio API. Primary use case is to point at Apollo Studio staging url
+  - `apollo-workbench.gatewayPort`: Port to be used to run the Apollo Gateway in background
+  - `apollo-workbench.startingServerPort`: Starting port to be used for mocked services. Sequential ports will be used for additional schemas that are mocked.
+- Compressed workbench watch folders into one `.workbench` folder
+- Centralized strings for folder locations
+
 ## Apollo Workbench VSCode 0.0.3
 
 ### Improvements

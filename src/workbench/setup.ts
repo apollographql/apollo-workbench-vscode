@@ -14,19 +14,9 @@ export let portMapping = {};
 export const setupMocks = (context: vscode.ExtensionContext) => {
     let workbenchFile = getSelectedWorkbenchFile(context);
     if (workbenchFile) {
-        let port = 4000;
-        while (serversState[port])
-            port++;
-
         for (var key in workbenchFile.schemas) {
             let serviceName = key;
-
-            console.log(`Attemping to start server: ${serviceName}`);
-
             startServer(serviceName);
-            console.log(`Running at port ${port}`);
-
-            port++;
         }
 
         startGateway();
@@ -52,11 +42,12 @@ export function stopMocks() {
 }
 
 export function startGateway() {
-    if (serversState[4000]) {
+    let gatewayPort = vscode.workspace.getConfiguration("apollo-workbench").get('gatewayPort') as string;
+    if (serversState[gatewayPort]) {
         outputChannel.append(`Stopping previous running gateway...`);
         isReady = false;
-        serversState[4000].stop();
-        delete serversState[4000];
+        serversState[gatewayPort].stop();
+        delete serversState[gatewayPort];
         console.log(`complete.`);
     }
 
@@ -75,17 +66,16 @@ export function startGateway() {
         }
     });
 
-    const port = process.env.PORT || 4000;
-    server.listen({ port }).then(({ url }) => {
+    server.listen({ port: gatewayPort }).then(({ url }) => {
         console.log(`🚀 Mocked Gateway ready at ${url}`);
     });
 
-    serversState[4000] = server;
+    serversState[gatewayPort] = server;
     isReady = true;
 }
 
 function getNextAvailablePort() {
-    let port = 4001;
+    let port = vscode.workspace.getConfiguration("apollo-workbench").get('startingServerPort') as number;
     while (serversState[port])
         port++;
 
@@ -252,15 +242,23 @@ function handleCompositionErrors(wb: ApolloWorkbench, errors) {
             let builtSchema = buildFederatedSchema({ typeDefs });
             const typeInfo = new TypeInfo(builtSchema);
 
+            //Duplicate a type to get this error
+            visit(typeDefs,
+                visitWithTypeInfo(typeInfo, {
+                    enter(node, key, parent, path, ancestors) {
+                        if ((node as any)?.value === typeToIgnore) {
+                            // let start = loc?.start.toString();
+                            // let end = loc?.end.toString();
+                            // let range = loc?.startToken.start.toString();
+                        }
+                    }
+                }));
+
             var editedAST = visit(typeDefs,
                 visitWithTypeInfo(typeInfo, {
                     Field(node) {
                         const parentType = typeInfo.getParentType();
                         console.log(parentType);
-
-
-
-                        return { ...node }
                     }
                 }));
 

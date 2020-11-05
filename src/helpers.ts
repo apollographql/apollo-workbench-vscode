@@ -44,30 +44,44 @@ export function workspaceFolderPath() {
     return "";
 }
 
+function workspaceFolder() {
+    if (vscode.workspace?.workspaceFolders) {
+        let workbenchFolderPath = `${vscode.workspace?.workspaceFolders[0]?.uri?.fsPath}/.workbench`;
+
+        if (!existsSync(workbenchFolderPath))
+            mkdirSync(workbenchFolderPath);
+
+        return workbenchFolderPath;
+    }
+    return undefined;
+}
+
 export function workspaceQueriesFolderPath(autoCreate: Boolean = true) {
-    if (vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders[0]) {
-        let workspaceFolder = vscode.workspace.workspaceFolders[0].uri.fsPath;
-        let folderPath = `${workspaceFolder}/.workbench-queries`;
+    let workspace = workspaceFolder();
+    if (workspace) {
+        let folderPath = `${workspace}/queries`;
         if (!existsSync(folderPath) && autoCreate)
             mkdirSync(folderPath);
 
-        if (!existsSync(`${workspaceFolder}/apollo.config.js`)) {
+        if (!existsSync(`${workspace}/apollo.config.js`)) {
             let apolloConfig = `module.exports = { client: { service: { url: "http://localhost:4000" }, includes: ["./.workbench-queries/*.graphql"] } }`;
-            writeFileSync(`${workspaceFolder}/apollo.config.js`, apolloConfig, { encoding: "utf8" });
+            writeFileSync(`${workspace}/apollo.config.js`, apolloConfig, { encoding: "utf8" });
         }
-        return `${vscode.workspace.workspaceFolders[0].uri.fsPath}/.workbench-queries`;
+
+        return folderPath;
     }
 
     return "";
 }
 
 export function workspaceSchemasFolderPath(autoCreate: Boolean = true) {
-    if (vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders[0]) {
-        let folderPath = `${vscode.workspace.workspaceFolders[0].uri.fsPath}/.workbench-schemas`;
+    let workspace = workspaceFolder();
+    if (workspace) {
+        let folderPath = `${workspace}/schemas`;
         if (!existsSync(folderPath) && autoCreate)
             mkdirSync(folderPath);
 
-        return `${vscode.workspace.workspaceFolders[0].uri.fsPath}/.workbench-schemas`;
+        return folderPath;
     }
     return "";
 }

@@ -1,3 +1,4 @@
+import * as vscode from 'vscode';
 import fetch from 'node-fetch';
 import { createHttpLink, execute, FetchResult, gql, toPromise } from '@apollo/client/core';
 import { UserMemberships } from './types/UserMemberships';
@@ -61,27 +62,6 @@ const getGraphOperations = gql`
           }
       }
   }`
-// const querySignatureQuery = gql`
-//   query QuerySignatureQuery(
-//     $serviceId: ID!
-//     $queryId: ID!
-//     $timeFrom: Timestamp!
-//     $timeTo: Timestamp!
-//   ) {
-//     service(id: $serviceId) {
-//       id
-//       stats(from: $timeFrom, to: $timeTo) {
-//         queryStats(filter: { queryId: $queryId }) {
-//           group: groupBy {
-//             id: queryId
-//             signature: querySignature
-//             name: queryName
-//           }
-//         }
-//       }
-//     }
-//   }
-// `;
 
 export async function getUserMemberships(apiKey: string) {
     let result = await toPromise(execute(createLink(apiKey), { query: userMemberships }));
@@ -123,7 +103,7 @@ export async function getGraphSchemasByVariant(apiKey: string, serviceId: string
 function createLink(apiKey: string) {
     return createHttpLink({
         fetch,
-        uri: `https://engine-graphql.apollographql.com/api/graphql`,
+        uri: vscode.workspace.getConfiguration("apollo-workbench").get('apolloApiUrl') as string ?? `https://engine-graphql.apollographql.com/api/graphql`,
         headers: {
             'x-api-key': apiKey,
             'apollographql-client-name': 'Apollo Workbench',
