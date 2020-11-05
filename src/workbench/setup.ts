@@ -1,10 +1,11 @@
 import { writePortMapping, workspaceSchemasFolderPath, getWorkbenchFile, saveWorkbenchFile, getPortMapping, getSelectedWorkbenchFile, saveSelectedWorkbenchFile, getLocalSchemaFromFile } from "../helpers";
 import * as vscode from 'vscode';
 import { gql, ApolloServer } from "apollo-server";
-import { buildFederatedSchema, composeAndValidate } from '@apollo/federation';
+import { buildFederatedSchema, composeAndValidate, printSchema } from '@apollo/federation';
 import { ApolloWorkbench, compositionDiagnostics, outputChannel } from "../extension";
 
 import { OverrideApolloGateway } from '../gateway';
+import { buildSchema, parseValue, TypeInfo, visit, visitWithTypeInfo } from "graphql";
 
 let isReady = false;
 let serversState: any = {};
@@ -209,35 +210,27 @@ function handleCompositionErrors(wb: ApolloWorkbench, errors) {
             let errSplit = err.message.split('] ');
             let serviceName = errSplit[0].substring(1);
 
-            if (errorCode === 'EXTERNAL_MISSING_ON_BASE') {
-                let typeToIgnore = errSplit[1].split('.')[0];
-                if (!diagnosticsGroups[serviceName])
-                    diagnosticsGroups[serviceName] = new Array<vscode.Diagnostic>();
-
-                diagnosticsGroups[serviceName].push(new vscode.Diagnostic(new vscode.Range(0, 0, 0, 1), err.message, vscode.DiagnosticSeverity.Error));
-
-            } else if (errorCode === 'PROVIDES_FIELDS_SELECT_INVALID_TYPE') {
-                let destructuredMessage = errSplit[1].split('.');
-                let typeToIgnore = destructuredMessage[0];
-                let fieldToIgnore = destructuredMessage[1].split(' ->')[0];
-                if (!diagnosticsGroups[serviceName])
-                    diagnosticsGroups[serviceName] = new Array<vscode.Diagnostic>();
-
-                diagnosticsGroups[serviceName].push(new vscode.Diagnostic(new vscode.Range(0, 0, 0, 1), err.message, vscode.DiagnosticSeverity.Error));
-
-            } else if (errorCode === 'EXECUTABLE_DIRECTIVES_IN_ALL_SERVICES') {
-                let services = err.message.split(':')[1].split(',');
-                // const lastServiceName = (services[services.length - 1] as string).substring(0, services.length - 1);
-                // services[services.length - 1] = lastServiceName;
-                services.map(service => {
-                    let sn = service.includes('.') ? service.substring(1, service.length - 1) : service.substring(1, service.length);
-                    if (!diagnosticsGroups[sn])
-                        diagnosticsGroups[sn] = new Array<vscode.Diagnostic>();
-                    diagnosticsGroups[sn].push(new vscode.Diagnostic(new vscode.Range(0, 0, 0, 1), err.message, vscode.DiagnosticSeverity.Error));
-                });
+            if (errorCode) {
+                if (errorCode === 'EXECUTABLE_DIRECTIVES_IN_ALL_SERVICES') {
+                    let services = err.message.split(':')[1].split(',');
+                    // const lastServiceName = (services[services.length - 1] as string).substring(0, services.length - 1);
+                    // services[services.length - 1] = lastServiceName;
+                    services.map(service => {
+                        let sn = service.includes('.') ? service.substring(1, service.length - 1) : service.substring(1, service.length);
+                        if (!diagnosticsGroups[sn])
+                            diagnosticsGroups[sn] = new Array<vscode.Diagnostic>();
+                        diagnosticsGroups[sn].push(new vscode.Diagnostic(new vscode.Range(0, 0, 0, 1), err.message, vscode.DiagnosticSeverity.Error));
+                    });
+                } else {
+                    if (!diagnosticsGroups[serviceName])
+                        diagnosticsGroups[serviceName] = new Array<vscode.Diagnostic>();
+                    diagnosticsGroups[serviceName].push(new vscode.Diagnostic(new vscode.Range(0, 0, 0, 1), err.message, vscode.DiagnosticSeverity.Error));
+                }
+            } else {
+                if (!diagnosticsGroups["workbench"])
+                    diagnosticsGroups["workbench"] = new Array<vscode.Diagnostic>();
+                diagnosticsGroups["workbench"].push(new vscode.Diagnostic(new vscode.Range(0, 0, 0, 1), err.message, vscode.DiagnosticSeverity.Error));
             }
-
-
         } else if (err.message.includes('Field "Query.') || err.message.includes('Field "Mutation.')) {
             let fieldName = err.nodes[0].value;
             let serviceName = '';
@@ -253,29 +246,71 @@ function handleCompositionErrors(wb: ApolloWorkbench, errors) {
             let definitionNode = err.nodes.find(n => n.kind == "ObjectTypeDefinition");
             let serviceName = definitionNode.serviceName;
             let typeToIgnore = definitionNode.name.value;
-            // let schema = gql(schemas[serviceName]);
-            // let builtSchema = buildSchema(schemas[serviceName])
-            // const typeInfo = new TypeInfo(builtSchema);
-
-            // let typeIndex = (schemas[serviceName] as string).indexOf(`type ${typeToIgnore}`);
-            // var editedAST = visit(schema,
-            //     visitWithTypeInfo(typeInfo, {
-            //         Field(node) {
-            //             const parentType = typeInfo.getParentType();
-            //             console.log(parentType);
 
 
+            let typeDefs = gql(schemas[serviceName]);
+            let builtSchema = buildFederatedSchema({ typeDefs });
+            const typeInfo = new TypeInfo(builtSchema);
 
-            //             return { ...node }
-            //         }
-            //     }));
+            var editedAST = visit(typeDefs,
+                visitWithTypeInfo(typeInfo, {
+                    Field(node) {
+                        const parentType = typeInfo.getParentType();
+                        console.log(parentType);
+
+
+
+                        return { ...node }
+                    }
+                }));
 
             if (!diagnosticsGroups[serviceName])
                 diagnosticsGroups[serviceName] = new Array<vscode.Diagnostic>();
 
             diagnosticsGroups[serviceName].push(new vscode.Diagnostic(new vscode.Range(0, 0, 0, 1), err.message, vscode.DiagnosticSeverity.Error));
+        } else {
+            if (!diagnosticsGroups["workbench"])
+                diagnosticsGroups["workbench"] = new Array<vscode.Diagnostic>();
+            diagnosticsGroups["workbench"].push(new vscode.Diagnostic(new vscode.Range(0, 0, 0, 1), err.message, vscode.DiagnosticSeverity.Error));
         }
     })
 
     return diagnosticsGroups;
 }
+
+
+// let type = err.message.split('`')[1];
+//                 // let typeDefs = gql(schemas[serviceName]);
+//                 // let builtSchema = buildFederatedSchema({ typeDefs });
+//                 // const typeInfo = new TypeInfo(builtSchema);
+//                 if (!diagnosticsGroups[serviceName])
+//                     diagnosticsGroups[serviceName] = new Array<vscode.Diagnostic>();
+
+//                 diagnosticsGroups[serviceName].push(new vscode.Diagnostic(new vscode.Range(0, 0, 0, 1), err.message, vscode.DiagnosticSeverity.Error));
+//                 // let visitor = visit(typeDefs, {
+//                 //     enter(node, key, parent, path, ancestors) {
+//                 //         if ((node as any)?.value === type) {
+//                 //             let start = node.loc?.start.toString();
+//                 //             let end = node.loc?.end.toString();
+//                 //             let range = node.loc?.startToken.start.toString();
+//                 //         }
+//                 //     }
+//                 //     // visitWithTypeInfo(typeInfo, {
+//                 //     //     Field(node) {
+//                 //     //         console.log(node);
+//                 //     //     },
+
+//                 // });
+//                 ;
+//                 // let nodeValue = builtSchema.parseValue(schemas[serviceName]);
+
+//                 // visit(gql(printSchema(builtSchema)),
+//                 //     visitWithTypeInfo(typeInfo, {
+//                 //         enter(node, a, b, c, d) {
+//                 //             if ((node as any)?.value === type) {
+//                 //                 // let start = loc?.start.toString();
+//                 //                 // let end = loc?.end.toString();
+//                 //                 // let range = loc?.startToken.start.toString();
+//                 //             }
+//                 //         }
+//                 //     }));

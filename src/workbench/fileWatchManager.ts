@@ -3,9 +3,12 @@ const chokidar = require('chokidar');
 import { setupMocks, stopMocks, stopServer, startServer, getComposedSchemaLogCompositionErrors, startGateway } from '../workbench/setup';
 import { updateQueryPlan } from './updateQueryPlan';
 import { outputChannel } from '../extension';
-import { getLocalSchemaFromFile, getSelectedWorkbenchFile, getWorkbenchFile, saveSelectedWorkbenchFile, saveWorkbenchFile, workspaceSchemasFolderPath } from '../helpers';
-import { existsSync, readdirSync, readFileSync, writeFileSync } from 'fs';
+import { getLocalSchemaFromFile, getSelectedWorkbenchFile, getWorkbenchFile, saveSelectedWorkbenchFile, saveWorkbenchFile, workspaceQueriesFolderPath, workspaceSchemasFolderPath } from '../helpers';
+import { existsSync, readdirSync, readFileSync, unlinkSync, writeFileSync } from 'fs';
 import { resolve } from 'path';
+import { CurrentWorkbenchOpsTreeDataProvider, WorkbenchOperationTreeItem } from './current-workbench-queries/currentWorkbenchOpsTreeDataProvider';
+import { gql } from '@apollo/client/core';
+import { parse, print } from 'graphql';
 
 export class FileWatchManager {
     private schemasWatcher = chokidar.watch();
@@ -136,6 +139,49 @@ export class FileWatchManager {
 
             getComposedSchemaLogCompositionErrors(workbenchFile);
             startGateway();
+        }
+    }
+
+    deleteOperation(operationName: string, context: vscode.ExtensionContext, workbenchOperationsProvider: CurrentWorkbenchOpsTreeDataProvider) {
+        let workbenchFile = getSelectedWorkbenchFile(context);
+        if (workbenchFile) {
+            delete workbenchFile.operations[operationName];
+            unlinkSync(`${workspaceQueriesFolderPath()}/${operationName}.graphql`);
+
+            saveSelectedWorkbenchFile(workbenchFile, context);
+            workbenchOperationsProvider.refresh();
+        }
+    }
+
+    async editOperation(operationName: string, context: vscode.ExtensionContext, workbenchOperationsProvider: CurrentWorkbenchOpsTreeDataProvider) {
+        outputChannel.appendLine(`Selected Operation ${operationName}`);
+        const workbenchQueriesFolder = workspaceQueriesFolderPath();
+        const uri = vscode.Uri.parse(`${workbenchQueriesFolder}/${operationName}.graphql`);
+        await vscode.window.showTextDocument(uri);
+        workbenchOperationsProvider.refresh();
+    }
+
+    async createOperation(context: vscode.ExtensionContext, currentWorkbenchProvider: CurrentWorkbenchOpsTreeDataProvider, operationName?: string, operationSignature?: string) {
+        if (!operationName)
+            operationName = await vscode.window.showInputBox({ placeHolder: "Enter a operation name for the query or mutation" }) ?? "";
+
+        if (!operationName) {
+            outputChannel.appendLine(`Create operation cancelled - No name entered.`);
+        } else {
+            let wb = getSelectedWorkbenchFile(context);
+            if (wb) {
+                while (wb?.schemas[operationName]) {
+                    outputChannel.appendLine(`${operationName} already exists. Schema/Service name must be unique within a workbench file`);
+                    operationName = await vscode.window.showInputBox({ placeHolder: "Enter a unique name for the schema/service" }) ?? "";
+                    vscode.window.showErrorMessage('You must select a workbench file from the list of local workbench files found or you can create a new workbench file');
+                }
+
+                wb.operations[operationName] = operationSignature ? print(parse(operationSignature)) : `query ${operationName} {\n\n}`;
+                wb.queryPlans[operationName] = "";
+
+                saveSelectedWorkbenchFile(wb, context);
+                currentWorkbenchProvider.refresh();
+            }
         }
     }
 }

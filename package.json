@@ -2,7 +2,7 @@
   "name": "apollo-workbench-vscode",
   "displayName": "Apollo Workbench",
   "description": "Apollo VS Code extension to design and get started with federated schema development using Apollo Federation",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "publisher": "michael-watson",
   "engines": {
     "vscode": "^1.34.0"
@@ -79,6 +79,16 @@
         "icon": "$(add)"
       },
       {
+        "command": "current-workbench-operations.deleteOperation",
+        "title": "Delete Operation",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "current-workbench-operations.openQueryPlan",
+        "title": "Open Query Plan",
+        "icon": "$(output)"
+      },
+      {
         "command": "current-workbench-operations.viewQueryPlan",
         "title": "View Operation Query Plan",
         "icon": "$(compare-changes)"
@@ -113,6 +123,15 @@
         "command": "studio-graphs.refresh",
         "title": "Refresh Graphs",
         "icon": "$(refresh)"
+      },
+      {
+        "command": "studio-graphs.loadOperations",
+        "title": "Load Graph Operations"
+      },
+      {
+        "command": "studio-operations.addToWorkbench",
+        "title": "Add Operation to Current Workbench",
+        "icon": "$(add)"
       }
     ],
     "viewsContainers": {
@@ -141,6 +160,10 @@
         {
           "id": "studio-graphs",
           "name": "Apollo Studio Graphs"
+        },
+        {
+          "id": "studio-operations",
+          "name": "Apollo Studio Graph Operations"
         }
       ]
     },
@@ -217,12 +240,35 @@
           "when": "view == current-workbench-schemas && viewItem == workbenchSchemaTreeItem"
         },
         {
+          "command": "current-workbench-schemas.deleteSchema",
+          "when": "view == current-workbench-schemas && viewItem == workbenchSchemaTreeItem",
+          "group": "inline"
+        },
+        {
           "command": "current-workbench-operations.editOperation",
           "when": "view == current-workbench-operations && viewItem == workbenchOperationTreeItem",
           "group": "inline"
         },
         {
           "command": "current-workbench-operations.editOperation",
+          "when": "view == current-workbench-operations && viewItem == workbenchOperationTreeItem"
+        },
+        {
+          "command": "current-workbench-operations.deleteOperation",
+          "when": "view == current-workbench-operations && viewItem == workbenchOperationTreeItem",
+          "group": "inline"
+        },
+        {
+          "command": "current-workbench-operations.deleteOperation",
+          "when": "view == current-workbench-operations && viewItem == workbenchOperationTreeItem"
+        },
+        {
+          "command": "current-workbench-operations.openQueryPlan",
+          "when": "view == current-workbench-operations && viewItem == workbenchOperationTreeItem",
+          "group": "inline"
+        },
+        {
+          "command": "current-workbench-operations.openQueryPlan",
           "when": "view == current-workbench-operations && viewItem == workbenchOperationTreeItem"
         },
         {
@@ -241,6 +287,15 @@
         {
           "command": "studio-graphs.addServiceSchemaToCurrentWorkbench",
           "when": "view == studio-graphs && viewItem == studioGraphVariantServiceTreeItem"
+        },
+        {
+          "command": "studio-operations.addToWorkbench",
+          "when": "view == studio-operations && viewItem == studioOperationTreeItem",
+          "group": "inline"
+        },
+        {
+          "command": "studio-operations.addToWorkbench",
+          "when": "view == studio-operations && viewItem == studioOperationTreeItem"
         }
       ]
     }

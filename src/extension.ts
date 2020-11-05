@@ -10,12 +10,11 @@ import { createSchemaFile } from './workbench/current-workbench-schemas/createSc
 import { editSchema } from './workbench/current-workbench-schemas/editSchema';
 import { CurrentWorkbenchSchemasTreeDataProvider, WorkbenchSchemaTreeItem } from './workbench/current-workbench-schemas/currentWorkbenchSchemasTreeDataProvider';
 import { FileWatchManager } from './workbench/fileWatchManager';
-import { CurrentWorkbenchOpsTreeDataProvider } from './workbench/current-workbench-queries/currentWorkbenchOpsTreeDataProvider';
-import { editOperation } from './workbench/current-workbench-queries/editOperation';
-import { createOperation } from './workbench/current-workbench-queries/createOperation';
+import { CurrentWorkbenchOpsTreeDataProvider, WorkbenchOperationTreeItem } from './workbench/current-workbench-queries/currentWorkbenchOpsTreeDataProvider';
 import { ApolloStudioGraphsTreeDataProvider, StudioGraphTreeItem, StudioGraphVariantServiceTreeItem, StudioGraphVariantTreeItem } from './workbench/studio-graphs/apolloStudioGraphsTreeDataProvider';
-import { getSelectedWorkbenchFile, saveWorkbenchFile, writeLocalSchemaToFile } from './helpers';
+import { getSelectedWorkbenchFile, saveWorkbenchFile, workspaceQueriesFolderPath, writeLocalSchemaToFile } from './helpers';
 import { deleteSchemaFile } from './workbench/current-workbench-schemas/deleteSchemaFile';
+import { ApolloStudioGraphOpsTreeDataProvider, StudioOperationTreeItem } from './workbench/studio-operations/apolloStudioGraphOpsTreeDataProvider';
 
 export class ApolloWorkbench {
 	graphName: string = "";
@@ -25,7 +24,7 @@ export class ApolloWorkbench {
 	composedSchema: string = "";
 }
 
-const fileWatchManager = new FileWatchManager();
+export const fileWatchManager = new FileWatchManager();
 export const compositionDiagnostics: vscode.DiagnosticCollection = vscode.languages.createDiagnosticCollection("composition-errors");
 export const outputChannel = vscode.window.createOutputChannel("Apollo Workbench");
 console.log = function (str) { //Redirect console.log to Output tab in extension
@@ -44,6 +43,7 @@ export function activate(context: vscode.ExtensionContext) {
 	const currentWorkbenchSchemasProvider = new CurrentWorkbenchSchemasTreeDataProvider(vscode.workspace.rootPath ?? ".", context);
 	const currentWorkbenchOperationsProvider = new CurrentWorkbenchOpsTreeDataProvider(vscode.workspace.rootPath ?? ".", context);
 	const apolloStudioGraphsProvider = new ApolloStudioGraphsTreeDataProvider(vscode.workspace.rootPath ?? ".", context);
+	const apolloStudioGraphOpsProvider = new ApolloStudioGraphOpsTreeDataProvider(vscode.workspace.rootPath ?? ".", context);
 	context.subscriptions.push(compositionDiagnostics);
 
 	//Global Extension Commands
@@ -78,9 +78,16 @@ export function activate(context: vscode.ExtensionContext) {
 
 	//Current Loaded Workbench Operations Commands
 	vscode.window.registerTreeDataProvider('current-workbench-operations', currentWorkbenchOperationsProvider);
-	vscode.commands.registerCommand('current-workbench-operations.addOperation', async () => await createOperation(context, currentWorkbenchOperationsProvider));
-	vscode.commands.registerCommand("current-workbench-operations.editOperation", editOperation);
+	vscode.commands.registerCommand('current-workbench-operations.addOperation', async () => await fileWatchManager.createOperation(context, currentWorkbenchOperationsProvider));
+	vscode.commands.registerCommand("current-workbench-operations.editOperation", async (operation: WorkbenchOperationTreeItem) => await fileWatchManager.editOperation(operation.operationName, context, currentWorkbenchOperationsProvider));
+	vscode.commands.registerCommand("current-workbench-operations.deleteOperation", async (operation: WorkbenchOperationTreeItem) => fileWatchManager.deleteOperation(operation.operationName, context, currentWorkbenchOperationsProvider));
 	vscode.commands.registerCommand('current-workbench-operations.refreshOperations', async () => currentWorkbenchOperationsProvider.refresh());
+	vscode.commands.registerCommand('current-workbench-operations.openQueryPlan', async (op: StudioOperationTreeItem) => {
+		outputChannel.appendLine(`Opening query plan for operation ${op.operationName}`);
+		const workbenchQueriesFolder = workspaceQueriesFolderPath();
+		const uri = vscode.Uri.parse(`${workbenchQueriesFolder}/${op.operationName}.queryplan`);
+		await vscode.window.showTextDocument(uri);
+	});
 
 	//Local Workbench Files Commands
 	vscode.window.registerTreeDataProvider('local-workbench-files', localWorkbenchFilesProvider);
@@ -108,7 +115,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 		let selectedVariant = await vscode.window.showQuickPick(graphVariants);
 		if (selectedVariant) {
-			let defaultGraphName = `${graphTreeItem.graphVariant}@${selectedVariant}-${Date.now().toString()}`;
+			let defaultGraphName = `${graphTreeItem.graphId}@${selectedVariant}-${Date.now().toString()}`;
 			let graphName = await vscode.window.showInputBox({
 				prompt: "Enter a name for your new workbench file",
 				placeHolder: defaultGraphName,
@@ -157,5 +164,15 @@ export function activate(context: vscode.ExtensionContext) {
 			currentWorkbenchSchemasProvider.refresh();
 		} else
 			vscode.window.showErrorMessage("There is no workbench file currently selected to add this schema to. Please select a local workbench file and then try again,");
+	});
+	vscode.commands.registerCommand('studio-graphs.loadOperations', async (graphTreeItem: StudioGraphTreeItem) => {
+		context.globalState.update("APOLLO_SELCTED_GRAPH_ID", graphTreeItem.graphId);
+		apolloStudioGraphOpsProvider.refresh();
+	});
+
+	//Apollo Studio Graph Operations Commands
+	vscode.window.registerTreeDataProvider('studio-operations', apolloStudioGraphOpsProvider);
+	vscode.commands.registerCommand('studio-operations.addToWorkbench', async (op: StudioOperationTreeItem) => {
+		await fileWatchManager.createOperation(context, currentWorkbenchOperationsProvider, op.operationName, op.operationSignature)
 	});
 }

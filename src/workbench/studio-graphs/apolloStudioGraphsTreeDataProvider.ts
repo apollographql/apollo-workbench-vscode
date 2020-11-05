@@ -103,9 +103,9 @@ export class StudioAccountTreeItem extends vscode.TreeItem {
     children: StudioGraphTreeItem[] = new Array<StudioGraphTreeItem>();
 
     constructor(
-        public readonly graphVariant: string
+        public readonly accountId: string
     ) {
-        super(graphVariant, vscode.TreeItemCollapsibleState.Expanded);
+        super(accountId, vscode.TreeItemCollapsibleState.Expanded);
         this.contextValue = 'studioAccountTreeItem';
     }
     getChildren(element?: vscode.TreeItem): Thenable<vscode.TreeItem[]> {
@@ -117,10 +117,16 @@ export class StudioGraphTreeItem extends vscode.TreeItem {
     children: StudioGraphVariantTreeItem[] = new Array<StudioGraphVariantTreeItem>();
 
     constructor(
-        public readonly graphVariant: string
+        public readonly graphId: string
     ) {
-        super(graphVariant, vscode.TreeItemCollapsibleState.Collapsed);
+        super(graphId, vscode.TreeItemCollapsibleState.Collapsed);
         this.contextValue = 'studioGraphTreeItem';
+        this.command =
+        {
+            title: "Load Graph Operations",
+            command: "studio-graphs.loadOperations",
+            arguments: [this]
+        }
     }
     getChildren(element?: vscode.TreeItem): Thenable<vscode.TreeItem[]> {
         return new Promise(() => this.children);

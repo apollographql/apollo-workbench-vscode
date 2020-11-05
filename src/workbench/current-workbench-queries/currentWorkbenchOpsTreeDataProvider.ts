@@ -32,7 +32,7 @@ export class CurrentWorkbenchOpsTreeDataProvider implements vscode.TreeDataProvi
         } else {
             let items = this.getOperationsFromWorkbenchFile();
             if (items.length == 0)
-                items.push(new WorkbenchOperationTreeItem("No queries in workbench file yet", ""));
+                items.push(new vscode.TreeItem("No queries in workbench file yet", vscode.TreeItemCollapsibleState.None));
 
             return Promise.resolve(items);
         }
@@ -67,11 +67,11 @@ export class CurrentWorkbenchOpsTreeDataProvider implements vscode.TreeDataProvi
 
 export class WorkbenchOperationTreeItem extends vscode.TreeItem {
     constructor(
-        public readonly graphVariant: string,
+        public readonly operationName: string,
         public readonly operationString: string
     ) {
-        super(graphVariant, vscode.TreeItemCollapsibleState.None);
-        this.tooltip = this.graphVariant;
+        super(operationName, vscode.TreeItemCollapsibleState.None);
+        this.tooltip = this.operationName;
 
         if (this.operationString.includes('mutation'))
             this.iconPath = {
