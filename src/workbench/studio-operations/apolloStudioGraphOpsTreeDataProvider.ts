@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { getAccountGraphs, getGraphOps, getGraphSchemasByVariant, getUserMemberships } from '../../studio-gql/graphClient';
+import { getGraphOps } from '../../studio-gql/graphClient';
 
 export class ApolloStudioGraphOpsTreeDataProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
     constructor(private workspaceRoot: string, public context: vscode.ExtensionContext) { }

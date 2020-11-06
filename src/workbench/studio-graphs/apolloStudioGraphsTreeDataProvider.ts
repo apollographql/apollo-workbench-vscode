@@ -70,10 +70,16 @@ export class ApolloStudioGraphsTreeDataProvider implements vscode.TreeDataProvid
                             let variantServices = await getGraphSchemasByVariant(apiKey, graph.id, graphVariant.name);
                             let implementingServices = variantServices.service?.implementingServices as GetGraphSchemas_service_implementingServices_FederatedImplementingServices;
 
-                            //Loop through implemnting services and add to return objects
-                            for (var l = 0; l < implementingServices.services.length; l++) {
-                                let implemntingService = implementingServices.services[l];
-                                graphVariantServiceTreeItems.push(new StudioGraphVariantServiceTreeItem(graph.id, graphVariant.name, implemntingService.name, implemntingService.activePartialSchema.sdl));
+                            if (implementingServices) {
+                                //Loop through implemnting services and add to return objects
+                                for (var l = 0; l < implementingServices.services.length; l++) {
+                                    let implemntingService = implementingServices.services[l];
+                                    graphVariantServiceTreeItems.push(new StudioGraphVariantServiceTreeItem(graph.id, graphVariant.name, implemntingService.name, implemntingService.activePartialSchema.sdl));
+                                }
+                            }
+                            else {
+                                let schema = variantServices.service?.schema?.document;
+                                graphVariantServiceTreeItems.push(new StudioGraphVariantServiceTreeItem(graph.id, graphVariant.name, 'monolith-schema', schema));
                             }
                             // Set the implementing service tree items on the return objects
                             accountgraphVariantTreeItem.children = graphVariantServiceTreeItems;

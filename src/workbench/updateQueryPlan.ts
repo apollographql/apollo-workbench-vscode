@@ -8,7 +8,7 @@ import { buildOperationContext, buildQueryPlan, serializeQueryPlan } from '@apol
 import { getComposedSchemaLogCompositionErrors } from './setup';
 import { getSelectedWorkbenchFile, saveSelectedWorkbenchFile } from "../helpers";
 
-export function updateQueryPlan(path: string, context: vscode.ExtensionContext) {
+export function updateQueryPlan(path: string, context?: vscode.ExtensionContext) {
     if (path && path.includes('.graphql')) {
         let workbenchFile = getSelectedWorkbenchFile(context);
         if (workbenchFile) {

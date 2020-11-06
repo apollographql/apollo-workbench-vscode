@@ -43,4 +43,5 @@ export interface GraphOperations {
 
 export interface GraphOperationsVariables {
   id: string;
+  from: any;
 }

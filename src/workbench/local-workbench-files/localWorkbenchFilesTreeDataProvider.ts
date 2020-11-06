@@ -98,7 +98,6 @@ export class WorkbenchFileTreeItem extends vscode.TreeItem {
             this.tooltip = this.graphVariant;
 
         let keys = Object.keys(wb.schemas) ?? 0;
-        this.description = `${keys.length}S`;
 
         keys.forEach(key => {
             let item = new vscode.TreeItem(key, vscode.TreeItemCollapsibleState.None);
@@ -112,6 +111,7 @@ export class WorkbenchFileTreeItem extends vscode.TreeItem {
             title: "Load Workbench File",
             arguments: [this]
         };
+        this.contextValue = 'workbenchFileTreeItem';
     }
 
     iconPath = {

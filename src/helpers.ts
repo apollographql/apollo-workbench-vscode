@@ -11,19 +11,20 @@ export function getQueryFile(queryName) {
     return readFileSync(queryFilePath, { encoding: "utf8" });
 }
 
-export function getSelectedWorkbenchFile(context: vscode.ExtensionContext) {
-    let selectedWbFile = context.workspaceState.get('selectedWbFile');
+export function getSelectedWorkbenchFile(context?: vscode.ExtensionContext) {
+    let selectedWbFile = context?.workspaceState.get('selectedWbFile');
 
     if (pathExists((selectedWbFile as any)?.path) && selectedWbFile != '')
         return getWorkbenchFile((selectedWbFile as any)?.path);
     else {
-        context.workspaceState.update('selectedWbFile', '');
+        context?.workspaceState.update('selectedWbFile', '');
         return undefined;
     }
 }
-export function saveSelectedWorkbenchFile(wb: ApolloWorkbench, context: vscode.ExtensionContext) {
-    let selectedWbFile = context.workspaceState.get('selectedWbFile');
-    saveWorkbenchFile(wb, (selectedWbFile as any)?.path);
+export function saveSelectedWorkbenchFile(wb: ApolloWorkbench, context?: vscode.ExtensionContext) {
+    let selectedWbFile = context?.workspaceState.get('selectedWbFile');
+    if (selectedWbFile)
+        saveWorkbenchFile(wb, (selectedWbFile as any)?.path);
 }
 
 export function getWorkbenchFile(filePath: string): ApolloWorkbench {
@@ -64,7 +65,7 @@ export function workspaceQueriesFolderPath(autoCreate: Boolean = true) {
             mkdirSync(folderPath);
 
         if (!existsSync(`${workspace}/apollo.config.js`)) {
-            let apolloConfig = `module.exports = { client: { service: { url: "http://localhost:4000" }, includes: ["./.workbench-queries/*.graphql"] } }`;
+            let apolloConfig = `module.exports = { client: { service: { url: "http://localhost:4000" }, includes: ["./.workbench/queries/*.graphql"] } }`;
             writeFileSync(`${workspace}/apollo.config.js`, apolloConfig, { encoding: "utf8" });
         }
 

@@ -5,13 +5,13 @@ import { buildFederatedSchema, composeAndValidate, printSchema } from '@apollo/f
 import { ApolloWorkbench, compositionDiagnostics, outputChannel } from "../extension";
 
 import { OverrideApolloGateway } from '../gateway';
-import { buildSchema, parseValue, TypeInfo, visit, visitWithTypeInfo } from "graphql";
+import { BREAK, buildSchema, parse, TypeInfo, visit, visitWithTypeInfo } from "graphql";
 
 let isReady = false;
 let serversState: any = {};
 export let portMapping = {};
 
-export const setupMocks = (context: vscode.ExtensionContext) => {
+export const setupMocks = (context?: vscode.ExtensionContext) => {
     let workbenchFile = getSelectedWorkbenchFile(context);
     if (workbenchFile) {
         for (var key in workbenchFile.schemas) {
@@ -195,16 +195,54 @@ function handleCompositionErrors(wb: ApolloWorkbench, errors) {
     let schemas = wb.schemas;
     let diagnosticsGroups: { [key: string]: vscode.Diagnostic[]; } = {};
     errors.map(err => {
+        let serviceName = "";
+        let typeToIgnore = "";
         if (err.extensions) {
             let errorCode = err.extensions.code;
             let errSplit = err.message.split('] ');
-            let serviceName = errSplit[0].substring(1);
+            serviceName = errSplit[0].substring(1);
+
+            switch (errorCode) {
+                case "KEY_FIELDS_MISSING_EXTERNAL":
+                case "KEY_FIELDS_MISSING_ON_BASE":
+                    typeToIgnore = errSplit[1].split(' ->')[0];
+                    break;
+
+                case "EXECUTABLE_DIRECTIVES_IN_ALL_SERVICES":
+                    serviceName = ""
+                    let services = err.message.split(':')[1].split(',');
+                    if (services.length > 1)
+                        services.map(service => {
+                            let sn = service.includes('.') ? service.substring(1, service.length - 1) : service.substring(1, service.length);
+                            serviceName += `${sn}-:-`;
+                        });
+                    else serviceName = services[0];
+
+                    typeToIgnore = serviceName;
+                    break;
+            }
+
+            if (typeToIgnore) {
+                if (serviceName.includes('-:-')) {
+                    let services = serviceName.split('-:-');
+                    services.map(s => {
+                        if (s) {
+                            if (!diagnosticsGroups[s]) diagnosticsGroups[s] = new Array<vscode.Diagnostic>();
+                            let diagnostic = getDiagnostic(typeToIgnore, err.message, schemas[s]);
+                            diagnosticsGroups[s].push(diagnostic);
+                        }
+                    })
+                } else {
+                    if (!diagnosticsGroups[serviceName]) diagnosticsGroups[serviceName] = new Array<vscode.Diagnostic>();
+
+                    let diagnostic = getDiagnostic(typeToIgnore, err.message, schemas[serviceName]);
+                    diagnosticsGroups[serviceName].push(diagnostic);
+                }
+            }
 
             if (errorCode) {
                 if (errorCode === 'EXECUTABLE_DIRECTIVES_IN_ALL_SERVICES') {
                     let services = err.message.split(':')[1].split(',');
-                    // const lastServiceName = (services[services.length - 1] as string).substring(0, services.length - 1);
-                    // services[services.length - 1] = lastServiceName;
                     services.map(service => {
                         let sn = service.includes('.') ? service.substring(1, service.length - 1) : service.substring(1, service.length);
                         if (!diagnosticsGroups[sn])
@@ -221,7 +259,8 @@ function handleCompositionErrors(wb: ApolloWorkbench, errors) {
                     diagnosticsGroups["workbench"] = new Array<vscode.Diagnostic>();
                 diagnosticsGroups["workbench"].push(new vscode.Diagnostic(new vscode.Range(0, 0, 0, 1), err.message, vscode.DiagnosticSeverity.Error));
             }
-        } else if (err.message.includes('Field "Query.') || err.message.includes('Field "Mutation.')) {
+        }
+        else if (err.message.includes('Field "Query.') || err.message.includes('Field "Mutation.')) {
             let fieldName = err.nodes[0].value;
             let serviceName = '';
             for (var sn in schemas)
@@ -237,35 +276,26 @@ function handleCompositionErrors(wb: ApolloWorkbench, errors) {
             let serviceName = definitionNode.serviceName;
             let typeToIgnore = definitionNode.name.value;
 
-
-            let typeDefs = gql(schemas[serviceName]);
-            let builtSchema = buildFederatedSchema({ typeDefs });
-            const typeInfo = new TypeInfo(builtSchema);
-
-            //Duplicate a type to get this error
-            visit(typeDefs,
-                visitWithTypeInfo(typeInfo, {
-                    enter(node, key, parent, path, ancestors) {
-                        if ((node as any)?.value === typeToIgnore) {
-                            // let start = loc?.start.toString();
-                            // let end = loc?.end.toString();
-                            // let range = loc?.startToken.start.toString();
-                        }
-                    }
-                }));
-
-            var editedAST = visit(typeDefs,
-                visitWithTypeInfo(typeInfo, {
-                    Field(node) {
-                        const parentType = typeInfo.getParentType();
-                        console.log(parentType);
-                    }
-                }));
+            let diagnostic = getDiagnostic(typeToIgnore, err.message, schemas[serviceName]);
 
             if (!diagnosticsGroups[serviceName])
                 diagnosticsGroups[serviceName] = new Array<vscode.Diagnostic>();
 
-            diagnosticsGroups[serviceName].push(new vscode.Diagnostic(new vscode.Range(0, 0, 0, 1), err.message, vscode.DiagnosticSeverity.Error));
+            diagnosticsGroups[serviceName].push(diagnostic);
+
+        } else if (err.message.includes('Field') && err.message.includes('can only be defined once')) {
+            let serviceName = "workbench"; //definitionNode.serviceName; This is not populated
+            let splitMessage = err.message.split('.');
+            let typeToIgnore = splitMessage[0].split('"')[1];
+            let fieldToIgnore = splitMessage[1].split('"')[0];
+            fieldToIgnore = fieldToIgnore.substring(0, fieldToIgnore.length);
+
+            let diagnostic = getDiagnostic(typeToIgnore, err.message, schemas[serviceName]);
+
+            if (!diagnosticsGroups[serviceName])
+                diagnosticsGroups[serviceName] = new Array<vscode.Diagnostic>();
+
+            diagnosticsGroups[serviceName].push(diagnostic);
         } else {
             if (!diagnosticsGroups["workbench"])
                 diagnosticsGroups["workbench"] = new Array<vscode.Diagnostic>();
@@ -276,39 +306,30 @@ function handleCompositionErrors(wb: ApolloWorkbench, errors) {
     return diagnosticsGroups;
 }
 
+function getDiagnostic(typeToLoc: string, errMessage: string, schema: string) {
+    let range = new vscode.Range(0, 0, 0, 0);
+    if (schema) {
+        let typeDefs = parse(schema);
+        let builtSchema = buildFederatedSchema({ typeDefs });
+        const typeInfo = new TypeInfo(builtSchema);
 
-// let type = err.message.split('`')[1];
-//                 // let typeDefs = gql(schemas[serviceName]);
-//                 // let builtSchema = buildFederatedSchema({ typeDefs });
-//                 // const typeInfo = new TypeInfo(builtSchema);
-//                 if (!diagnosticsGroups[serviceName])
-//                     diagnosticsGroups[serviceName] = new Array<vscode.Diagnostic>();
+        try {
+            visit(typeDefs,
+                visitWithTypeInfo(typeInfo, {
+                    enter(node, key, parent, path, ancestors) {
+                        if ((node.kind == 'ObjectTypeDefinition' || node.kind == 'ObjectTypeExtension') && node.name.value === typeToLoc) {
+                            let startLine = node.loc?.startToken.line ? node.loc?.startToken.line - 1 : + 0;
+                            let endLine = node.loc?.endToken.line ? node.loc?.startToken.line - 1 : + 0;
 
-//                 diagnosticsGroups[serviceName].push(new vscode.Diagnostic(new vscode.Range(0, 0, 0, 1), err.message, vscode.DiagnosticSeverity.Error));
-//                 // let visitor = visit(typeDefs, {
-//                 //     enter(node, key, parent, path, ancestors) {
-//                 //         if ((node as any)?.value === type) {
-//                 //             let start = node.loc?.start.toString();
-//                 //             let end = node.loc?.end.toString();
-//                 //             let range = node.loc?.startToken.start.toString();
-//                 //         }
-//                 //     }
-//                 //     // visitWithTypeInfo(typeInfo, {
-//                 //     //     Field(node) {
-//                 //     //         console.log(node);
-//                 //     //     },
+                            range = new vscode.Range(startLine, 0, endLine, 6 + typeToLoc.length);
+                            return BREAK;
+                        }
+                    }
+                }));
+        } catch (err) {
+            console.log(err);
+        }
+    }
 
-//                 // });
-//                 ;
-//                 // let nodeValue = builtSchema.parseValue(schemas[serviceName]);
-
-//                 // visit(gql(printSchema(builtSchema)),
-//                 //     visitWithTypeInfo(typeInfo, {
-//                 //         enter(node, a, b, c, d) {
-//                 //             if ((node as any)?.value === type) {
-//                 //                 // let start = loc?.start.toString();
-//                 //                 // let end = loc?.end.toString();
-//                 //                 // let range = loc?.startToken.start.toString();
-//                 //             }
-//                 //         }
-//                 //     }));
+    return new vscode.Diagnostic(range, errMessage, vscode.DiagnosticSeverity.Error);
+}

@@ -7,8 +7,18 @@
 // GraphQL query operation: GetGraphSchemas
 // ====================================================
 
+export interface GetGraphSchemas_service_schema {
+  __typename: "Schema";
+  document: any;
+}
+
 export interface GetGraphSchemas_service_implementingServices_NonFederatedImplementingService {
   __typename: "NonFederatedImplementingService";
+  /**
+   * Identifies which graph this non-implementing service belongs to.
+   * Formerly known as "service_id"
+   */
+  graphID: string;
 }
 
 export interface GetGraphSchemas_service_implementingServices_FederatedImplementingServices_services_activePartialSchema {
@@ -45,6 +55,10 @@ export type GetGraphSchemas_service_implementingServices = GetGraphSchemas_servi
 
 export interface GetGraphSchemas_service {
   __typename: "Service";
+  /**
+   * Get a schema by hash OR current tag
+   */
+  schema: GetGraphSchemas_service_schema | null;
   /**
    * List of implementing services that comprise a graph. A non-federated graph should have a single implementing service.
    * Set includeDeleted to see deleted implementing services

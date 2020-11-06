@@ -32,7 +32,13 @@ const accountServiceVariants = gql`
 const getGraphSchemas = gql`
     query GetGraphSchemas($id: ID!, $graphVariant: String!) {
       service(id: $id) {
+          schema(tag:$graphVariant) {
+              document 
+          }
         implementingServices(graphVariant: $graphVariant){
+            ...on NonFederatedImplementingService {
+                graphID
+            }
           ...on FederatedImplementingServices{
             services {
               name
@@ -100,14 +106,15 @@ export async function getGraphSchemasByVariant(apiKey: string, serviceId: string
     return result.data as GetGraphSchemas
 }
 
+const { version } = require('../../package.json');
 function createLink(apiKey: string) {
     return createHttpLink({
         fetch,
-        uri: vscode.workspace.getConfiguration("apollo-workbench").get('apolloApiUrl') as string ?? `https://engine-graphql.apollographql.com/api/graphql`,
+        uri: vscode.workspace.getConfiguration("apollo-workbench").get('apolloApiUrl') as string,
         headers: {
             'x-api-key': apiKey,
             'apollographql-client-name': 'Apollo Workbench',
-            'apollographql-client-version': '0.1'
+            'apollographql-client-version': version
         }
     });
 }

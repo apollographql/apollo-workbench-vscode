@@ -2,7 +2,7 @@
   "name": "apollo-workbench-vscode",
   "displayName": "Apollo Workbench",
   "description": "Apollo VS Code extension to design and get started with federated schema development using Apollo Federation",
-  "version": "0.0.3",
+  "version": "0.0.6",
   "publisher": "michael-watson",
   "engines": {
     "vscode": "^1.34.0"
@@ -126,7 +126,13 @@
       },
       {
         "command": "local-workbench-files.loadFile",
-        "title": "Load Workbench File"
+        "title": "Load Workbench File",
+        "icon": "$(arrow-up)"
+      },
+      {
+        "command": "local-workbench-files.deleteFile",
+        "title": "Delete Workbench File",
+        "icon": "$(trash)"
       },
       {
         "command": "local-workbench-files.refresh",
@@ -299,6 +305,15 @@
         },
         {
           "command": "local-workbench-files.loadFile",
+          "when": "view == local-workbench-files && viewItem == workbenchFileTreeItem",
+          "group": "inline"
+        },
+        {
+          "command": "local-workbench-files.deleteFile",
+          "when": "view == local-workbench-files && viewItem == workbenchFileTreeItem"
+        },
+        {
+          "command": "local-workbench-files.deleteFile",
           "when": "view == local-workbench-files && viewItem == workbenchFileTreeItem",
           "group": "inline"
         },
