@@ -43,8 +43,8 @@ export class ApolloStudioGraphsTreeDataProvider implements vscode.TreeDataProvid
 
                 //Create objects for next for loop
                 //  Return A specific account with all graphs
-                let accountTreeItem = new StudioAccountTreeItem(accountId);
                 let services = await getAccountGraphs(apiKey, accountId);
+                let accountTreeItem = new StudioAccountTreeItem(accountId, services?.account?.name);
 
                 if (services?.account?.services) {
                     let accountServiceTreeItems = new Array<StudioGraphTreeItem>();
@@ -54,7 +54,7 @@ export class ApolloStudioGraphsTreeDataProvider implements vscode.TreeDataProvid
                         let graph = services?.account?.services[j];
                         //Create objects for next for loop
                         //  Return A specific Graph with all variants
-                        let graphTreeItem = new StudioGraphTreeItem(graph.id);
+                        let graphTreeItem = new StudioGraphTreeItem(graph.id, graph.title);
                         let graphVariantTreeItems = new Array<StudioGraphVariantTreeItem>();
 
                         //Loop through graph variants and add to return objects
@@ -64,6 +64,9 @@ export class ApolloStudioGraphsTreeDataProvider implements vscode.TreeDataProvid
                             //Create objects for next for loop
                             //  Return A specific graph variant with all implementing services
                             let accountgraphVariantTreeItem = new StudioGraphVariantTreeItem(graph.id, graphVariant.name);
+                            //TODO: The logic below should be moved to when the cell is clicked
+                            //After investigating, it seems that we can't handle the open/close functinolaty to conditionally load the schemas for a given tag
+                            //If you opened the carrot before clicking on the row, since there is no way to refresh a single cell, it doesn't show any data 
                             let graphVariantServiceTreeItems = new Array<StudioGraphVariantServiceTreeItem>();
 
                             //Query Studio for graph by variant
@@ -109,9 +112,10 @@ export class StudioAccountTreeItem extends vscode.TreeItem {
     children: StudioGraphTreeItem[] = new Array<StudioGraphTreeItem>();
 
     constructor(
-        public readonly accountId: string
+        public readonly accountId: string,
+        public readonly accountName?: string
     ) {
-        super(accountId, vscode.TreeItemCollapsibleState.Expanded);
+        super(accountName ?? accountId, vscode.TreeItemCollapsibleState.Expanded);
         this.contextValue = 'studioAccountTreeItem';
     }
     getChildren(element?: vscode.TreeItem): Thenable<vscode.TreeItem[]> {
@@ -123,9 +127,10 @@ export class StudioGraphTreeItem extends vscode.TreeItem {
     children: StudioGraphVariantTreeItem[] = new Array<StudioGraphVariantTreeItem>();
 
     constructor(
-        public readonly graphId: string
+        public readonly graphId: string,
+        public readonly graphName: string
     ) {
-        super(graphId, vscode.TreeItemCollapsibleState.Collapsed);
+        super(graphName, vscode.TreeItemCollapsibleState.Collapsed);
         this.contextValue = 'studioGraphTreeItem';
         this.command =
         {
@@ -147,6 +152,12 @@ export class StudioGraphVariantTreeItem extends vscode.TreeItem {
     ) {
         super(graphVariant, vscode.TreeItemCollapsibleState.Collapsed);
         this.contextValue = 'studioGraphVariantTreeItem';
+        this.command =
+        {
+            title: "Load Graph Operations",
+            command: "test",
+            arguments: [this]
+        }
     }
     getChildren(element?: vscode.TreeItem): Thenable<vscode.TreeItem[]> {
         return new Promise(() => this.children);

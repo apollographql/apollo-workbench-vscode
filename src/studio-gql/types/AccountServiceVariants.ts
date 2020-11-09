@@ -18,6 +18,7 @@ export interface AccountServiceVariants_account_services_variants {
 export interface AccountServiceVariants_account_services {
   __typename: "Service";
   id: string;
+  title: string;
   /**
    * The list of variants that exist for this graph
    */
@@ -26,6 +27,7 @@ export interface AccountServiceVariants_account_services {
 
 export interface AccountServiceVariants_account {
   __typename: "Account";
+  name: string;
   services: AccountServiceVariants_account_services[];
 }
 

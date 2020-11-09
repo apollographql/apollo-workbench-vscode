@@ -14,6 +14,7 @@ export interface UserMemberships_me_InternalIdentity {
 export interface UserMemberships_me_User_memberships_account {
   __typename: "Account";
   id: string;
+  name: string;
 }
 
 export interface UserMemberships_me_User_memberships {

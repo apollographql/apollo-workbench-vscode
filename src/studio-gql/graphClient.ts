@@ -13,6 +13,7 @@ const userMemberships = gql`
                 memberships {
                     account {
                         id
+                        name
                     }
                 }
             }
@@ -21,8 +22,10 @@ const userMemberships = gql`
 const accountServiceVariants = gql`
     query AccountServiceVariants($accountId: ID!) {
         account(id: $accountId) {
-            services {
+            name
+            services  {
                 id
+                title
                 variants {
                     name
                 }

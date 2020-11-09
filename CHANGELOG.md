@@ -1,3 +1,14 @@
+## Apollo Workbench VSCode 0.0.8
+
+### Improvements
+
+- Centralized `StateManager` for all files and `TreeViewDataProviders` - stability enhancement
+- Errors displaced in `Problems` pad, but need federation errors to return `serviceName` and `loc` reliably
+
+### Bugs
+
+- Apollo Studio login wasn't displaying org with graphs
+
 ## Apollo Workbench VSCode 0.0.4
 
 ### Improvements

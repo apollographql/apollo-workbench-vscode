@@ -2,7 +2,7 @@
   "name": "apollo-workbench-vscode",
   "displayName": "Apollo Workbench",
   "description": "Apollo VS Code extension to design and get started with federated schema development using Apollo Federation",
-  "version": "0.0.6",
+  "version": "0.0.8",
   "publisher": "michael-watson",
   "engines": {
     "vscode": "^1.34.0"
@@ -11,8 +11,6 @@
     "Other"
   ],
   "activationEvents": [
-    "onCommand:extension.newWorkbench",
-    "onCommand:extension.startWorkbench",
     "onView:current-workbench-schemas"
   ],
   "main": "./out/extension.js",
@@ -44,6 +42,11 @@
       }
     },
     "commands": [
+      {
+        "command": "extension.openFolder",
+        "title": "Open Folder",
+        "category": "Apollo Workbench"
+      },
       {
         "command": "extension.newWorkbench",
         "title": "Create New Workbench",
@@ -155,6 +158,11 @@
         "command": "studio-graphs.refresh",
         "title": "Refresh Graphs",
         "icon": "$(refresh)"
+      },
+      {
+        "command": "studio-graphs.switchOrg",
+        "title": "Switch Apollo Studio Org",
+        "category": "Apollo Workbench"
       },
       {
         "command": "studio-graphs.loadOperations",
