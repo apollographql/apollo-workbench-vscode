@@ -1,8 +1,9 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
-import { WorkbenchFile } from '../local-workbench-files/localWorkbenchFilesTreeDataProvider';
-import { getSelectedWorkbenchFile, getWorkbenchFile, workspaceSchemasFolderPath } from '../../helpers';
+import { FileWatchManager } from '../fileWatchManager';
+import { WorkbenchSchema } from '../../extension';
+import { WorkbenchFileManager } from '../workbenchFileManager';
 
 export class CurrentWorkbenchSchemasTreeDataProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
     context: vscode.ExtensionContext;
@@ -14,7 +15,7 @@ export class CurrentWorkbenchSchemasTreeDataProvider implements vscode.TreeDataP
     readonly onDidChangeTreeData: vscode.Event<WorkbenchSchemaTreeItem | undefined> = this._onDidChangeTreeData.event;
 
     refresh(): void {
-        fs.rmdirSync(workspaceSchemasFolderPath(false), { recursive: true });
+        fs.rmdirSync(WorkbenchFileManager.workspaceSchemasFolderPath(false), { recursive: true });
         this._onDidChangeTreeData.fire(undefined);
     }
 
@@ -42,17 +43,17 @@ export class CurrentWorkbenchSchemasTreeDataProvider implements vscode.TreeDataP
     }
 
     private getSchemasFromWorkbenchFile(): vscode.TreeItem[] {
-        const workbenchFile = getSelectedWorkbenchFile(this.context);
+        const workbenchFile = WorkbenchFileManager.getSelectedWorkbenchFile();
         if (workbenchFile) {
-            let workbenchSchemasFolder = workspaceSchemasFolderPath();
+            let workbenchSchemasFolder = WorkbenchFileManager.workspaceSchemasFolderPath();
 
-            const toDep = (serviceName: string, schema: string): WorkbenchSchemaTreeItem => {
+            const toDep = (serviceName: string, wbSchema: WorkbenchSchema): WorkbenchSchemaTreeItem => {
                 if (!this.pathExists(`${workbenchSchemasFolder}/${serviceName}.graphql`))
-                    fs.writeFileSync(`${workbenchSchemasFolder}/${serviceName}.graphql`, schema);
+                    fs.writeFileSync(`${workbenchSchemasFolder}/${serviceName}.graphql`, wbSchema.sdl);
 
                 return new WorkbenchSchemaTreeItem(
                     serviceName,
-                    schema,
+                    wbSchema.sdl,
                     vscode.TreeItemCollapsibleState.None
                 );
             };

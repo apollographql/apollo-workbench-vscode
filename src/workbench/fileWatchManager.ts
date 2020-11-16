@@ -1,51 +1,36 @@
 import * as vscode from 'vscode';
 const chokidar = require('chokidar');
-import { setupMocks, stopMocks, stopServer, startServer, getComposedSchemaLogCompositionErrors, startGateway } from '../workbench/setup';
 import { updateQueryPlan } from './updateQueryPlan';
-import { outputChannel } from '../extension';
-import { getLocalSchemaFromFile, getSelectedWorkbenchFile, getWorkbenchFile, saveSelectedWorkbenchFile, saveWorkbenchFile, workspaceQueriesFolderPath, workspaceSchemasFolderPath } from '../helpers';
-import { existsSync, readdirSync, readFileSync, unlinkSync, writeFileSync } from 'fs';
-import { resolve } from 'path';
-import { CurrentWorkbenchOpsTreeDataProvider, WorkbenchOperationTreeItem } from './current-workbench-queries/currentWorkbenchOpsTreeDataProvider';
-import { gql } from '@apollo/client/core';
+import { ApolloWorkbench, compositionDiagnostics, outputChannel, WorkbenchSchema } from '../extension';
+import { existsSync, unlinkSync, writeFileSync } from 'fs';
 import { parse, print } from 'graphql';
-import { LocalWorkbenchFilesTreeDataProvider, WorkbenchFile, WorkbenchFileTreeItem } from './local-workbench-files/localWorkbenchFilesTreeDataProvider';
-import { CurrentWorkbenchSchemasTreeDataProvider } from './current-workbench-schemas/currentWorkbenchSchemasTreeDataProvider';
-import { ApolloStudioGraphsTreeDataProvider } from './studio-graphs/apolloStudioGraphsTreeDataProvider';
-import { ApolloStudioGraphOpsTreeDataProvider } from './studio-operations/apolloStudioGraphOpsTreeDataProvider';
+import { StateManager } from './stateManager';
+import { ServerManager } from './serverManager';
+
+import { WorkbenchFileManager } from './workbenchFileManager';
 
 export class FileWatchManager {
-    extensionContext?: vscode.ExtensionContext;
-    localWorkbenchFilesProvider?: LocalWorkbenchFilesTreeDataProvider;
-    currentWorkbenchSchemasProvider?: CurrentWorkbenchSchemasTreeDataProvider;
-    currentWorkbenchOperationsProvider?: CurrentWorkbenchOpsTreeDataProvider;
-    apolloStudioGraphsProvider?: ApolloStudioGraphsTreeDataProvider;
-    apolloStudioGraphOpsProvider?: ApolloStudioGraphOpsTreeDataProvider;
-
     private schemasWatcher = chokidar.watch();
     private queryWatcher = chokidar.watch();
 
     async start() {
+        vscode.window.setStatusBarMessage('Starting Workbench...Reset');
         await this.reset();
-        this.syncGraphQLFilesToWorkbenchFile();
+        vscode.window.setStatusBarMessage('Workbench Reset...Syncing Files');
+        vscode.window.setStatusBarMessage('Workbench File Sync Complete...Starting Listeners');
 
-        this.schemasWatcher.add(workspaceSchemasFolderPath())
-            .on('ready', () => setupMocks(this.extensionContext))
+        this.schemasWatcher.add(WorkbenchFileManager.workspaceSchemasFolderPath())
+            .on('ready', () => ServerManager.instance.startMocks())
             .on('change', (path) => this.updateSchema(path))
             .on('unlink', (path: any) => this.deleteSchema(path))
             .on('add', (path: any) => this.addSchema(path));
-        this.queryWatcher.add(workspaceQueriesFolderPath())
-            .on('change', (path: any) => updateQueryPlan(path, this.extensionContext))
-            .on('ready', (path: any) => updateQueryPlan(path, this.extensionContext))
-            .on('add', (path: any) => updateQueryPlan(path, this.extensionContext));
+        this.queryWatcher.add(WorkbenchFileManager.workspaceQueriesFolderPath())
+            .on('change', (path: any) => updateQueryPlan(path))
+            .on('unlink', (path: any) => this.deleteOperationPath(path))
+            .on('ready', (path: any) => updateQueryPlan(path));
 
         vscode.window.setStatusBarMessage('Workbench is running');
-        vscode.window.showInformationMessage('Workbench is running in the background', 'Stop').then((value) => {
-            if (value == 'Stop')
-                this.stop();
-        });
     }
-
     async reset() {
         if (this.schemasWatcher?._eventsCount > 0)
             await this.schemasWatcher.close();
@@ -53,7 +38,6 @@ export class FileWatchManager {
         this.schemasWatcher = chokidar.watch();
         outputChannel.appendLine('Workbench Reset');
     }
-
     async stop() {
         await this.reset();
 
@@ -61,154 +45,264 @@ export class FileWatchManager {
         vscode.window.setStatusBarMessage('Workbench is stopped', 5000);
         outputChannel.appendLine('Workbench Stopped');
 
-        stopMocks();
+        ServerManager.instance.stopMocks();
     }
 
-    syncGraphQLFilesToWorkbenchFile() {
-        outputChannel.appendLine('Syncing GraphQL files in schemas folder to workbench file...');
-        let generatedSchemasFolder = workspaceSchemasFolderPath();
-        let selectedWbFile = this.extensionContext?.workspaceState.get('selectedWbFile');
-
-        let workbenchFile = getWorkbenchFile((selectedWbFile as any)?.path);
-        let graphqlFilesFolder = readdirSync(generatedSchemasFolder, { encoding: "utf8" });
-
-        graphqlFilesFolder.map(fileName => {
-            if (fileName.includes('.graphql')) {
-                let serviceName = fileName.slice(0, -8);
-                let typeDefsString = readFileSync(resolve(generatedSchemasFolder, fileName), { encoding: "utf8" });
-                if (workbenchFile.schemas[serviceName]) {
-                    if (typeDefsString != workbenchFile.schemas[serviceName]) {
-                        workbenchFile.schemas[serviceName] = typeDefsString;
+    async createSchema() {
+        let serviceName = await vscode.window.showInputBox({ placeHolder: "Enter a unique name for the schema/service" }) ?? "";
+        if (!serviceName) {
+            outputChannel.appendLine(`Create schema cancelled - No name entered.`);
+        } else {
+            try {
+                let workbenchFile = this.wrapWorkbenchInErrorDialog();
+                if (workbenchFile) {
+                    while (workbenchFile.schemas[serviceName]) {
+                        outputChannel.appendLine(`${serviceName} already exists. Schema/Service name must be unique within a workbench file`);
+                        serviceName = await vscode.window.showInputBox({ placeHolder: "Enter a unique name for the schema/service" }) ?? "";
+                        vscode.window.showErrorMessage('You must select a workbench file from the list of local workbench files found or you can create a new workbench file');
                     }
-                } else {
-                    workbenchFile.schemas[serviceName] = typeDefsString;
+
+                    this.saveNewSchema(serviceName, workbenchFile);
                 }
+            } catch (err) {
+                console.log(err);
             }
-        });
-
-        for (var key in workbenchFile.schemas) {
-            let localSchemaFilePath = resolve(generatedSchemasFolder, `${key}.graphql`);
-            if (!existsSync(localSchemaFilePath))
-                writeFileSync(localSchemaFilePath, workbenchFile.schemas[key], { encoding: "utf8" });
         }
-
-        saveSelectedWorkbenchFile(workbenchFile, this.extensionContext);
-
-        outputChannel.appendLine('Workebench file synced with local folders');
     }
-
     addSchema(path: string) {
         if (!path || !path.includes('.graphql') || path == '.graphql') return;
 
-        let workbenchFile = getSelectedWorkbenchFile(this.extensionContext);
+        let workbenchFile = this.wrapWorkbenchInErrorDialog();
         if (workbenchFile) {
             let path1 = path.split('.graphql')[0];
             let path2 = path1.split('/');
             let serviceName = path2[path2.length - 1];
 
-            if (!workbenchFile.schemas[serviceName]) {
-                workbenchFile.schemas[serviceName] = "";
-                writeFileSync(`${workspaceSchemasFolderPath()}/${serviceName}.graphql`, '', { encoding: 'utf-8' })
-                saveSelectedWorkbenchFile(workbenchFile, this.extensionContext);
-            }
+            if (!workbenchFile.schemas[serviceName])
+                this.saveNewSchema(serviceName, workbenchFile);
         }
+    }
+
+
+    private saveNewSchema(serviceName: string, workbenchFile: ApolloWorkbench) {
+        workbenchFile.schemas[serviceName] = new WorkbenchSchema();
+        writeFileSync(`${WorkbenchFileManager.workspaceSchemasFolderPath()}/${serviceName}.graphql`, JSON.stringify(workbenchFile.schemas[serviceName]), { encoding: 'utf-8' })
+        WorkbenchFileManager.saveSelectedWorkbenchFile(workbenchFile);
+        StateManager.currentWorkbenchSchemasProvider.refresh();
     }
 
     deleteSchema(path: string) {
         if (!path || !path.includes('.graphql')) return;
 
-        let workbenchFile = getSelectedWorkbenchFile(this.extensionContext);
+        let workbenchFile = WorkbenchFileManager.getSelectedWorkbenchFile();
         if (workbenchFile) {
             let path1 = path.split('.graphql')[0];
             let path2 = path1.split('/');
             let serviceName = path2[path2.length - 1];
 
-            stopServer(serviceName);
+            ServerManager.instance.stopServerByName(serviceName);
 
-            saveSelectedWorkbenchFile(workbenchFile, this.extensionContext);
-            getComposedSchemaLogCompositionErrors(workbenchFile);
+            WorkbenchFileManager.saveSelectedWorkbenchFile(workbenchFile);
+            vscode.window.withProgress({ title: "Running composition", location: vscode.ProgressLocation.Notification }, (progress, token) => {
+                return new Promise(resolve => {
+                    ServerManager.instance.getComposedSchemaLogCompositionErrors(workbenchFile as ApolloWorkbench);
+                    resolve();
+                })
+            });
         }
     }
 
     updateSchema(path: string) {
         if (!path || !path.includes('.graphql') || path == '.graphql') return;
 
-        let workbenchFile = getSelectedWorkbenchFile(this.extensionContext);
+        let workbenchFile = WorkbenchFileManager.getSelectedWorkbenchFile();
         if (workbenchFile) {
             let path1 = path.split('.graphql')[0];
             let path2 = path1.split('/');
             let serviceName = path2[path2.length - 1];
 
-            console.log(`Setting up ${serviceName}`);
+            if (workbenchFile.schemas[serviceName].shouldMock) {
+                let localSchemaString = WorkbenchFileManager.getLocalSchemaFromFile(serviceName);
+                if (localSchemaString != workbenchFile.schemas[serviceName].sdl) {
+                    workbenchFile.schemas[serviceName].sdl = localSchemaString;
 
-            let localSchemaString = getLocalSchemaFromFile(serviceName);
-            workbenchFile.schemas[serviceName] = localSchemaString;
+                    ServerManager.instance.startServer(serviceName, localSchemaString);
+                    WorkbenchFileManager.saveSelectedWorkbenchFile(workbenchFile);
 
-            startServer(serviceName);
-            saveSelectedWorkbenchFile(workbenchFile, this.extensionContext);
+                    vscode.window.withProgress({ title: "Running composition", location: vscode.ProgressLocation.Notification }, (progress, token) => {
+                        return new Promise(resolve => {
+                            ServerManager.instance.getComposedSchemaLogCompositionErrors(workbenchFile as ApolloWorkbench);
+                            resolve();
+                        })
+                    });
+                }
+            }
+        }
+    }
 
-            getComposedSchemaLogCompositionErrors(workbenchFile);
-            startGateway();
+    deleteOperationPath(path: string) {
+        if (existsSync(path)) {
+            let path1 = path.split('.queryplan')[0];
+            let path2 = path1.split('/');
+            let operationname = path2[path2.length - 1];
+
+            this.deleteOperation(operationname);
         }
     }
 
     deleteOperation(operationName: string) {
-        let workbenchFile = getSelectedWorkbenchFile(this.extensionContext);
+        let workbenchFile = WorkbenchFileManager.getSelectedWorkbenchFile();
         if (workbenchFile) {
             delete workbenchFile.operations[operationName];
-            unlinkSync(`${workspaceQueriesFolderPath()}/${operationName}.graphql`);
+            delete workbenchFile.queryPlans[operationName];
 
-            saveSelectedWorkbenchFile(workbenchFile, this.extensionContext);
-            this.apolloStudioGraphOpsProvider?.refresh();
+            unlinkSync(`${WorkbenchFileManager.workspaceQueriesFolderPath()}/${operationName}.graphql`);
+            unlinkSync(`${WorkbenchFileManager.workspaceQueriesFolderPath()}/${operationName}.queryplan`);
+
+            WorkbenchFileManager.saveSelectedWorkbenchFile(workbenchFile);
+            StateManager.currentWorkbenchOperationsProvider?.refresh();
         }
     }
 
     async editOperation(operationName: string) {
         outputChannel.appendLine(`Selected Operation ${operationName}`);
-        const workbenchQueriesFolder = workspaceQueriesFolderPath();
+        const workbenchQueriesFolder = WorkbenchFileManager.workspaceQueriesFolderPath();
         const uri = vscode.Uri.parse(`${workbenchQueriesFolder}/${operationName}.graphql`);
         await vscode.window.showTextDocument(uri);
-        this.apolloStudioGraphOpsProvider?.refresh();
+        StateManager.apolloStudioGraphOpsProvider?.refresh();
     }
 
-    async createOperation(context: vscode.ExtensionContext, operationName?: string, operationSignature?: string) {
+    async addOperation(operationName?: string, operationSignature?: string) {
         if (!operationName)
             operationName = await vscode.window.showInputBox({ placeHolder: "Enter a operation name for the query or mutation" }) ?? "";
 
         if (!operationName) {
             outputChannel.appendLine(`Create operation cancelled - No name entered.`);
         } else {
-            let wb = getSelectedWorkbenchFile(context);
+            let wb = WorkbenchFileManager.getSelectedWorkbenchFile();
             if (wb) {
                 while (wb?.schemas[operationName]) {
                     outputChannel.appendLine(`${operationName} already exists. Schema/Service name must be unique within a workbench file`);
                     operationName = await vscode.window.showInputBox({ placeHolder: "Enter a unique name for the schema/service" }) ?? "";
-                    vscode.window.showErrorMessage('You must select a workbench file from the list of local workbench files found or you can create a new workbench file');
                 }
 
                 wb.operations[operationName] = operationSignature ? print(parse(operationSignature)) : `query ${operationName} {\n\n}`;
                 wb.queryPlans[operationName] = "";
 
-                saveSelectedWorkbenchFile(wb, context);
-                this.localWorkbenchFilesProvider?.refresh();
-            }
+                WorkbenchFileManager.saveSelectedWorkbenchFile(wb);
+                StateManager.localWorkbenchFilesProvider?.refresh();
+                StateManager.currentWorkbenchOperationsProvider?.refresh();
+            } else
+                vscode.window.showErrorMessage('You must select a workbench file from the list of local workbench files found or you can create a new workbench file');
+        }
+    }
+    async openOperationQueryPlan(operationName: string) {
+        outputChannel.appendLine(`Opening query plan for operation ${operationName}`);
+        const workbenchQueriesFolder = WorkbenchFileManager.workspaceQueriesFolderPath();
+        const uri = vscode.Uri.parse(`${workbenchQueriesFolder}/${operationName}.queryplan`);
+        await vscode.window.showTextDocument(uri);
+    }
+
+    async newWorkbenchFileFromGraph(graphId: string, graphVariants: string[]) {
+        let selectedVariant = '';
+        if (graphVariants.length == 0) {
+            selectedVariant = 'currrent'
+        } else if (graphVariants.length == 1) {
+            selectedVariant = graphVariants[0];
+        } else {
+            selectedVariant = await vscode.window.showQuickPick(graphVariants) ?? '';
+        }
+
+        if (selectedVariant == '') {
+            vscode.window.showInformationMessage("You must select a variant to load the graph from")
+        } else {
+            let defaultGraphName = `${graphId}@${selectedVariant}-v?`;
+            let graphName = await vscode.window.showInputBox({
+                prompt: "Enter a name for your new workbench file",
+                placeHolder: defaultGraphName,
+                value: defaultGraphName
+            });
+            outputChannel.appendLine(`Creating workbench file ${graphName}`);
+            WorkbenchFileManager.newWorkbenchFileFromGraph(graphName ?? defaultGraphName, graphId, selectedVariant);
+        }
+    }
+    async newWorkbenchFile() {
+        outputChannel.appendLine('Creating new workbench file...');
+
+        let workbenchName = await vscode.window.showInputBox({ placeHolder: "Enter name for workbench file" });
+        if (!workbenchName) {
+            const msg = 'No name was provided for the file.\n Cancelling new workbench create';
+            outputChannel.appendLine(msg);
+            vscode.window.showErrorMessage(msg);
+        } else {
+            WorkbenchFileManager.newWorkbenchFile(workbenchName);
         }
     }
 
-    async deleteWorkbenchFile(filePath: string) {
-        let result = await vscode.window.showWarningMessage(`Are you sure you want to delete ${filePath}?`, { modal: true }, "Yes")
-        if (result?.toLowerCase() != "yes") return;
+    async loadWorkbenchFile(workbenchFileName: string, filePath: string) {
+        let key = `Loading WB:${workbenchFileName}`;
+        outputChannel.appendLine(`Loading WB:${workbenchFileName} - ${filePath}`);
+        vscode.window.setStatusBarMessage(`Loading WB:${workbenchFileName}`);
+        vscode.window.withProgress({ title: "Loading workbench file", location: vscode.ProgressLocation.Notification }, async (progress, token) => {
+            for (var i = 0; i < vscode.window.visibleTextEditors.length; i++) {
+                const editor = vscode.window.visibleTextEditors[i];
+                if (editor.document.isDirty && !editor.document.isUntitled) {
+                    await vscode.window.showTextDocument(editor.document);
+                    let response = await vscode.window.showWarningMessage("Would you like to save your chagnes?", "Yes", "No");
+                    if (response === "Yes") {
+                        await editor.document.save();
+                    } else if (response === "No") {
 
-        outputChannel.appendLine(`Deleting WB: ${filePath}`);
-        let selectedWbFile = this.extensionContext?.workspaceState.get("selectedWbFile") as WorkbenchFile;
-        if (selectedWbFile && selectedWbFile.path == filePath) {
-            this.extensionContext?.workspaceState.update("selectedWbFile", "");
+                    } else {
+                        return;
+                    }
+                }
+            }
 
-            this.currentWorkbenchSchemasProvider?.refresh();
-            this.currentWorkbenchOperationsProvider?.refresh();
+            compositionDiagnostics.clear();
+
+            vscode.window.setStatusBarMessage(`${key}-Stopping Existing Mocks`);
+            await this.stop();
+            vscode.window.setStatusBarMessage(`${key}-Existing Mocks Stopped`);
+            await WorkbenchFileManager.deleteWorkbenchFolder();
+            StateManager.updateSelectedWorkbenchFile(workbenchFileName, filePath);
+            this.migrateWorkbenchFileToNext();
+            vscode.window.setStatusBarMessage(`${key}-Starting Mocks`);
+            await this.start();
+            vscode.window.setStatusBarMessage(`${key}-Mocks Started`, 250);
+
+            return new Promise(resolve => {
+                ServerManager.instance.getComposedSchemaLogCompositionErrors();
+                resolve();
+            });
+        });
+    }
+
+    migrateWorkbenchFileToNext() {
+        let workbenchFile = WorkbenchFileManager.getSelectedWorkbenchFile();
+        if (workbenchFile) {
+            let shouldSave = false;
+            for (var serviceName in workbenchFile.schemas) {
+                let workbenchServiceSchema = workbenchFile.schemas[serviceName];
+                if (typeof workbenchServiceSchema === 'string') {
+                    //We have a workbench file that uses the legacy format, update
+                    workbenchFile.schemas[serviceName] = new WorkbenchSchema(workbenchServiceSchema);
+                    shouldSave = true;
+                }
+            }
+
+            if (shouldSave)
+                WorkbenchFileManager.saveSelectedWorkbenchFile(workbenchFile);
         }
+    }
 
-        unlinkSync(filePath);
-        this.localWorkbenchFilesProvider?.refresh();
+    wrapWorkbenchInErrorDialog() {
+        let workbenchFile = WorkbenchFileManager.getSelectedWorkbenchFile();
+        if (workbenchFile) {
+            return workbenchFile;
+        } else {
+            outputChannel.appendLine(`No workbench file is currently loaded.`);
+            vscode.window.showErrorMessage('You must select a workbench file from the list of local workbench files found or you can create a new workbench file');
+        }
     }
 }

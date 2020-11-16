@@ -4,7 +4,7 @@ import { CurrentWorkbenchSchemasTreeDataProvider } from '../current-workbench-sc
 import { WorkbenchFile, WorkbenchFileTreeItem } from "./localWorkbenchFilesTreeDataProvider";
 
 export const loadFile = (item: WorkbenchFileTreeItem, context: vscode.ExtensionContext, currentWorkbenchProvider: CurrentWorkbenchSchemasTreeDataProvider) => {
-    outputChannel.appendLine(`Loading WB:${item.graphVariant} - ${item.filePath}`);
-    context.workspaceState.update("selectedWbFile", { name: item.graphVariant, path: item.filePath } as WorkbenchFile);
+    outputChannel.appendLine(`Loading WB:${item.workbenchFileName} - ${item.filePath}`);
+    context.workspaceState.update("selectedWbFile", { name: item.workbenchFileName, path: item.filePath } as WorkbenchFile);
     currentWorkbenchProvider.refresh();
 }

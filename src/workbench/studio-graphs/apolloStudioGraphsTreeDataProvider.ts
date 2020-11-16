@@ -61,31 +61,32 @@ export class ApolloStudioGraphsTreeDataProvider implements vscode.TreeDataProvid
                         for (var k = 0; k < graph.variants.length; k++) {
                             //Cast graph variant
                             let graphVariant = graph.variants[k];
+                            graphTreeItem.variants.push(graphVariant.name);
                             //Create objects for next for loop
                             //  Return A specific graph variant with all implementing services
                             let accountgraphVariantTreeItem = new StudioGraphVariantTreeItem(graph.id, graphVariant.name);
-                            //TODO: The logic below should be moved to when the cell is clicked
-                            //After investigating, it seems that we can't handle the open/close functinolaty to conditionally load the schemas for a given tag
-                            //If you opened the carrot before clicking on the row, since there is no way to refresh a single cell, it doesn't show any data 
-                            let graphVariantServiceTreeItems = new Array<StudioGraphVariantServiceTreeItem>();
+                            // //TODO: The logic below should be moved to when the cell is clicked
+                            // //After investigating, it seems that we can't handle the open/close functinolaty to conditionally load the schemas for a given tag
+                            // //If you opened the carrot before clicking on the row, since there is no way to refresh a single cell, it doesn't show any data 
+                            // let graphVariantServiceTreeItems = new Array<StudioGraphVariantServiceTreeItem>();
 
-                            //Query Studio for graph by variant
-                            let variantServices = await getGraphSchemasByVariant(apiKey, graph.id, graphVariant.name);
-                            let implementingServices = variantServices.service?.implementingServices as GetGraphSchemas_service_implementingServices_FederatedImplementingServices;
+                            // //Query Studio for graph by variant
+                            // let variantServices = await getGraphSchemasByVariant(apiKey, graph.id, graphVariant.name);
+                            // let implementingServices = variantServices.service?.implementingServices as GetGraphSchemas_service_implementingServices_FederatedImplementingServices;
 
-                            if (implementingServices) {
-                                //Loop through implemnting services and add to return objects
-                                for (var l = 0; l < implementingServices.services.length; l++) {
-                                    let implemntingService = implementingServices.services[l];
-                                    graphVariantServiceTreeItems.push(new StudioGraphVariantServiceTreeItem(graph.id, graphVariant.name, implemntingService.name, implemntingService.activePartialSchema.sdl));
-                                }
-                            }
-                            else {
-                                let schema = variantServices.service?.schema?.document;
-                                graphVariantServiceTreeItems.push(new StudioGraphVariantServiceTreeItem(graph.id, graphVariant.name, 'monolith-schema', schema));
-                            }
-                            // Set the implementing service tree items on the return objects
-                            accountgraphVariantTreeItem.children = graphVariantServiceTreeItems;
+                            // if (implementingServices) {
+                            //     //Loop through implemnting services and add to return objects
+                            //     for (var l = 0; l < implementingServices.services.length; l++) {
+                            //         let implemntingService = implementingServices.services[l];
+                            //         graphVariantServiceTreeItems.push(new StudioGraphVariantServiceTreeItem(graph.id, graphVariant.name, implemntingService.name, implemntingService.activePartialSchema.sdl));
+                            //     }
+                            // }
+                            // else {
+                            //     let schema = variantServices.service?.schema?.document;
+                            //     graphVariantServiceTreeItems.push(new StudioGraphVariantServiceTreeItem(graph.id, graphVariant.name, 'monolith-schema', schema));
+                            // }
+                            // // Set the implementing service tree items on the return objects
+                            // accountgraphVariantTreeItem.children = graphVariantServiceTreeItems;
                             graphVariantTreeItems.push(accountgraphVariantTreeItem);
                         }
                         //Set the implementing service tree items on the return objects 
@@ -125,6 +126,7 @@ export class StudioAccountTreeItem extends vscode.TreeItem {
 
 export class StudioGraphTreeItem extends vscode.TreeItem {
     children: StudioGraphVariantTreeItem[] = new Array<StudioGraphVariantTreeItem>();
+    variants: string[] = [];
 
     constructor(
         public readonly graphId: string,
@@ -150,14 +152,8 @@ export class StudioGraphVariantTreeItem extends vscode.TreeItem {
         public readonly graphId: string,
         public readonly graphVariant: string
     ) {
-        super(graphVariant, vscode.TreeItemCollapsibleState.Collapsed);
+        super(graphVariant, vscode.TreeItemCollapsibleState.None);
         this.contextValue = 'studioGraphVariantTreeItem';
-        this.command =
-        {
-            title: "Load Graph Operations",
-            command: "test",
-            arguments: [this]
-        }
     }
     getChildren(element?: vscode.TreeItem): Thenable<vscode.TreeItem[]> {
         return new Promise(() => this.children);

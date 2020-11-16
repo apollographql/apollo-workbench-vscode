@@ -2,13 +2,14 @@ import * as vscode from 'vscode';
 import { mkdirSync, existsSync, writeFileSync } from 'fs';
 
 import { outputChannel } from '../../extension';
-import { workspaceSchemasFolderPath } from '../../helpers';
 import { WorkbenchSchemaTreeItem } from './currentWorkbenchSchemasTreeDataProvider';
+import { FileWatchManager } from '../fileWatchManager';
+import { WorkbenchFileManager } from '../workbenchFileManager';
 
 export const editSchema = async (item: WorkbenchSchemaTreeItem) => {
     outputChannel.appendLine(`Selected Schema ${item.serviceName}`);
     if (vscode.workspace.workspaceFolders) {
-        const workbenchSchemasFolder = workspaceSchemasFolderPath();
+        const workbenchSchemasFolder = WorkbenchFileManager.workspaceSchemasFolderPath();
 
         if (!existsSync(workbenchSchemasFolder))
             await mkdirSync(workbenchSchemasFolder);

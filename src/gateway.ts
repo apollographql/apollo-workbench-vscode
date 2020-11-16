@@ -2,60 +2,33 @@ import { ApolloGateway, RemoteGraphQLDataSource, GatewayConfig, Experimental_Upd
 import { parse } from 'graphql';
 import { Headers } from "apollo-server-env";
 import { ServiceDefinition } from '@apollo/federation';
-import { portMapping } from "./workbench/setup";
-
-function setupServiceOverrides() {
-    let overrides: Array<{ name, url }> = [];
-
-    for (var key in portMapping) {
-        overrides.push({ name: key, url: `http://localhost:${portMapping[key]}` })
-    }
-
-    return overrides;
-}
+import { FileWatchManager } from "./workbench/fileWatchManager";
+import { ServerManager } from "./workbench/serverManager";
+import { WorkbenchFileManager } from "./workbench/workbenchFileManager";
 
 export class OverrideApolloGateway extends ApolloGateway {
-    isInitialized = false;
     protected async loadServiceDefinitions(config: GatewayConfig): ReturnType<Experimental_UpdateServiceDefinitions> {
-        let serviceOverrides = setupServiceOverrides() ?? [];
-        if (serviceOverrides.length > 0) {
-            let newDefinitions: Array<ServiceDefinition> = [];
-            let fetchedServiceDefinitions;
-            try {
-                fetchedServiceDefinitions = await super.loadServiceDefinitions(config);
-            } catch (err) {
-                //Valid configuration doesn't exist yet
-            }
+        let newDefinitions: Array<ServiceDefinition> = [];
 
-            for (var i = 0; i < serviceOverrides.length; i++) {
-                let name = serviceOverrides[i].name;
-                let url = serviceOverrides[i].url;
-                let typeDefs = await this.getTypeDefs(url);
-                if (typeDefs)
-                    newDefinitions.push({ name, url, typeDefs });
-            }
-
-            if (fetchedServiceDefinitions?.serviceDefinitions)
-                for (var i = 0; i < fetchedServiceDefinitions.serviceDefinitions.length; i++) {
-                    let originalService = fetchedServiceDefinitions.serviceDefinitions[i];
-                    let alreadyDefined = fetchedServiceDefinitions.serviceDefinitions.findIndex(sd => sd.name == serviceOverrides[0].name) >= 0 ? true : false;
-                    if (!alreadyDefined)
-                        newDefinitions.push(originalService);
+        let wb = WorkbenchFileManager.getSelectedWorkbenchFile();
+        if (wb) {
+            for (var serviceName in wb.schemas) {
+                const service = wb.schemas[serviceName];
+                if (service.shouldMock) {
+                    let url = `http://localhost:${ServerManager.instance.portMapping[serviceName]}`;
+                    newDefinitions.push({ name: serviceName, url, typeDefs: parse(service.sdl) });
+                } else {
+                    let typeDefs = await this.getTypeDefs(service.url as string);
+                    if (typeDefs)
+                        newDefinitions.push({ name: serviceName, url: service.url, typeDefs });
                 }
-
-            if (!this.isInitialized) {
-                console.log('Composing schema from service list: ');
-                newDefinitions.map(d => console.log(`  ${d.url}: ${d.name}`));
-                this.isInitialized = true;
             }
-            return {
-                isNewSchema: true,
-                compositionMetadata: fetchedServiceDefinitions?.compositionMetadata ?? { formatVersion: 123, id: '123' },
-                serviceDefinitions: newDefinitions
-            };
-        } else {
-            return super.loadServiceDefinitions(config);
         }
+
+        return {
+            isNewSchema: true,
+            serviceDefinitions: newDefinitions
+        };
     }
 
     async getTypeDefs(serviceURLOverride: string) {

@@ -1,7 +1,9 @@
 import * as fs from 'fs';
+import { accessSync } from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { getSelectedWorkbenchFile, pathExists, workspaceQueriesFolderPath } from '../../helpers';
+import { FileWatchManager } from '../fileWatchManager';
+import { WorkbenchFileManager } from '../workbenchFileManager';
 
 export class CurrentWorkbenchOpsTreeDataProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
     context: vscode.ExtensionContext;
@@ -13,7 +15,7 @@ export class CurrentWorkbenchOpsTreeDataProvider implements vscode.TreeDataProvi
     readonly onDidChangeTreeData: vscode.Event<WorkbenchOperationTreeItem | undefined> = this._onDidChangeTreeData.event;
 
     refresh(): void {
-        fs.rmdirSync(workspaceQueriesFolderPath(false), { recursive: true });
+        fs.rmdirSync(WorkbenchFileManager.workspaceQueriesFolderPath(false), { recursive: true });
         this._onDidChangeTreeData.fire(undefined);
     }
 
@@ -39,14 +41,14 @@ export class CurrentWorkbenchOpsTreeDataProvider implements vscode.TreeDataProvi
     }
 
     private getOperationsFromWorkbenchFile(): vscode.TreeItem[] {
-        const workbenchFile = getSelectedWorkbenchFile(this.context);
+        const workbenchFile = WorkbenchFileManager.getSelectedWorkbenchFile();
         if (workbenchFile) {
-            let workbenchQueriesFolder = workspaceQueriesFolderPath();
+            let workbenchQueriesFolder = WorkbenchFileManager.workspaceQueriesFolderPath();
 
             const toDep = (operationName: string, operation: string, queryPlan: string): WorkbenchOperationTreeItem => {
-                if (!pathExists(`${workbenchQueriesFolder}/${operationName}.graphql`))
+                if (!this.pathExists(`${workbenchQueriesFolder}/${operationName}.graphql`))
                     fs.writeFileSync(`${workbenchQueriesFolder}/${operationName}.graphql`, operation);
-                if (!pathExists(`${workbenchQueriesFolder}/${operationName}.queryplan`))
+                if (!this.pathExists(`${workbenchQueriesFolder}/${operationName}.queryplan`))
                     fs.writeFileSync(`${workbenchQueriesFolder}/${operationName}.queryplan`, queryPlan);
 
                 return new WorkbenchOperationTreeItem(
@@ -62,6 +64,15 @@ export class CurrentWorkbenchOpsTreeDataProvider implements vscode.TreeDataProvi
         } else {
             return [new vscode.TreeItem("No workbench file selected", vscode.TreeItemCollapsibleState.None)];
         }
+    }
+
+    pathExists(p: string): boolean {
+        try {
+            accessSync(p);
+        } catch (err) {
+            return false;
+        }
+        return true;
     }
 }
 

@@ -1,8 +1,9 @@
 {
   "name": "apollo-workbench-vscode",
   "displayName": "Apollo Workbench",
-  "description": "Apollo VS Code extension to design and get started with federated schema development using Apollo Federation",
-  "version": "0.0.8",
+  "description": "Tooling to help you develop and mock federated schemas using Apollo Federation",
+  "icon": "media/logo-apollo.png",
+  "version": "0.1.0",
   "publisher": "michael-watson",
   "engines": {
     "vscode": "^1.34.0"
@@ -37,6 +38,34 @@
             "number"
           ],
           "default": 4001,
+          "description": "Specifies the url endpoint to be used for the Apollo Studio Graph"
+        },
+        "apollo-workbench.gatewayReCompositionInterval": {
+          "type": [
+            "number"
+          ],
+          "default": 10000,
+          "description": "Specifies the interval the Apollo Gateway will try re-composing it's schema in ms"
+        },
+        "apollo-workbench.graphApiKey": {
+          "type": [
+            "string"
+          ],
+          "default": "",
+          "description": "Specifies the gateway apikey to be used for the Apollo Studio Graph. This will enable operation registry if `apollo-workbench.runOperationRegistry` is set to `true`"
+        },
+        "apollo-workbench.graphVariant": {
+          "type": [
+            "string"
+          ],
+          "default": "current",
+          "description": "Specifies the gateway graph variant to be used for the Apollo Studio Graph. This will change operation registry if `apollo-workbench.runOperationRegistry` is set to `true`"
+        },
+        "apollo-workbench.runOperationRegistry": {
+          "type": [
+            "boolean"
+          ],
+          "default": false,
           "description": "Specifies the url endpoint to be used for the Apollo Studio Graph"
         }
       }
@@ -151,10 +180,6 @@
         "title": "Create Workbench File from Graph"
       },
       {
-        "command": "studio-graphs.addServiceSchemaToCurrentWorkbench",
-        "title": "Add Schema to Current Workbench"
-      },
-      {
         "command": "studio-graphs.refresh",
         "title": "Refresh Graphs",
         "icon": "$(refresh)"
@@ -237,16 +262,6 @@
         {
           "command": "current-workbench-operations.refreshOperations",
           "when": "view == current-workbench-operations",
-          "group": "navigation"
-        },
-        {
-          "command": "extension.startWorkbench",
-          "when": "view == current-workbench-schemas",
-          "group": "navigation"
-        },
-        {
-          "command": "extension.stopWorkbench",
-          "when": "view == current-workbench-schemas",
           "group": "navigation"
         },
         {
@@ -334,10 +349,6 @@
           "when": "view == studio-graphs && viewItem == studioGraphVariantTreeItem"
         },
         {
-          "command": "studio-graphs.addServiceSchemaToCurrentWorkbench",
-          "when": "view == studio-graphs && viewItem == studioGraphVariantServiceTreeItem"
-        },
-        {
           "command": "studio-operations.addToWorkbench",
           "when": "view == studio-operations && viewItem == studioOperationTreeItem",
           "group": "inline"
@@ -370,9 +381,10 @@
   "dependencies": {
     "@apollo/client": "^3.2.5",
     "@apollo/federation": "^0.20.4",
-    "@apollo/gateway": "^0.21.0",
+    "@apollo/gateway": "^0.21.1",
     "@apollo/query-planner-wasm": "0.0.6",
-    "apollo-server": "^2.18.2",
+    "apollo-server": "^2.19.0",
+    "apollo-server-plugin-operation-registry": "^0.7.2",
     "chokidar": "^3.4.3",
     "graphql": "^14.7.0"
   }

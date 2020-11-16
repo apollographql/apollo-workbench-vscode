@@ -61,8 +61,6 @@ const getGraphOperations = gql`
           stats(from: $from) {
               queryStats {
                   groupBy {
-                      clientName
-                      clientVersion
                       queryName
                       queryId  
                       querySignature

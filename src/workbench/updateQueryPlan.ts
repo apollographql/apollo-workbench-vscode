@@ -2,48 +2,46 @@ import * as vscode from 'vscode';
 import { writeFileSync, readFileSync } from "fs";
 
 import { gql } from 'apollo-server';
-import { getQueryPlanner } from '@apollo/query-planner-wasm';
-import { buildOperationContext, buildQueryPlan, serializeQueryPlan } from '@apollo/gateway';
+import { getQueryPlan, getQueryPlanner } from '@apollo/query-planner-wasm';
+import { serializeQueryPlan } from '@apollo/gateway';
 
-import { getComposedSchemaLogCompositionErrors } from './setup';
-import { getSelectedWorkbenchFile, saveSelectedWorkbenchFile } from "../helpers";
+import { FileWatchManager } from './fileWatchManager';
+import { StateManager } from './stateManager';
+import { ServerManager } from './serverManager';
+import { WorkbenchFileManager } from './workbenchFileManager';
 
-export function updateQueryPlan(path: string, context?: vscode.ExtensionContext) {
+export function updateQueryPlan(path: string) {
     if (path && path.includes('.graphql')) {
-        let workbenchFile = getSelectedWorkbenchFile(context);
+        let workbenchFile = WorkbenchFileManager.getSelectedWorkbenchFile();
         if (workbenchFile) {
             let destructured = path.split('/');
             let operationName = destructured[destructured.length - 1].slice(0, -8);
             let operation = readFileSync(path, { encoding: 'utf-8' });
-            workbenchFile.operations[operationName] = operation;
 
-            //Generate query plan
-            try {
-                const { schema, composedSdl } = getComposedSchemaLogCompositionErrors(workbenchFile);
-                if (schema && composedSdl) {
-                    const queryPlanPointer = getQueryPlanner(composedSdl);
-                    const operationContext = buildOperationContext({
-                        schema: schema,
-                        operationDocument: gql(operation),
-                        operationString: operation,
-                        queryPlannerPointer: queryPlanPointer,
-                        operationName: operationName,
-                    });
+            if (workbenchFile.operations[operationName] != operation || !workbenchFile.queryPlans[operationName]) {
+                workbenchFile.operations[operationName] = operation;
 
-                    let queryPlan = buildQueryPlan(operationContext);
-                    workbenchFile.queryPlans[operationName] = serializeQueryPlan(queryPlan);
+                //Generate query plan
+                try {
+                    const { composedSdl } = ServerManager.instance.getComposedSchema(workbenchFile);
+                    if (composedSdl) {
+                        const queryPlanPointer = getQueryPlanner(composedSdl);
+                        let queryPlan = getQueryPlan(queryPlanPointer, operation, { autoFragmentization: false });
+                        workbenchFile.queryPlans[operationName] = serializeQueryPlan(queryPlan);
 
-                    //write queryPlan
-                    let queryPlanPath = `${path.slice(0, path.length - 8)}.queryplan`;
-                    writeFileSync(queryPlanPath, workbenchFile.queryPlans[operationName], { encoding: 'utf-8' });
+                        //write queryPlan
+                        let queryPlanPath = `${path.slice(0, path.length - 8)}.queryplan`;
+                        writeFileSync(queryPlanPath, workbenchFile.queryPlans[operationName], { encoding: 'utf-8' });
+                        WorkbenchFileManager.saveSelectedWorkbenchFile(workbenchFile);
+                    }
+                } catch (err) {
+                    console.log(err);
+                    console.log("You probably don't have a valid query defined, see query/query-errors.json for more details");
+                    workbenchFile.queryPlans[operationName] = "";
                 }
-            } catch (err) {
-                console.log(err);
-                console.log("You probably don't have a valid query defined, see query/query-errors.json for more details");
+
+                WorkbenchFileManager.saveSelectedWorkbenchFile(workbenchFile);
             }
-
-
-            saveSelectedWorkbenchFile(workbenchFile, context);
         }
     }
 }

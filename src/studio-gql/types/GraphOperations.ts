@@ -9,8 +9,6 @@
 
 export interface GraphOperations_service_stats_queryStats_groupBy {
   __typename: "ServiceQueryStatsDimensions";
-  clientName: string | null;
-  clientVersion: string | null;
   queryName: string | null;
   queryId: string | null;
   querySignature: string | null;
