@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, rmdirSync, unlinkSync, writeFileSync } from 'fs';
+import { existsSync, mkdirSync, readFileSync, rmdirSync, unlinkSync, writeFileSync, copyFileSync } from 'fs';
 import { window, workspace } from 'vscode';
 import { ApolloWorkbench, WorkbenchSchema } from '../extension';
 import { getGraphSchemasByVariant } from '../studio-gql/graphClient';
@@ -154,6 +154,16 @@ export class WorkbenchFileManager {
         console.log(`Creating ${workbenchName}`);
         this.saveWorkbenchFile(workbenchMaster);
         StateManager.localWorkbenchFilesProvider.refresh();
+    }
+
+    static async duplicateWorkbenchFile(workbenchFileName: string, filePath: string) {
+        let newWorkbenchFileName = await window.showInputBox({ prompt: "Enter the name for new workbench file", value: `${workbenchFileName}-copy` });
+        if (newWorkbenchFileName) {
+            copyFileSync(filePath, `${filePath.split(workbenchFileName)[0]}${newWorkbenchFileName}${this.wbExt}`);
+            StateManager.localWorkbenchFilesProvider?.refresh();
+        } else {
+            window.showInformationMessage("No name entered, cancelling copy");
+        }
     }
     static async deleteWorkbenchFile(filePath: string) {
         let result = await window.showWarningMessage(`Are you sure you want to delete ${filePath}?`, { modal: true }, "Yes")

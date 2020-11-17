@@ -15,7 +15,7 @@ export class FileWatchManager {
 
     async start() {
         vscode.window.setStatusBarMessage('Starting Workbench...Reset');
-        await this.reset();
+        await this.resetWatchers();
         vscode.window.setStatusBarMessage('Workbench Reset...Syncing Files');
         vscode.window.setStatusBarMessage('Workbench File Sync Complete...Starting Listeners');
 
@@ -31,7 +31,7 @@ export class FileWatchManager {
 
         vscode.window.setStatusBarMessage('Workbench is running');
     }
-    async reset() {
+    private async resetWatchers() {
         if (this.schemasWatcher?._eventsCount > 0)
             await this.schemasWatcher.close();
 
@@ -39,7 +39,7 @@ export class FileWatchManager {
         outputChannel.appendLine('Workbench Reset');
     }
     async stop() {
-        await this.reset();
+        await this.resetWatchers();
 
         vscode.window.setStatusBarMessage('');
         vscode.window.setStatusBarMessage('Workbench is stopped', 5000);
@@ -47,7 +47,32 @@ export class FileWatchManager {
 
         ServerManager.instance.stopMocks();
     }
+    async renameSchema(serviceName: string) {
+        let newServiceName = await vscode.window.showInputBox({ placeHolder: "Enter a unique name for the schema/service" }) ?? "";
+        if (!newServiceName) {
+            outputChannel.appendLine(`Create schema cancelled - No name entered.`);
+        } else {
+            try {
+                await this.stop();
+                let workbenchFile = this.wrapWorkbenchInErrorDialog();
+                if (workbenchFile) {
+                    while (workbenchFile.schemas[newServiceName]) {
+                        outputChannel.appendLine(`${newServiceName} already exists. Schema/Service name must be unique within a workbench file`);
+                        newServiceName = await vscode.window.showInputBox({ placeHolder: "Enter a unique name for the schema/service" }) ?? "";
+                    }
 
+                    workbenchFile.schemas[newServiceName] = { shouldMock: true, sdl: workbenchFile.schemas[serviceName].sdl }
+                    delete workbenchFile.schemas[serviceName];
+
+                    WorkbenchFileManager.saveSelectedWorkbenchFile(workbenchFile);
+                    StateManager.currentWorkbenchSchemasProvider.refresh();
+                    await this.start();
+                }
+            } catch (err) {
+                console.log(err);
+            }
+        }
+    }
     async createSchema() {
         let serviceName = await vscode.window.showInputBox({ placeHolder: "Enter a unique name for the schema/service" }) ?? "";
         if (!serviceName) {
@@ -59,7 +84,6 @@ export class FileWatchManager {
                     while (workbenchFile.schemas[serviceName]) {
                         outputChannel.appendLine(`${serviceName} already exists. Schema/Service name must be unique within a workbench file`);
                         serviceName = await vscode.window.showInputBox({ placeHolder: "Enter a unique name for the schema/service" }) ?? "";
-                        vscode.window.showErrorMessage('You must select a workbench file from the list of local workbench files found or you can create a new workbench file');
                     }
 
                     this.saveNewSchema(serviceName, workbenchFile);

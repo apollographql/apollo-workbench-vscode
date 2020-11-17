@@ -113,17 +113,21 @@
       },
       {
         "command": "current-workbench-schemas.editSchema",
-        "title": "Edit Schema",
+        "title": "Edit Service",
         "icon": "$(edit)"
       },
       {
+        "command": "current-workbench-schemas.renameSchema",
+        "title": "Rename Service"
+      },
+      {
         "command": "current-workbench-schemas.addSchema",
-        "title": "Add Schema",
+        "title": "Add Service",
         "icon": "$(add)"
       },
       {
         "command": "current-workbench-schemas.deleteSchema",
-        "title": "Delete Schema",
+        "title": "Delete Service",
         "icon": "$(trash)"
       },
       {
@@ -165,6 +169,10 @@
         "command": "local-workbench-files.deleteFile",
         "title": "Delete Workbench File",
         "icon": "$(trash)"
+      },
+      {
+        "command": "local-workbench-files.duplicateFile",
+        "title": "Duplicate Workbench File"
       },
       {
         "command": "local-workbench-files.refresh",
@@ -282,40 +290,19 @@
       ],
       "view/item/context": [
         {
-          "command": "current-workbench-schemas.editSchema",
+          "command": "current-workbench-schemas.renameSchema",
           "when": "view == current-workbench-schemas && viewItem == workbenchSchemaTreeItem",
-          "group": "inline"
-        },
-        {
-          "command": "current-workbench-schemas.editSchema",
-          "when": "view == current-workbench-schemas && viewItem == workbenchSchemaTreeItem"
-        },
-        {
-          "command": "current-workbench-schemas.deleteSchema",
-          "when": "view == current-workbench-schemas && viewItem == workbenchSchemaTreeItem"
+          "group": "1"
         },
         {
           "command": "current-workbench-schemas.deleteSchema",
           "when": "view == current-workbench-schemas && viewItem == workbenchSchemaTreeItem",
-          "group": "inline"
-        },
-        {
-          "command": "current-workbench-operations.editOperation",
-          "when": "view == current-workbench-operations && viewItem == workbenchOperationTreeItem",
-          "group": "inline"
-        },
-        {
-          "command": "current-workbench-operations.editOperation",
-          "when": "view == current-workbench-operations && viewItem == workbenchOperationTreeItem"
+          "group": "2"
         },
         {
           "command": "current-workbench-operations.deleteOperation",
           "when": "view == current-workbench-operations && viewItem == workbenchOperationTreeItem",
-          "group": "inline"
-        },
-        {
-          "command": "current-workbench-operations.deleteOperation",
-          "when": "view == current-workbench-operations && viewItem == workbenchOperationTreeItem"
+          "group": "2"
         },
         {
           "command": "current-workbench-operations.openQueryPlan",
@@ -324,21 +311,18 @@
         },
         {
           "command": "current-workbench-operations.openQueryPlan",
-          "when": "view == current-workbench-operations && viewItem == workbenchOperationTreeItem"
+          "when": "view == current-workbench-operations && viewItem == workbenchOperationTreeItem",
+          "group": "1"
         },
         {
-          "command": "local-workbench-files.loadFile",
+          "command": "local-workbench-files.duplicateFile",
           "when": "view == local-workbench-files && viewItem == workbenchFileTreeItem",
-          "group": "inline"
-        },
-        {
-          "command": "local-workbench-files.deleteFile",
-          "when": "view == local-workbench-files && viewItem == workbenchFileTreeItem"
+          "group": "1"
         },
         {
           "command": "local-workbench-files.deleteFile",
           "when": "view == local-workbench-files && viewItem == workbenchFileTreeItem",
-          "group": "inline"
+          "group": "2"
         },
         {
           "command": "studio-graphs.createWorkbenchFromGraph",
