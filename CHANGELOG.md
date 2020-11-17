@@ -1,5 +1,11 @@
 ## Apollo Workbench VSCode 0.1.0
 
+### Improvements:
+
+- Hide `.workbench` file into background
+
+## Apollo Workbench VSCode 0.1.0
+
 Initial Beta Release
 
 - Apollo Studio Integration
