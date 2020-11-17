@@ -83,18 +83,6 @@
         "icon": "$(add)"
       },
       {
-        "command": "extension.startWorkbench",
-        "title": "Start Workbench",
-        "category": "Apollo Workbench",
-        "icon": "$(scrollbar-button-right)"
-      },
-      {
-        "command": "extension.stopWorkbench",
-        "title": "Stop Workbench",
-        "category": "Apollo Workbench",
-        "icon": "$(debug-stop)"
-      },
-      {
         "command": "extension.enterStudioApiKey",
         "title": "Login to Apollo",
         "category": "Apollo Workbench",
@@ -219,16 +207,16 @@
     "views": {
       "apollo-workbench": [
         {
+          "id": "local-workbench-files",
+          "name": "Local Workbench Files"
+        },
+        {
           "id": "current-workbench-schemas",
           "name": "Current Workbench Schemas"
         },
         {
           "id": "current-workbench-operations",
           "name": "Current Workbench Operations"
-        },
-        {
-          "id": "local-workbench-files",
-          "name": "Local Workbench Files"
         },
         {
           "id": "studio-graphs",
@@ -273,19 +261,9 @@
           "group": "navigation"
         },
         {
-          "command": "extension.enterStudioApiKey",
-          "when": "view == studio-graphs",
-          "group": "navigation@1"
-        },
-        {
           "command": "studio-graphs.refresh",
           "when": "view == studio-graphs",
           "group": "navigation@2"
-        },
-        {
-          "command": "extension.deleteStudioApiKey",
-          "when": "view == studio-graphs",
-          "group": "navigation@3"
         }
       ],
       "view/item/context": [

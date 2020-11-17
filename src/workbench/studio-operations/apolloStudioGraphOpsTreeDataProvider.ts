@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { getGraphOps } from '../../studio-gql/graphClient';
+import { NotLoggedInTreeItem } from '../studio-graphs/apolloStudioGraphsTreeDataProvider';
 
 export class ApolloStudioGraphOpsTreeDataProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
     constructor(private workspaceRoot: string, public context: vscode.ExtensionContext) { }
@@ -56,7 +57,7 @@ export class ApolloStudioGraphOpsTreeDataProvider implements vscode.TreeDataProv
                 })
             }
         } else
-            return [new vscode.TreeItem('No graph from Apollo Studio selected', vscode.TreeItemCollapsibleState.None)];
+            return [new NotLoggedInTreeItem()];
 
         let itemsToReturn: vscode.TreeItem[] = new Array<vscode.TreeItem>();
 
@@ -81,6 +82,7 @@ export class ApolloStudioGraphOpsTreeDataProvider implements vscode.TreeDataProv
 
         return itemsToReturn;
     }
+
 }
 
 export class StudioOperationClientTreeItem extends vscode.TreeItem {
