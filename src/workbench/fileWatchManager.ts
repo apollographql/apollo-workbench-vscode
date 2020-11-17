@@ -15,23 +15,23 @@ export class FileWatchManager {
 
     async start() {
         vscode.window.setStatusBarMessage('Starting Workbench...Reset');
-        await this.reset();
+        await this.resetWatchers();
         vscode.window.setStatusBarMessage('Workbench Reset...Syncing Files');
         vscode.window.setStatusBarMessage('Workbench File Sync Complete...Starting Listeners');
 
-        this.schemasWatcher.add(WorkbenchFileManager.workspaceSchemasFolderPath())
+        this.schemasWatcher.add(WorkbenchFileManager.workbenchSchemasFolderPath())
             .on('ready', () => ServerManager.instance.startMocks())
             .on('change', (path) => this.updateSchema(path))
             .on('unlink', (path: any) => this.deleteSchema(path))
             .on('add', (path: any) => this.addSchema(path));
-        this.queryWatcher.add(WorkbenchFileManager.workspaceQueriesFolderPath())
+        this.queryWatcher.add(WorkbenchFileManager.workbenchQueriesFolderPath())
             .on('change', (path: any) => updateQueryPlan(path))
             .on('unlink', (path: any) => this.deleteOperationPath(path))
             .on('ready', (path: any) => updateQueryPlan(path));
 
         vscode.window.setStatusBarMessage('Workbench is running');
     }
-    async reset() {
+    private async resetWatchers() {
         if (this.schemasWatcher?._eventsCount > 0)
             await this.schemasWatcher.close();
 
@@ -39,7 +39,7 @@ export class FileWatchManager {
         outputChannel.appendLine('Workbench Reset');
     }
     async stop() {
-        await this.reset();
+        await this.resetWatchers();
 
         vscode.window.setStatusBarMessage('');
         vscode.window.setStatusBarMessage('Workbench is stopped', 5000);
@@ -47,7 +47,32 @@ export class FileWatchManager {
 
         ServerManager.instance.stopMocks();
     }
+    async renameSchema(serviceName: string) {
+        let newServiceName = await vscode.window.showInputBox({ placeHolder: "Enter a unique name for the schema/service" }) ?? "";
+        if (!newServiceName) {
+            outputChannel.appendLine(`Create schema cancelled - No name entered.`);
+        } else {
+            try {
+                await this.stop();
+                let workbenchFile = this.wrapWorkbenchInErrorDialog();
+                if (workbenchFile) {
+                    while (workbenchFile.schemas[newServiceName]) {
+                        outputChannel.appendLine(`${newServiceName} already exists. Schema/Service name must be unique within a workbench file`);
+                        newServiceName = await vscode.window.showInputBox({ placeHolder: "Enter a unique name for the schema/service" }) ?? "";
+                    }
 
+                    workbenchFile.schemas[newServiceName] = { shouldMock: true, sdl: workbenchFile.schemas[serviceName].sdl }
+                    delete workbenchFile.schemas[serviceName];
+
+                    WorkbenchFileManager.saveSelectedWorkbenchFile(workbenchFile);
+                    StateManager.currentWorkbenchSchemasProvider.refresh();
+                    await this.start();
+                }
+            } catch (err) {
+                console.log(err);
+            }
+        }
+    }
     async createSchema() {
         let serviceName = await vscode.window.showInputBox({ placeHolder: "Enter a unique name for the schema/service" }) ?? "";
         if (!serviceName) {
@@ -59,7 +84,6 @@ export class FileWatchManager {
                     while (workbenchFile.schemas[serviceName]) {
                         outputChannel.appendLine(`${serviceName} already exists. Schema/Service name must be unique within a workbench file`);
                         serviceName = await vscode.window.showInputBox({ placeHolder: "Enter a unique name for the schema/service" }) ?? "";
-                        vscode.window.showErrorMessage('You must select a workbench file from the list of local workbench files found or you can create a new workbench file');
                     }
 
                     this.saveNewSchema(serviceName, workbenchFile);
@@ -86,7 +110,7 @@ export class FileWatchManager {
 
     private saveNewSchema(serviceName: string, workbenchFile: ApolloWorkbench) {
         workbenchFile.schemas[serviceName] = new WorkbenchSchema();
-        writeFileSync(`${WorkbenchFileManager.workspaceSchemasFolderPath()}/${serviceName}.graphql`, JSON.stringify(workbenchFile.schemas[serviceName]), { encoding: 'utf-8' })
+        writeFileSync(`${WorkbenchFileManager.workbenchSchemasFolderPath()}/${serviceName}.graphql`, JSON.stringify(workbenchFile.schemas[serviceName]), { encoding: 'utf-8' })
         WorkbenchFileManager.saveSelectedWorkbenchFile(workbenchFile);
         StateManager.currentWorkbenchSchemasProvider.refresh();
     }
@@ -156,8 +180,8 @@ export class FileWatchManager {
             delete workbenchFile.operations[operationName];
             delete workbenchFile.queryPlans[operationName];
 
-            unlinkSync(`${WorkbenchFileManager.workspaceQueriesFolderPath()}/${operationName}.graphql`);
-            unlinkSync(`${WorkbenchFileManager.workspaceQueriesFolderPath()}/${operationName}.queryplan`);
+            unlinkSync(`${WorkbenchFileManager.workbenchQueriesFolderPath()}/${operationName}.graphql`);
+            unlinkSync(`${WorkbenchFileManager.workbenchQueriesFolderPath()}/${operationName}.queryplan`);
 
             WorkbenchFileManager.saveSelectedWorkbenchFile(workbenchFile);
             StateManager.currentWorkbenchOperationsProvider?.refresh();
@@ -166,7 +190,7 @@ export class FileWatchManager {
 
     async editOperation(operationName: string) {
         outputChannel.appendLine(`Selected Operation ${operationName}`);
-        const workbenchQueriesFolder = WorkbenchFileManager.workspaceQueriesFolderPath();
+        const workbenchQueriesFolder = WorkbenchFileManager.workbenchQueriesFolderPath();
         const uri = vscode.Uri.parse(`${workbenchQueriesFolder}/${operationName}.graphql`);
         await vscode.window.showTextDocument(uri);
         StateManager.apolloStudioGraphOpsProvider?.refresh();
@@ -198,7 +222,7 @@ export class FileWatchManager {
     }
     async openOperationQueryPlan(operationName: string) {
         outputChannel.appendLine(`Opening query plan for operation ${operationName}`);
-        const workbenchQueriesFolder = WorkbenchFileManager.workspaceQueriesFolderPath();
+        const workbenchQueriesFolder = WorkbenchFileManager.workbenchQueriesFolderPath();
         const uri = vscode.Uri.parse(`${workbenchQueriesFolder}/${operationName}.queryplan`);
         await vscode.window.showTextDocument(uri);
     }

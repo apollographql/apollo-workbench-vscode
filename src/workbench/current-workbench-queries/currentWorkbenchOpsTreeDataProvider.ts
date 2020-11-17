@@ -15,7 +15,7 @@ export class CurrentWorkbenchOpsTreeDataProvider implements vscode.TreeDataProvi
     readonly onDidChangeTreeData: vscode.Event<WorkbenchOperationTreeItem | undefined> = this._onDidChangeTreeData.event;
 
     refresh(): void {
-        fs.rmdirSync(WorkbenchFileManager.workspaceQueriesFolderPath(false), { recursive: true });
+        fs.rmdirSync(WorkbenchFileManager.workbenchQueriesFolderPath(false), { recursive: true });
         this._onDidChangeTreeData.fire(undefined);
     }
 
@@ -43,7 +43,7 @@ export class CurrentWorkbenchOpsTreeDataProvider implements vscode.TreeDataProvi
     private getOperationsFromWorkbenchFile(): vscode.TreeItem[] {
         const workbenchFile = WorkbenchFileManager.getSelectedWorkbenchFile();
         if (workbenchFile) {
-            let workbenchQueriesFolder = WorkbenchFileManager.workspaceQueriesFolderPath();
+            let workbenchQueriesFolder = WorkbenchFileManager.workbenchQueriesFolderPath();
 
             const toDep = (operationName: string, operation: string, queryPlan: string): WorkbenchOperationTreeItem => {
                 if (!this.pathExists(`${workbenchQueriesFolder}/${operationName}.graphql`))

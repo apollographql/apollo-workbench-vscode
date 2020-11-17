@@ -88,6 +88,7 @@ function setupApolloWorkbench(context: vscode.ExtensionContext) {
 	vscode.window.registerTreeDataProvider('current-workbench-schemas', StateManager.currentWorkbenchSchemasProvider);
 	vscode.commands.registerCommand('current-workbench-schemas.addSchema', async () => await fileWatchManager.createSchema());
 	vscode.commands.registerCommand("current-workbench-schemas.editSchema", editSchema);
+	vscode.commands.registerCommand("current-workbench-schemas.renameSchema", async (serviceToRename: WorkbenchSchemaTreeItem) => await fileWatchManager.renameSchema(serviceToRename.serviceName));
 	vscode.commands.registerCommand("current-workbench-schemas.deleteSchema", async (serviceToDelete: WorkbenchSchemaTreeItem) => await deleteSchemaFile(serviceToDelete.serviceName, context, StateManager.currentWorkbenchSchemasProvider));
 	vscode.commands.registerCommand('current-workbench-schemas.refreshSchemas', async () => StateManager.currentWorkbenchSchemasProvider.refresh());
 
@@ -102,6 +103,7 @@ function setupApolloWorkbench(context: vscode.ExtensionContext) {
 	//Local Workbench Files Commands
 	vscode.window.registerTreeDataProvider('local-workbench-files', StateManager.localWorkbenchFilesProvider);
 	vscode.commands.registerCommand("local-workbench-files.loadFile", async (item: WorkbenchFileTreeItem) => await fileWatchManager.loadWorkbenchFile(item.workbenchFileName, item.filePath));
+	vscode.commands.registerCommand("local-workbench-files.duplicateFile", async (item: WorkbenchFileTreeItem) => await WorkbenchFileManager.duplicateWorkbenchFile(item.workbenchFileName, item.filePath));
 	vscode.commands.registerCommand("local-workbench-files.deleteFile", async (item: WorkbenchFileTreeItem) => await WorkbenchFileManager.deleteWorkbenchFile(item.filePath));
 	vscode.commands.registerCommand('local-workbench-files.refresh', async () => StateManager.localWorkbenchFilesProvider.refresh());
 

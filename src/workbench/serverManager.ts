@@ -189,7 +189,7 @@ export class ServerManager {
                 console.log(compositionDiagnostics.name);
                 let diagnosticsGroups = this.handleCompositionErrors(workbenchFile, errors);
                 for (var sn in diagnosticsGroups) {
-                    compositionDiagnostics.set(Uri.file(`${WorkbenchFileManager.workspaceSchemasFolderPath()}/${sn}.graphql`), diagnosticsGroups[sn]);
+                    compositionDiagnostics.set(Uri.file(`${WorkbenchFileManager.workbenchSchemasFolderPath()}/${sn}.graphql`), diagnosticsGroups[sn]);
                 }
             } else
                 compositionDiagnostics.clear();

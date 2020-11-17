@@ -9,7 +9,7 @@ import { WorkbenchFileManager } from '../workbenchFileManager';
 export const editSchema = async (item: WorkbenchSchemaTreeItem) => {
     outputChannel.appendLine(`Selected Schema ${item.serviceName}`);
     if (vscode.workspace.workspaceFolders) {
-        const workbenchSchemasFolder = WorkbenchFileManager.workspaceSchemasFolderPath();
+        const workbenchSchemasFolder = WorkbenchFileManager.workbenchSchemasFolderPath();
 
         if (!existsSync(workbenchSchemasFolder))
             await mkdirSync(workbenchSchemasFolder);

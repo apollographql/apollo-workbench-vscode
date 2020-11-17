@@ -1,5 +1,17 @@
 ## Apollo Workbench VSCode 0.1.0
 
+### Improvements:
+
+- Hide `.workbench` folder and associated files into background
+- Introduce _rename_ schema functionality
+- Introduce _duplicate_ workbench file functionlity
+- Simplify context/menu items
+  - Removed all buttons from schema/operaitons for currently loaded workbench (with the exception of opening query plan)
+  - Centralized options to right click context items
+  - Moved destructive actions to a new group to add line separtation
+
+## Apollo Workbench VSCode 0.1.0
+
 Initial Beta Release
 
 - Apollo Studio Integration
