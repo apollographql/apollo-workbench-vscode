@@ -99,13 +99,24 @@ export class ApolloStudioGraphsTreeDataProvider implements vscode.TreeDataProvid
                 items.push(accountTreeItem);
             }
             return items;
-        }
-
-        if (items.length == 0) {
-            items.push(new vscode.TreeItem("Please login using your personal user API key", vscode.TreeItemCollapsibleState.None));
+        } else {
+            items.push(new NotLoggedInTreeItem());
+            let response = await vscode.window.showInformationMessage('No user api key was found.', "Login");
+            if (response === "Login")
+                vscode.commands.executeCommand("extension.enterStudioApiKey");
         }
 
         return items;
+    }
+}
+
+export class NotLoggedInTreeItem extends vscode.TreeItem {
+    constructor() {
+        super("Click here to login with your user api key", vscode.TreeItemCollapsibleState.None);
+        this.command = {
+            title: "Login to Apollo",
+            command: "extension.enterStudioApiKey"
+        }
     }
 }
 
