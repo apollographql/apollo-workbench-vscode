@@ -19,12 +19,12 @@ export class FileWatchManager {
         vscode.window.setStatusBarMessage('Workbench Reset...Syncing Files');
         vscode.window.setStatusBarMessage('Workbench File Sync Complete...Starting Listeners');
 
-        this.schemasWatcher.add(WorkbenchFileManager.workspaceSchemasFolderPath())
+        this.schemasWatcher.add(WorkbenchFileManager.workbenchSchemasFolderPath())
             .on('ready', () => ServerManager.instance.startMocks())
             .on('change', (path) => this.updateSchema(path))
             .on('unlink', (path: any) => this.deleteSchema(path))
             .on('add', (path: any) => this.addSchema(path));
-        this.queryWatcher.add(WorkbenchFileManager.workspaceQueriesFolderPath())
+        this.queryWatcher.add(WorkbenchFileManager.workbenchQueriesFolderPath())
             .on('change', (path: any) => updateQueryPlan(path))
             .on('unlink', (path: any) => this.deleteOperationPath(path))
             .on('ready', (path: any) => updateQueryPlan(path));
@@ -86,7 +86,7 @@ export class FileWatchManager {
 
     private saveNewSchema(serviceName: string, workbenchFile: ApolloWorkbench) {
         workbenchFile.schemas[serviceName] = new WorkbenchSchema();
-        writeFileSync(`${WorkbenchFileManager.workspaceSchemasFolderPath()}/${serviceName}.graphql`, JSON.stringify(workbenchFile.schemas[serviceName]), { encoding: 'utf-8' })
+        writeFileSync(`${WorkbenchFileManager.workbenchSchemasFolderPath()}/${serviceName}.graphql`, JSON.stringify(workbenchFile.schemas[serviceName]), { encoding: 'utf-8' })
         WorkbenchFileManager.saveSelectedWorkbenchFile(workbenchFile);
         StateManager.currentWorkbenchSchemasProvider.refresh();
     }
@@ -156,8 +156,8 @@ export class FileWatchManager {
             delete workbenchFile.operations[operationName];
             delete workbenchFile.queryPlans[operationName];
 
-            unlinkSync(`${WorkbenchFileManager.workspaceQueriesFolderPath()}/${operationName}.graphql`);
-            unlinkSync(`${WorkbenchFileManager.workspaceQueriesFolderPath()}/${operationName}.queryplan`);
+            unlinkSync(`${WorkbenchFileManager.workbenchQueriesFolderPath()}/${operationName}.graphql`);
+            unlinkSync(`${WorkbenchFileManager.workbenchQueriesFolderPath()}/${operationName}.queryplan`);
 
             WorkbenchFileManager.saveSelectedWorkbenchFile(workbenchFile);
             StateManager.currentWorkbenchOperationsProvider?.refresh();
@@ -166,7 +166,7 @@ export class FileWatchManager {
 
     async editOperation(operationName: string) {
         outputChannel.appendLine(`Selected Operation ${operationName}`);
-        const workbenchQueriesFolder = WorkbenchFileManager.workspaceQueriesFolderPath();
+        const workbenchQueriesFolder = WorkbenchFileManager.workbenchQueriesFolderPath();
         const uri = vscode.Uri.parse(`${workbenchQueriesFolder}/${operationName}.graphql`);
         await vscode.window.showTextDocument(uri);
         StateManager.apolloStudioGraphOpsProvider?.refresh();
@@ -198,7 +198,7 @@ export class FileWatchManager {
     }
     async openOperationQueryPlan(operationName: string) {
         outputChannel.appendLine(`Opening query plan for operation ${operationName}`);
-        const workbenchQueriesFolder = WorkbenchFileManager.workspaceQueriesFolderPath();
+        const workbenchQueriesFolder = WorkbenchFileManager.workbenchQueriesFolderPath();
         const uri = vscode.Uri.parse(`${workbenchQueriesFolder}/${operationName}.queryplan`);
         await vscode.window.showTextDocument(uri);
     }

@@ -1,5 +1,4 @@
-import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, rmdirSync, unlinkSync, writeFileSync } from 'fs';
-import { resolve } from 'path';
+import { existsSync, mkdirSync, readFileSync, rmdirSync, unlinkSync, writeFileSync } from 'fs';
 import { window, workspace } from 'vscode';
 import { ApolloWorkbench, WorkbenchSchema } from '../extension';
 import { getGraphSchemasByVariant } from '../studio-gql/graphClient';
@@ -11,16 +10,41 @@ const { name } = require('../../package.json');
 export class WorkbenchFileManager {
     private static readonly wbExt = '.apollo-workbench';
     //Workbench folder paths - designed to auto-create necessary watch folders
-    static get workspaceFolder(): string {
-        if (workspace?.workspaceFolders) {
-            return workspace?.workspaceFolders[0]?.uri?.fsPath;
+    static get hiddenWorkspaceFolder(): string {
+        //Get the path to the hidden workspace storage location
+        //  This seems to be specific to the user instance of VS Code
+        const hiddenPath = StateManager.workspaceStoragePath;
+
+        //We make sure there is a folder open in the current vs code window
+        if (workspace?.workspaceFolders && hiddenPath) {
+            let workspaceUri = workspace?.workspaceFolders[0]?.uri;
+            let workspacePath = workspaceUri?.fsPath;
+
+            while (workspacePath.includes('/'))
+                workspacePath = workspacePath.replace('/', '-');
+            while (workspacePath.includes('\\'))
+                workspacePath = workspacePath.replace('\\', '-');
+            while (workspacePath.includes(' '))
+                workspacePath = workspacePath.replace(' ', '_');
+
+            //We create a hidden workbench folder 
+            let workspaceFolder = `${hiddenPath}/${workspacePath}`;
+
+            //Ensure hidden folders are created
+            if (!existsSync(hiddenPath))
+                mkdirSync(hiddenPath);
+            if (!existsSync(workspaceFolder))
+                mkdirSync(workspaceFolder);
+
+            return workspaceFolder;
         }
+
         return "";
     }
-    static get workbenchFolder(): string {
-        const wf = this.workspaceFolder;
+    static get hidenWorkbenchFolder(): string {
+        const wf = this.hiddenWorkspaceFolder;
         if (wf) {
-            let workbenchFolderPath = `${wf}/.workbench`;
+            let workbenchFolderPath = `${wf}/workbench`;
 
             if (!existsSync(workbenchFolderPath))
                 mkdirSync(workbenchFolderPath);
@@ -29,17 +53,23 @@ export class WorkbenchFileManager {
         }
         return "";
     }
-    static workspaceQueriesFolderPath(autoCreate: boolean = true): string {
-        const wBenchFolder = this.workbenchFolder;
+    static get openWorkspaceFolder(): string {
+        if (workspace?.workspaceFolders)
+            return workspace?.workspaceFolders[0]?.uri.fsPath ?? '';
+
+        return "";
+    }
+    static workbenchQueriesFolderPath(autoCreate: boolean = true): string {
+        const wBenchFolder = this.hidenWorkbenchFolder;
         if (wBenchFolder) {
             let folderPath = `${wBenchFolder}/queries`;
             if (!existsSync(folderPath) && autoCreate)
                 mkdirSync(folderPath);
 
-            const wSpaceFolder = this.workspaceFolder;
-            if (!existsSync(`${wSpaceFolder}/apollo.config.js`)) {
+            const wSpaceFolder = this.openWorkspaceFolder;
+            if (wSpaceFolder && !existsSync(`${wSpaceFolder}/apollo.config.js`)) {
                 const gatewayPort = StateManager.settings_gatewayServerPort;
-                let apolloConfig = `module.exports = { client: { service: { url: "http://localhost:${gatewayPort}" }, includes: ["./.workbench/queries/*.graphql"] } }`;
+                let apolloConfig = `module.exports = { client: { service: { url: "http://localhost:${gatewayPort}" }, includes: ["${wBenchFolder}/queries/*.graphql"] } }`;
                 writeFileSync(`${wSpaceFolder}/apollo.config.js`, apolloConfig, { encoding: "utf8" });
             }
 
@@ -48,8 +78,8 @@ export class WorkbenchFileManager {
 
         return "";
     }
-    static workspaceSchemasFolderPath(autoCreate: Boolean = true) {
-        let wBenchFolder = this.workbenchFolder;
+    static workbenchSchemasFolderPath(autoCreate: Boolean = true) {
+        let wBenchFolder = this.hidenWorkbenchFolder;
         if (wBenchFolder) {
             let folderPath = `${wBenchFolder}/schemas`;
             if (!existsSync(folderPath) && autoCreate)
@@ -63,16 +93,16 @@ export class WorkbenchFileManager {
 
     //Methods for schema files
     static getLocalSchemaFromFile(serviceName) {
-        return readFileSync(`${WorkbenchFileManager.workspaceSchemasFolderPath()}/${serviceName}.graphql`, { encoding: "utf8" });
+        return readFileSync(`${this.workbenchSchemasFolderPath()}/${serviceName}.graphql`, { encoding: "utf8" });
     }
     static writeLocalSchemaToFile(serviceName: string, sdl: string) {
-        writeFileSync(`${WorkbenchFileManager.workspaceSchemasFolderPath()}/${serviceName}.graphql`, sdl, { encoding: "utf8" });
+        writeFileSync(`${this.workbenchSchemasFolderPath()}/${serviceName}.graphql`, sdl, { encoding: "utf8" });
     }
     static getWorkbenchFile(filePath: string): ApolloWorkbench {
         return JSON.parse(readFileSync(filePath, { encoding: "utf8" }));
     }
     static saveWorkbenchFile(wb: ApolloWorkbench, path?: string) {
-        if (!path && WorkbenchFileManager.workspaceFolder) path = `${WorkbenchFileManager.workspaceFolder}/${wb.graphName}${this.wbExt}`;
+        if (!path && this.openWorkspaceFolder) path = `${this.openWorkspaceFolder}/${wb.graphName}${this.wbExt}`;
         if (path)
             writeFileSync(path, JSON.stringify(wb), { encoding: "utf8" });
         else
@@ -108,7 +138,7 @@ export class WorkbenchFileManager {
                 });
             }
 
-            WorkbenchFileManager.saveWorkbenchFile(workbenchFile);
+            this.saveWorkbenchFile(workbenchFile);
             StateManager.localWorkbenchFilesProvider.refresh();
         }
     }
@@ -122,7 +152,7 @@ export class WorkbenchFileManager {
         }
 
         console.log(`Creating ${workbenchName}`);
-        WorkbenchFileManager.saveWorkbenchFile(workbenchMaster);
+        this.saveWorkbenchFile(workbenchMaster);
         StateManager.localWorkbenchFilesProvider.refresh();
     }
     static async deleteWorkbenchFile(filePath: string) {
@@ -142,27 +172,6 @@ export class WorkbenchFileManager {
         StateManager.localWorkbenchFilesProvider?.refresh();
     }
     static async deleteWorkbenchFolder() {
-        try {
-            rmdirSync(WorkbenchFileManager.workbenchFolder, { recursive: true });
-            // let wBenchFolder = WorkbenchFileManager.workbenchFolder;
-            // if (wBenchFolder && existsSync(wBenchFolder)) {
-            //     var deleteFolderRecursive = function (path) {
-            //         if (existsSync(path)) {
-            //             readdirSync(path).forEach(function (file) {
-            //                 var curPath = path + "/" + file;
-            //                 if (lstatSync(curPath).isDirectory()) { // recurse
-            //                     deleteFolderRecursive(curPath);
-            //                 } else { // delete file
-            //                     unlinkSync(curPath);
-            //                 }
-            //             });
-            //             rmdirSync(path);
-            //         }
-            //     };
-            //     deleteFolderRecursive(wBenchFolder);
-            // }
-        } catch (err) {
-            console.log(err)
-        }
+        rmdirSync(this.hidenWorkbenchFolder, { recursive: true });
     }
 }

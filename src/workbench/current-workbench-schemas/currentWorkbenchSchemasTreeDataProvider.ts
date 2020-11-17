@@ -15,7 +15,7 @@ export class CurrentWorkbenchSchemasTreeDataProvider implements vscode.TreeDataP
     readonly onDidChangeTreeData: vscode.Event<WorkbenchSchemaTreeItem | undefined> = this._onDidChangeTreeData.event;
 
     refresh(): void {
-        fs.rmdirSync(WorkbenchFileManager.workspaceSchemasFolderPath(false), { recursive: true });
+        fs.rmdirSync(WorkbenchFileManager.workbenchSchemasFolderPath(false), { recursive: true });
         this._onDidChangeTreeData.fire(undefined);
     }
 
@@ -45,7 +45,7 @@ export class CurrentWorkbenchSchemasTreeDataProvider implements vscode.TreeDataP
     private getSchemasFromWorkbenchFile(): vscode.TreeItem[] {
         const workbenchFile = WorkbenchFileManager.getSelectedWorkbenchFile();
         if (workbenchFile) {
-            let workbenchSchemasFolder = WorkbenchFileManager.workspaceSchemasFolderPath();
+            let workbenchSchemasFolder = WorkbenchFileManager.workbenchSchemasFolderPath();
 
             const toDep = (serviceName: string, wbSchema: WorkbenchSchema): WorkbenchSchemaTreeItem => {
                 if (!this.pathExists(`${workbenchSchemasFolder}/${serviceName}.graphql`))

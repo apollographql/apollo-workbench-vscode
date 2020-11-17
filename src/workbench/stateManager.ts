@@ -1,18 +1,10 @@
-import { buildFederatedSchema, composeAndValidate } from "@apollo/federation";
-import { ApolloServer, gql } from "apollo-server";
-import { BREAK, parse, TypeInfo, visit, visitWithTypeInfo } from "graphql";
-import { ExtensionContext, window, workspace, commands, Uri, Diagnostic, Range, DiagnosticSeverity } from "vscode";
-import { ApolloWorkbench, compositionDiagnostics, outputChannel } from "../extension";
-import { OverrideApolloGateway } from "../gateway";
+import { ExtensionContext, window, workspace } from "vscode";
 import { getUserMemberships } from "../studio-gql/graphClient";
 import { CurrentWorkbenchOpsTreeDataProvider } from "./current-workbench-queries/currentWorkbenchOpsTreeDataProvider";
 import { CurrentWorkbenchSchemasTreeDataProvider } from "./current-workbench-schemas/currentWorkbenchSchemasTreeDataProvider";
-import { FileWatchManager } from "./fileWatchManager";
 import { LocalWorkbenchFilesTreeDataProvider, WorkbenchFile } from "./local-workbench-files/localWorkbenchFilesTreeDataProvider";
 import { ApolloStudioGraphsTreeDataProvider } from "./studio-graphs/apolloStudioGraphsTreeDataProvider";
 import { ApolloStudioGraphOpsTreeDataProvider } from "./studio-operations/apolloStudioGraphOpsTreeDataProvider";
-import { ApolloServerPluginUsageReportingDisabled } from 'apollo-server-core';
-import plugin from 'apollo-server-plugin-operation-registry';
 
 export class StateManager {
     static context: ExtensionContext;
@@ -21,6 +13,14 @@ export class StateManager {
     static currentWorkbenchOperationsProvider: CurrentWorkbenchOpsTreeDataProvider;
     static apolloStudioGraphsProvider: ApolloStudioGraphsTreeDataProvider;
     static apolloStudioGraphOpsProvider: ApolloStudioGraphOpsTreeDataProvider;
+
+    static get workspaceStoragePath(): string | undefined {
+        return StateManager.context.storageUri?.fsPath;
+    }
+    static get workbenchGlobalStoragePath(): string {
+        return StateManager.context.globalStorageUri.fsPath;
+    }
+
 
     static get settings_startingServerPort(): number {
         return workspace.getConfiguration("apollo-workbench").get('startingServerPort') as number;;
