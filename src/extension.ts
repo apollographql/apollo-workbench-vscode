@@ -14,6 +14,7 @@ import { FileWatchManager } from './workbench/fileWatchManager';
 import { StateManager } from './workbench/stateManager';
 import { ServerManager } from './workbench/serverManager';
 import { WorkbenchFileManager } from './workbench/workbenchFileManager';
+import { federationCompletionProvider } from './workbench/federationCompletionProvider';
 
 export class ApolloWorkbench {
 	graphName: string = "";
@@ -120,4 +121,7 @@ function setupApolloWorkbench(context: vscode.ExtensionContext) {
 
 	//Apollo Studio Graph Operations Commands
 	vscode.commands.registerCommand('studio-operations.addToWorkbench', async (op: StudioOperationTreeItem) => { await fileWatchManager.addOperation(op.operationName, op.operationSignature) });
+
+	vscode.languages.registerCompletionItemProvider("graphql", federationCompletionProvider);
 }
+
