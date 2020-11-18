@@ -1,4 +1,4 @@
-## Apollo Workbench VSCode 0.1.0
+## Apollo Workbench VSCode 0.1.1
 
 ### Improvements:
 
@@ -9,6 +9,10 @@
   - Removed all buttons from schema/operaitons for currently loaded workbench (with the exception of opening query plan)
   - Centralized options to right click context items
   - Moved destructive actions to a new group to add line separtation
+- [MVP] - Added Completion Item provider for available type extensions from CSDL :tada:
+  - Doesn't show extension options for what is defined in open service/schema file
+    - Future improvement could be to provide these as options that just move the cursor to the given position
+  - [BUG] Currently doesn't support composite keys
 
 ## Apollo Workbench VSCode 0.1.0
 
