@@ -51,7 +51,7 @@ export class LocalWorkbenchFilesTreeDataProvider implements vscode.TreeDataProvi
                 vscode.window.showInformationMessage('No workbench file found in workspace');
                 return Promise.resolve([]);
             }
-            let items = new Array<WorkbenchFileTreeItem>();
+            let items = new Array<vscode.TreeItem>();
             if (element) {
                 //I think this is for re-use
             } else {

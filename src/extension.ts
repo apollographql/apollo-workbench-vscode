@@ -15,6 +15,7 @@ import { StateManager } from './workbench/stateManager';
 import { ServerManager } from './workbench/serverManager';
 import { WorkbenchFileManager } from './workbench/workbenchFileManager';
 import { federationCompletionProvider } from './workbench/federationCompletionProvider';
+import { PreloadedWorkbenchFile } from './workbench/local-workbench-files/preLoadedTreeItems';
 
 export class ApolloWorkbench {
 	graphName: string = "";
@@ -115,6 +116,7 @@ function setupApolloWorkbench(context: vscode.ExtensionContext) {
 	//Apollo Studio Graphs Commands
 	vscode.commands.registerCommand('studio-graphs.refresh', () => StateManager.apolloStudioGraphsProvider.refresh());
 	vscode.commands.registerCommand('studio-graphs.createWorkbenchFromGraph', async (graphTreeItem: StudioGraphTreeItem) => await fileWatchManager.newWorkbenchFileFromGraph(graphTreeItem.graphId, graphTreeItem.variants));
+	vscode.commands.registerCommand('studio-graphs.createWorkbenchFromPreloaded', async (preloadedItem: PreloadedWorkbenchFile) => await WorkbenchFileManager.copyPreloadedWorkbenchFile(preloadedItem.fileName));
 	vscode.commands.registerCommand('studio-graphs.createWorkbenchFromGraphWithVariant', async (graphVariantTreeItem: StudioGraphVariantTreeItem) => await fileWatchManager.newWorkbenchFileFromGraph(graphVariantTreeItem.graphId, [graphVariantTreeItem.graphVariant]));
 	vscode.commands.registerCommand('studio-graphs.loadOperations', async (graphTreeItem: StudioGraphTreeItem) => StateManager.setGraphId(graphTreeItem.graphId));
 	vscode.commands.registerCommand('studio-graphs.switchOrg', StateManager.setAccountId);

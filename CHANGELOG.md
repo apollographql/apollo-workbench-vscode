@@ -13,6 +13,7 @@
   - Doesn't show extension options for what is defined in open service/schema file
     - Future improvement could be to provide these as options that just move the cursor to the given position
   - [BUG] Currently doesn't support composite keys
+- [MVP] - Added preloaded workbench example file
 
 ## Apollo Workbench VSCode 0.1.0
 
