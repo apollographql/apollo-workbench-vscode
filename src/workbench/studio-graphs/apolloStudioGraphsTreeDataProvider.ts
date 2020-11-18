@@ -2,6 +2,7 @@ import path from 'path';
 import * as vscode from 'vscode';
 import { getAccountGraphs, getGraphSchemasByVariant, getUserMemberships } from '../../studio-gql/graphClient';
 import { GetGraphSchemas_service_implementingServices_FederatedImplementingServices } from '../../studio-gql/types/GetGraphSchemas';
+import { PreloadedWorkbenchTopLevel } from '../local-workbench-files/preLoadedTreeItems';
 
 
 export class ApolloStudioGraphsTreeDataProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
@@ -110,6 +111,7 @@ export class ApolloStudioGraphsTreeDataProvider implements vscode.TreeDataProvid
             //     vscode.commands.executeCommand("extension.enterStudioApiKey");
         }
 
+        items.push(new PreloadedWorkbenchTopLevel());
         return items;
     }
 }

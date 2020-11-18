@@ -3,7 +3,7 @@
   "displayName": "Apollo Workbench",
   "description": "Tooling to help you develop and mock federated schemas using Apollo Federation",
   "icon": "media/logo-apollo.png",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "publisher": "michael-watson",
   "engines": {
     "vscode": "^1.34.0"
@@ -172,6 +172,10 @@
         "title": "Create Workbench File from Graph"
       },
       {
+        "command": "studio-graphs.createWorkbenchFromPreloaded",
+        "title": "Create Workbench File from Example"
+      },
+      {
         "command": "studio-graphs.createWorkbenchFromGraphWithVariant",
         "title": "Create Workbench File from Graph"
       },
@@ -305,6 +309,10 @@
         {
           "command": "studio-graphs.createWorkbenchFromGraph",
           "when": "view == studio-graphs && viewItem == studioGraphTreeItem"
+        },
+        {
+          "command": "studio-graphs.createWorkbenchFromPreloaded",
+          "when": "view == studio-graphs && viewItem == preloadedWorkbenchFile"
         },
         {
           "command": "studio-graphs.createWorkbenchFromGraphWithVariant",
