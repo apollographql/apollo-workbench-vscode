@@ -101,9 +101,13 @@ export class ApolloStudioGraphsTreeDataProvider implements vscode.TreeDataProvid
             return items;
         } else {
             items.push(new NotLoggedInTreeItem());
-            let response = await vscode.window.showInformationMessage('No user api key was found.', "Login");
-            if (response === "Login")
-                vscode.commands.executeCommand("extension.enterStudioApiKey");
+            vscode.window.showInformationMessage('No user api key was found.', "Login").then(response => {
+                if (response === "Login")
+                    vscode.commands.executeCommand("extension.enterStudioApiKey");
+            });
+            // let response = await vscode.window.showInformationMessage('No user api key was found.', "Login");
+            // if (response === "Login")
+            //     vscode.commands.executeCommand("extension.enterStudioApiKey");
         }
 
         return items;

@@ -1,4 +1,5 @@
-import { ExtensionContext, window, workspace } from "vscode";
+import { resolve } from "path";
+import { CancellationTokenSource, Event, ExtensionContext, window, workspace } from "vscode";
 import { getUserMemberships } from "../studio-gql/graphClient";
 import { CurrentWorkbenchOpsTreeDataProvider } from "./current-workbench-queries/currentWorkbenchOpsTreeDataProvider";
 import { CurrentWorkbenchSchemasTreeDataProvider } from "./current-workbench-schemas/currentWorkbenchSchemasTreeDataProvider";
@@ -87,7 +88,7 @@ export class StateManager {
         StateManager.apolloStudioGraphOpsProvider.refresh();
     }
     static async enterApiKey() {
-        let apiKey = await window.showInputBox({ placeHolder: "Enter User API Key - user:gh.michael-watson:023jr324tj...." })
+        let apiKey = await window.showInputBox({ placeHolder: "Enter User API Key - user:gh.michael-watson:023jr324tj....", })
         if (apiKey) {
             StateManager.context.globalState.update('APOLLO_KEY', apiKey);
             StateManager.apolloStudioGraphsProvider.refresh();

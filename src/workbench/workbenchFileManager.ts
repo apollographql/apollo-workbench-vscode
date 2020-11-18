@@ -1,8 +1,11 @@
+import { isTypeNodeAnEntity } from '@apollo/federation/dist/composition/utils';
 import { existsSync, mkdirSync, readFileSync, rmdirSync, unlinkSync, writeFileSync, copyFileSync } from 'fs';
+import { BREAK, DocumentNode, ObjectTypeDefinitionNode, parse, TypeDefinitionNode, visit } from 'graphql';
 import { window, workspace } from 'vscode';
 import { ApolloWorkbench, WorkbenchSchema } from '../extension';
 import { getGraphSchemasByVariant } from '../studio-gql/graphClient';
 import { GetGraphSchemas_service_implementingServices_FederatedImplementingServices, GetGraphSchemas_service_implementingServices_NonFederatedImplementingService } from '../studio-gql/types/GetGraphSchemas';
+import { FieldWithType } from './federationCompletionProvider';
 import { StateManager } from './stateManager';
 
 const { name } = require('../../package.json');
@@ -165,6 +168,84 @@ export class WorkbenchFileManager {
             window.showInformationMessage("No name entered, cancelling copy");
         }
     }
+    static async getWorkbenchExtendableTypes() {
+        let workbenchFile = this.getSelectedWorkbenchFile();
+        if (workbenchFile) {
+            let doc = parse(workbenchFile.composedSchema);
+            return this.extractEntityNames(doc);
+        }
+    }
+
+    static isTypeNodeAnEntity(node: TypeDefinitionNode) {
+        let keyFields: string[] = [];
+
+        visit(node, {
+            Directive(directive) {
+                if (directive.name.value === 'key') {
+                    if (directive.arguments && (directive.arguments[0].value as any)?.value) {
+                        let keys = (directive.arguments[0].value as any).value as string;
+                        if (!keyFields.includes(keys))
+                            keyFields.push(keys)
+                    }
+                    // return BREAK;
+                }
+            },
+        });
+
+        return keyFields;
+    }
+
+
+    static getkeyFields(node: ObjectTypeDefinitionNode, keyFields: string) {
+        let fields: FieldWithType[] = [];
+        let fieldSplit = keyFields.replace('{', '').replace('}', '').split(' ');
+        fieldSplit.map(fieldName => {
+            if (fieldName) {
+                visit(node, {
+                    FieldDefinition(field) {
+                        if (field.name.value === fieldName) {
+                            console.log(field);
+                            let fieldType = field.type as any;
+                            let isNonNull = fieldType.kind == 'NonNullType';
+                            let typeString = fieldType?.name?.value ?? fieldType.type.name.value as string;
+                            if (isNonNull) typeString += '!';
+                            fields.push({ field: fieldName, type: typeString });
+
+                            return BREAK;
+                        }
+                    }
+                });
+            }
+        });
+
+        return fields;
+    }
+
+    static extractEntityNames(doc: DocumentNode) {
+        let extendables: { [serviceName: string]: { type: string, keyFields: FieldWithType[] }[] } = {};
+
+        visit(doc, {
+            ObjectTypeDefinition(node) {
+                let keyFieldsList = WorkbenchFileManager.isTypeNodeAnEntity(node);
+                if (keyFieldsList.length > 0) {
+                    let keyDirective = node.directives?.find(x => x.name.value == 'key');
+                    let serviceArg = keyDirective?.arguments?.find(x => x.name.value == 'graph')?.value as any;
+                    // let fieldsArgs = keyDirective?.arguments?.find(x => x.name.value == 'fields')?.value as any;
+
+                    let serviceName = serviceArg.value;
+                    if (!extendables[serviceName]) extendables[serviceName] = [];
+
+                    keyFieldsList.map(keys => {
+                        let keyFields = WorkbenchFileManager.getkeyFields(node, keys);
+                        extendables[serviceName].push({ type: node.name.value, keyFields });
+                    })
+                }
+            },
+        });
+
+        return extendables;
+    }
+
     static async deleteWorkbenchFile(filePath: string) {
         let result = await window.showWarningMessage(`Are you sure you want to delete ${filePath}?`, { modal: true }, "Yes")
         if (result?.toLowerCase() != "yes") return;
@@ -185,3 +266,4 @@ export class WorkbenchFileManager {
         rmdirSync(this.hidenWorkbenchFolder, { recursive: true });
     }
 }
+
