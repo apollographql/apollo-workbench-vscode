@@ -1,7 +1,7 @@
 import { isTypeNodeAnEntity } from '@apollo/federation/dist/composition/utils';
 import { existsSync, mkdirSync, readFileSync, rmdirSync, unlinkSync, writeFileSync, copyFileSync, readdirSync } from 'fs';
 import { BREAK, DocumentNode, ObjectTypeDefinitionNode, parse, TypeDefinitionNode, visit } from 'graphql';
-import { resolve, dirname, join } from 'path';
+import { join } from 'path';
 import { window, workspace } from 'vscode';
 import { ApolloWorkbench, WorkbenchSchema } from '../extension';
 import { getGraphSchemasByVariant } from '../studio-gql/graphClient';
@@ -263,24 +263,23 @@ export class WorkbenchFileManager {
         unlinkSync(filePath);
         StateManager.localWorkbenchFilesProvider?.refresh();
     }
-    static deleteWorkbenchFolder() {
+    static async deleteWorkbenchFolder() {
         rmdirSync(this.hidenWorkbenchFolder, { recursive: true });
     }
     static getPreloadedWorkbenchFiles() {
         let items: { fileName: string, path: string }[] = [];
-        let preloadFileDir = join(__dirname, '..', '..', `/src/preloaded-files`);
-        let preloadedDirectory = readdirSync(preloadFileDir, { encoding: 'utf-8' });
-        preloadedDirectory.map(item => {
-            items.push({ fileName: item.split('.')[0], path: `${preloadFileDir}/${item}` });
-        });
-
+        let preloadFileDir = join(__dirname, '..', '..', `/extension/preloaded-files`);
+        if (existsSync(preloadFileDir)) {
+            let preloadedDirectory = readdirSync(preloadFileDir, { encoding: 'utf-8' });
+            preloadedDirectory.map(item => {
+                items.push({ fileName: item.split('.')[0], path: `${preloadFileDir}/${item}` });
+            });
+        }
         return items;
     }
     static async copyPreloadedWorkbenchFile(fileName: string) {
-
         let file = `${fileName}.apollo-workbench`;
-
-        let preloadFileDir = join(__dirname, '..', '..', `/src/preloaded-files/${file}`);
+        let preloadFileDir = join(__dirname, '..', '..', `/extension/preloaded-files/${file}`);
         await this.duplicateWorkbenchFile(fileName, preloadFileDir);
         StateManager.updateSelectedWorkbenchFile(fileName, `${this.openWorkspaceFolder}/${fileName}${this.wbExt}`)
     }
