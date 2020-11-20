@@ -2,9 +2,10 @@ import { ApolloGateway, RemoteGraphQLDataSource, GatewayConfig, Experimental_Upd
 import { parse } from 'graphql';
 import { Headers } from "apollo-server-env";
 import { ServiceDefinition } from '@apollo/federation';
-import { FileWatchManager } from "./workbench/fileWatchManager";
 import { ServerManager } from "./workbench/serverManager";
 import { WorkbenchFileManager } from "./workbench/workbenchFileManager";
+
+function log(message: string) { console.log(`GATEWAY-${message}`); }
 
 export class OverrideApolloGateway extends ApolloGateway {
     protected async loadServiceDefinitions(config: GatewayConfig): ReturnType<Experimental_UpdateServiceDefinitions> {
@@ -14,14 +15,21 @@ export class OverrideApolloGateway extends ApolloGateway {
         if (wb) {
             for (var serviceName in wb.schemas) {
                 const service = wb.schemas[serviceName];
+
                 if (service.shouldMock) {
-                    let url = `http://localhost:${ServerManager.instance.portMapping[serviceName]}`;
-                    newDefinitions.push({ name: serviceName, url, typeDefs: parse(service.sdl) });
+                    try {
+                        let typeDefs = parse(service.sdl);
+                        let url = `http://localhost:${ServerManager.instance.portMapping[serviceName]}`;
+                        newDefinitions.push({ name: serviceName, url, typeDefs });
+                    } catch (err) {
+
+                    }
                 } else {
                     let typeDefs = await this.getTypeDefs(service.url as string);
                     if (typeDefs)
                         newDefinitions.push({ name: serviceName, url: service.url, typeDefs });
                 }
+
             }
         }
 
@@ -50,10 +58,10 @@ export class OverrideApolloGateway extends ApolloGateway {
 
                 return typeDefs;
             } else if (errors) {
-                errors.map(error => console.log(error));
+                errors.map(error => log(error.message));
             }
         } catch (err) {
-
+            log(`Do you have your service running? \n\t${err.message}`)
         }
 
         return;

@@ -2,7 +2,7 @@ import path from 'path';
 import * as vscode from 'vscode';
 import { getAccountGraphs, getGraphSchemasByVariant, getUserMemberships } from '../../studio-gql/graphClient';
 import { GetGraphSchemas_service_implementingServices_FederatedImplementingServices } from '../../studio-gql/types/GetGraphSchemas';
-import { PreloadedWorkbenchTopLevel } from '../local-workbench-files/preLoadedTreeItems';
+import { PreloadedWorkbenchTopLevel } from './preLoadedTreeItems';
 
 
 export class ApolloStudioGraphsTreeDataProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
@@ -99,9 +99,11 @@ export class ApolloStudioGraphsTreeDataProvider implements vscode.TreeDataProvid
                 }
                 items.push(accountTreeItem);
             }
-            return items;
+
+            items.push(new PreloadedWorkbenchTopLevel());
         } else {
             items.push(new NotLoggedInTreeItem());
+            items.push(new vscode.TreeItem("Login to see Example Graphs", vscode.TreeItemCollapsibleState.None));
             vscode.window.showInformationMessage('No user api key was found.', "Login").then(response => {
                 if (response === "Login")
                     vscode.commands.executeCommand("extension.enterStudioApiKey");
@@ -111,7 +113,6 @@ export class ApolloStudioGraphsTreeDataProvider implements vscode.TreeDataProvid
             //     vscode.commands.executeCommand("extension.enterStudioApiKey");
         }
 
-        items.push(new PreloadedWorkbenchTopLevel());
         return items;
     }
 }

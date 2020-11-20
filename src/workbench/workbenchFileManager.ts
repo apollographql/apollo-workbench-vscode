@@ -1,6 +1,7 @@
 import { isTypeNodeAnEntity } from '@apollo/federation/dist/composition/utils';
 import { existsSync, mkdirSync, readFileSync, rmdirSync, unlinkSync, writeFileSync, copyFileSync, readdirSync } from 'fs';
-import { BREAK, DocumentNode, ObjectTypeDefinitionNode, parse, TypeDefinitionNode, visit } from 'graphql';
+import { BREAK, DocumentNode, InterfaceTypeDefinitionNode, ObjectTypeDefinitionNode, parse, TypeDefinitionNode, visit } from 'graphql';
+import { type } from 'os';
 import { join } from 'path';
 import { window, workspace } from 'vscode';
 import { ApolloWorkbench, WorkbenchSchema } from '../extension';
@@ -169,9 +170,54 @@ export class WorkbenchFileManager {
             window.showInformationMessage("No name entered, cancelling copy");
         }
     }
+
+    static async getCurrentSchemaAvailableTypes(serviceName: string): Promise<string[]> {
+        let types: string[] = [];
+        let interfaces: string[] = [];
+        let objectTypes: string[] = [];
+
+        try {
+            let localSchema = this.getLocalSchemaFromFile(serviceName);
+            let doc = parse(localSchema);
+            visit(doc, {
+                ObjectTypeDefinition(objectTypeNode: ObjectTypeDefinitionNode) {
+                    let typeNote = `O:${objectTypeNode.name.value}`;
+                    if (!interfaces.includes(typeNote)) {
+                        interfaces.push(typeNote);
+                        interfaces.push(`${typeNote}[]`);
+                    }
+                },
+                InterfaceTypeDefinition(interfaceNode: InterfaceTypeDefinitionNode) {
+                    let typeNote = `I:${interfaceNode.name.value}`;
+                    if (!objectTypes.includes(typeNote)) {
+                        objectTypes.push(typeNote);
+                        objectTypes.push(`${typeNote}[]`);
+                    }
+                }
+            });
+        } catch (err) {
+            console.log(err.message);
+        }
+
+        types.push(...objectTypes);
+        types.push(...interfaces);
+        //Add GraphQQL default scalar types:
+        types.push('ID');
+        types.push('Int');
+        types.push('String');
+        types.push('String[]');
+        types.push('Int[]');
+        types.push('Float');
+        types.push('Float[]');
+        types.push('Boolean');
+        types.push('Boolean[]');
+
+
+        return types;
+    }
     static async getWorkbenchExtendableTypes() {
         let workbenchFile = this.getSelectedWorkbenchFile();
-        if (workbenchFile) {
+        if (workbenchFile && workbenchFile.composedSchema) {
             let doc = parse(workbenchFile.composedSchema);
             return this.extractEntityNames(doc);
         }

@@ -1,5 +1,5 @@
-import { Diagnostic, DiagnosticSeverity, ProgressLocation, Range, Uri, window, workspace } from "vscode";
-import { BREAK, parse, TypeInfo, visit, visitWithTypeInfo } from "graphql";
+import { CodeAction, Diagnostic, DiagnosticSeverity, ProgressLocation, Range, Uri, window, workspace } from "vscode";
+import { BREAK, GraphQLError, parse, TypeInfo, visit, visitWithTypeInfo } from "graphql";
 
 import { ApolloServer, gql } from "apollo-server";
 import plugin from 'apollo-server-plugin-operation-registry';
@@ -10,6 +10,7 @@ import { StateManager } from "./stateManager";
 import { OverrideApolloGateway } from "../gateway";
 import { ApolloWorkbench, compositionDiagnostics } from "../extension";
 import { WorkbenchFileManager } from "./workbenchFileManager";
+import { existsSync } from "fs";
 
 const { name } = require('../../package.json');
 
@@ -166,17 +167,45 @@ export class ServerManager {
 
     getComposedSchema(workbenchFile: ApolloWorkbench) {
         let sdls: any = [];
+        let errors: GraphQLError[] = [];
         for (var key in workbenchFile.schemas) {
             let localSchemaString = workbenchFile.schemas[key].sdl;
-            if (localSchemaString != '')
-                sdls.push({ name: key, typeDefs: gql(localSchemaString) });
+            if (localSchemaString) {
+                try {
+                    sdls.push({ name: key, typeDefs: gql(localSchemaString) });
+                } catch (err) {
+                    let errorMessage = `Not valid GraphQL Schema: ${err.message}`;
+                    let extensions: any = { invalidSchema: true, serviceName: key };
+
+                    if (err.message.includes('Syntax Error: Unexpected Name ')) {
+                        let quotedUnexpected = err.message.split('Syntax Error: Unexpected Name "')[1];
+                        let unexpectedName = quotedUnexpected.slice(0, quotedUnexpected.length - 1);
+                        extensions.locations = err.locations;
+                        extensions.unexpectedName = unexpectedName;
+                    } else if (err.message.includes('Syntax Error: Expected Name, found }')) {
+                        errorMessage = `You must define some fields: ${err.message}`;
+                        extensions.noFieldsDefined = true;
+                        extensions.locations = err.locations;
+                    }
+
+                    errors.push(new GraphQLError(errorMessage, undefined, undefined, undefined, undefined, undefined, extensions));
+                }
+            } else {
+                let err = "No schema defined for service";
+                errors.push(new GraphQLError(err, undefined, undefined, undefined, undefined, undefined, { noSchemaDefined: true, serviceName: key, message: err }));
+            }
         }
 
         const compositionResults = composeAndValidate(sdls);
 
+        if (Object.keys(workbenchFile.schemas).length == 0)
+            compositionResults.errors = [new GraphQLError("No schemas defined in workbench yet", undefined, undefined, undefined, undefined, undefined, { noServicesDefined: true })];
+
+        errors.map(error => compositionResults.errors.push(error));
+
         return { ...compositionResults };
     }
-    getComposedSchemaLogCompositionErrors(workbenchFile?: ApolloWorkbench): void {
+    async getComposedSchemaLogCompositionErrors(workbenchFile?: ApolloWorkbench): Promise<void> {
         if (!workbenchFile)
             workbenchFile = WorkbenchFileManager.getSelectedWorkbenchFile() as ApolloWorkbench;
         try {
@@ -187,9 +216,13 @@ export class ServerManager {
                 compositionDiagnostics.clear();
 
                 console.log(compositionDiagnostics.name);
-                let diagnosticsGroups = this.handleCompositionErrors(workbenchFile, errors);
+                let diagnosticsGroups = await this.handleErrors(workbenchFile, errors);
                 for (var sn in diagnosticsGroups) {
-                    compositionDiagnostics.set(Uri.file(`${WorkbenchFileManager.workbenchSchemasFolderPath()}/${sn}.graphql`), diagnosticsGroups[sn]);
+                    if (sn == 'workbench') {
+                        compositionDiagnostics
+                        compositionDiagnostics.set(Uri.file(StateManager.workspaceState_selectedWorkbenchFile.path), diagnosticsGroups[sn]);
+                    } else
+                        compositionDiagnostics.set(Uri.file(`${WorkbenchFileManager.workbenchSchemasFolderPath()}/${sn}.graphql`), diagnosticsGroups[sn]);
                 }
             } else
                 compositionDiagnostics.clear();
@@ -203,6 +236,66 @@ export class ServerManager {
             console.log(`${err}`);
         }
     }
+
+    async handleErrors(wb: ApolloWorkbench, errors: GraphQLError[]) {
+        let schemas = wb.schemas;
+        let diagnosticsGroups: { [key: string]: Diagnostic[]; } = {};
+
+        for (var i = 0; i < errors.length; i++) {
+            let error = errors[i];
+            if (error.extensions) {
+                let diagnosticCode = '';
+                let errorMessage = error.message;
+                let range = new Range(0, 0, 0, 1);
+                let serviceName = error.extensions?.serviceName ?? 'workbench';
+                if (!diagnosticsGroups[serviceName]) diagnosticsGroups[serviceName] = new Array<Diagnostic>();
+
+                if (error.extensions?.noServicesDefined) {
+                    let emptySchemas = `"schemas":{}`;
+                    let doc = await workspace.openTextDocument(Uri.file(StateManager.workspaceState_selectedWorkbenchFile.path));
+                    let textLine = doc.lineAt(0);
+                    let schemasIndex = textLine.text.indexOf(emptySchemas);
+
+                    range = new Range(0, schemasIndex, 0, schemasIndex + emptySchemas.length);
+                } else if (error.extensions?.noSchemaDefined || error.extensions?.invalidSchema) {
+                    let schemaFilePath = `${WorkbenchFileManager.workbenchSchemasFolderPath()}/${serviceName}.graphql`;
+                    while (!existsSync(schemaFilePath))
+                        await new Promise(resolve => setTimeout(resolve, 50))
+
+                    let doc = await workspace.openTextDocument(Uri.file(schemaFilePath));
+                    if (error.extensions.unexpectedName) {
+                        let unexpectedName = error.extensions.unexpectedName;
+                        let location = error.extensions.locations[0];
+                        let lineNumber = location.line - 1;
+                        let textIndex = location.column - 1;
+                        diagnosticCode = 'deleteRange';
+                        range = new Range(lineNumber, textIndex, lineNumber, textIndex + unexpectedName.length);
+                    } else if (error.extensions.noFieldsDefined) {
+                        let location = error.extensions.locations[0];
+                        let lineNumber = location.line - 1;
+
+                        range = new Range(lineNumber - 1, 0, lineNumber, 0);
+                    } else {
+                        let lastLine = doc.lineAt(doc.lineCount - 1);
+
+                        range = new Range(0, 0, doc.lineCount - 1, lastLine.text.length);
+                    }
+                } else if (error.extensions?.code) {
+                    //We have a federation error with code
+                    let errSplit = error.message.split('] ');
+                    serviceName = errSplit[0].substring(1);
+                }
+                let diag = new Diagnostic(range, errorMessage, DiagnosticSeverity.Error);
+                if (diagnosticCode)
+                    diag.code = diagnosticCode;
+
+                diagnosticsGroups[serviceName].push(diag);
+            }
+        }
+
+        return diagnosticsGroups;
+    }
+
     handleCompositionErrors(wb: ApolloWorkbench, errors) {
         let schemas = wb.schemas;
         let diagnosticsGroups: { [key: string]: Diagnostic[]; } = {};
@@ -267,8 +360,7 @@ export class ServerManager {
                         diagnosticsGroups[serviceName].push(new Diagnostic(new Range(0, 0, 0, 1), err.message, DiagnosticSeverity.Error));
                     }
                 } else {
-                    if (!diagnosticsGroups["workbench"])
-                        diagnosticsGroups["workbench"] = new Array<Diagnostic>();
+                    if (!diagnosticsGroups["workbench"]) diagnosticsGroups["workbench"] = new Array<Diagnostic>();
                     diagnosticsGroups["workbench"].push(new Diagnostic(new Range(0, 0, 0, 1), err.message, DiagnosticSeverity.Error));
                 }
             }

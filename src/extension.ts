@@ -15,7 +15,7 @@ import { StateManager } from './workbench/stateManager';
 import { ServerManager } from './workbench/serverManager';
 import { WorkbenchFileManager } from './workbench/workbenchFileManager';
 import { federationCompletionProvider } from './workbench/federationCompletionProvider';
-import { PreloadedWorkbenchFile } from './workbench/local-workbench-files/preLoadedTreeItems';
+import { PreloadedWorkbenchFile } from './workbench/studio-graphs/preLoadedTreeItems';
 
 export class ApolloWorkbench {
 	graphName: string = "";
@@ -125,5 +125,34 @@ function setupApolloWorkbench(context: vscode.ExtensionContext) {
 	vscode.commands.registerCommand('studio-operations.addToWorkbench', async (op: StudioOperationTreeItem) => { await fileWatchManager.addOperation(op.operationName, op.operationSignature) });
 
 	vscode.languages.registerCompletionItemProvider("graphql", federationCompletionProvider);
+
+	vscode.languages.registerCodeActionsProvider({ language: 'graphql' }, new FederationCodeActionprovider());
+
+	vscode.commands.registerCommand('current-workbench-schemas.deleteSchemaDocTextRange', async (document: vscode.TextDocument, range: vscode.Range) => {
+		vscode.window.visibleTextEditors.forEach(async editor => {
+			if (editor.document == document) {
+				await editor.edit(edit => edit.delete(range));
+				let didSave = await editor.document.save();
+				await vscode.window.showTextDocument(editor.document);
+			}
+		})
+
+	});
 }
 
+export class FederationCodeActionprovider implements vscode.CodeActionProvider {
+	public provideCodeActions(document: vscode.TextDocument, range: vscode.Range, context: vscode.CodeActionContext): vscode.CodeAction[] | undefined {
+		let code = context.diagnostics[0]?.code;
+		if (code == 'deleteRange') {
+			let selector = new vscode.CodeAction("Delete this selection", vscode.CodeActionKind.QuickFix);
+
+			selector.command = {
+				command: "current-workbench-schemas.deleteSchemaDocTextRange",
+				title: "Delete this selection",
+				arguments: [document, range]
+			};
+
+			return [selector];
+		}
+	}
+}
