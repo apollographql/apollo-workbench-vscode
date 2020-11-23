@@ -1,19 +1,19 @@
 # Apollo Workbench for VS Code
 
-To get the most out of GraphQL, your organization should expose a single data graph that provides a unified interface for querying any combination of your backing data sources. However, it can be challenging to represent an enterprise-scale data graph with a single, monolithic GraphQL server. Apollo Federation enables you to divide your graph's implementation across multiple composable services and Workbench is the tool to help you design that out with only schema files.
+> The Apollo Workbench extension for VS Code brings an all-in-one tooling experience for developing federated graphs.
 
-![Getting Started Video](https://storage.googleapis.com/apollo-workbench-vscode/workbench-vscode-getting-started.gif)
+## Installation
 
-The Apollo Workbench extension for VS Code brings an all-in-one tooling experience for developing federated graphs.
+Download the `.vsix` (VS Code extension) in the latest release [here](https://github.com/apollographql/apollo-workbench-vscode/releases).
 
-- Creating and working with `.apollo-workbench` files
-- Mocking `.apollo-workbench` files
-- Providing composition errors in **Problems** panel within VS Code
-- Create and edit GraphQL operations for a loaded `.apollo-workbench` file
-- With a fully composed graph, view generated query plans for defined GraphQL operations
-- **Apollo Studio Integration**
-  - Create a `.apollo-workbench` file from a graph that has been pushed into the schema registry (i.e. `apollo service:push`)
-  - Load GraphQL operations from a graph and add them to the loaded `.apollo-workbench` file.
+Install the latest version using the `code --install-extension` command. 
+
+```bash
+cd Downloads
+code --install-extension apollo-workbench-vscode-0.1.1.vsix
+```
+
+This will install the extension to VS Code.
 
 ## Getting Started
 
@@ -30,7 +30,22 @@ The Apollo Workbench extension for VS Code brings an all-in-one tooling experien
 ![](https://storage.googleapis.com/apollo-workbench-vscode/workbench-new-graph.png)
 ![](https://storage.googleapis.com/apollo-workbench-vscode/workbench-new-from-studio-graph.png)
 
+## Why?
+
+To get the most out of GraphQL, your organization should expose a single data graph that provides a unified interface for querying any combination of your backing data sources. However, it can be challenging to represent an enterprise-scale data graph with a single, monolithic GraphQL server. Apollo Federation enables you to divide your graph's implementation across multiple composable services and we built Workbench to help you design that out with only schema files.
+
+![Getting Started Video](https://storage.googleapis.com/apollo-workbench-vscode/workbench-vscode-getting-started.gif)
+
 ## Features
+
+<!-- - Creating and working with `.apollo-workbench` files
+- Mocking `.apollo-workbench` files
+- Providing composition errors in **Problems** panel within VS Code
+- Create and edit GraphQL operations for a loaded `.apollo-workbench` file
+- With a fully composed graph, view generated query plans for defined GraphQL operations
+- **Apollo Studio Integration**
+  - Create a `.apollo-workbench` file from a graph that has been pushed into the schema registry (i.e. `apollo service:push`)
+  - Load GraphQL operations from a graph and add them to the loaded `.apollo-workbench` file. -->
 
 ### Mocking `.apollo-workbench` files
 
