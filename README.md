@@ -4,7 +4,7 @@
 
 ## Installation
 
-Download the `.vsix` (VS Code extension) in the latest release [here](https://github.com/apollographql/apollo-workbench-vscode/releases).
+Download the latest release of the `.vsix` (VS Code extension) file [here](https://github.com/apollographql/apollo-workbench-vscode/releases).
 
 Install the latest version using the `code --install-extension` command. 
 
