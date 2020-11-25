@@ -9,6 +9,7 @@ import { FileWatchManager } from './fileWatchManager';
 import { StateManager } from './stateManager';
 import { ServerManager } from './serverManager';
 import { WorkbenchFileManager } from './workbenchFileManager';
+import { getComposedSchema } from '../utils/composition';
 
 export function updateQueryPlan(path: string) {
     if (path && path.includes('.graphql')) {
@@ -23,7 +24,7 @@ export function updateQueryPlan(path: string) {
 
                 //Generate query plan
                 try {
-                    const { composedSdl } = ServerManager.instance.getComposedSchema(workbenchFile);
+                    const { composedSdl } = getComposedSchema(workbenchFile);
                     if (composedSdl) {
                         const queryPlanPointer = getQueryPlanner(composedSdl);
                         let queryPlan = getQueryPlan(queryPlanPointer, operation, { autoFragmentization: false });

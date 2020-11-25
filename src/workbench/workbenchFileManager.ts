@@ -1,13 +1,11 @@
-import { isTypeNodeAnEntity } from '@apollo/federation/dist/composition/utils';
-import { existsSync, mkdirSync, readFileSync, rmdirSync, unlinkSync, writeFileSync, copyFileSync, readdirSync } from 'fs';
-import { BREAK, DocumentNode, ObjectTypeDefinitionNode, parse, TypeDefinitionNode, visit } from 'graphql';
 import { join } from 'path';
 import { window, workspace } from 'vscode';
+import { existsSync, mkdirSync, readFileSync, rmdirSync, unlinkSync, writeFileSync, copyFileSync, readdirSync, readlink } from 'fs';
+
 import { ApolloWorkbench, WorkbenchSchema } from '../extension';
+import { StateManager } from './stateManager';
 import { getGraphSchemasByVariant } from '../studio-gql/graphClient';
 import { GetGraphSchemas_service_implementingServices_FederatedImplementingServices, GetGraphSchemas_service_implementingServices_NonFederatedImplementingService } from '../studio-gql/types/GetGraphSchemas';
-import { FieldWithType } from './federationCompletionProvider';
-import { StateManager } from './stateManager';
 
 const { name } = require('../../package.json');
 
@@ -17,7 +15,7 @@ export class WorkbenchFileManager {
     static get hiddenWorkspaceFolder(): string {
         //Get the path to the hidden workspace storage location
         //  This seems to be specific to the user instance of VS Code
-        const hiddenPath = StateManager.workspaceStoragePath;
+        const hiddenPath = StateManager.instance.workspaceStoragePath;
 
         //We make sure there is a folder open in the current vs code window
         if (workspace?.workspaceFolders && hiddenPath) {
@@ -44,6 +42,9 @@ export class WorkbenchFileManager {
         }
 
         return "";
+    }
+    static get composedSchemaPath(): string {
+        return `${this.hidenWorkbenchFolder}/composed.csdl`
     }
     static get hidenWorkbenchFolder(): string {
         const wf = this.hiddenWorkspaceFolder;
@@ -72,7 +73,7 @@ export class WorkbenchFileManager {
 
             const wSpaceFolder = this.openWorkspaceFolder;
             if (wSpaceFolder && !existsSync(`${wSpaceFolder}/apollo.config.js`)) {
-                const gatewayPort = StateManager.settings_gatewayServerPort;
+                const gatewayPort = StateManager.instance.settings_gatewayServerPort;
                 let apolloConfig = `module.exports = { client: { service: { url: "http://localhost:${gatewayPort}" }, includes: ["${wBenchFolder}/queries/*.graphql"] } }`;
                 writeFileSync(`${wSpaceFolder}/apollo.config.js`, apolloConfig, { encoding: "utf8" });
             }
@@ -112,13 +113,16 @@ export class WorkbenchFileManager {
         else
             window.showErrorMessage(`Path was undefined when trying to create workbench file: ${wb.graphName}${this.wbExt}`)
     }
+    static saveComposedSdl(composedSdl: string) {
+        writeFileSync(`${this.composedSchemaPath}`, composedSdl, { encoding: "utf8" });
+    }
     static saveSelectedWorkbenchFile(wb: ApolloWorkbench) {
-        let selectedWbFile = StateManager.workspaceState_selectedWorkbenchFile;
+        let selectedWbFile = StateManager.instance.workspaceState_selectedWorkbenchFile;
         if (selectedWbFile)
             this.saveWorkbenchFile(wb, selectedWbFile.path);
     }
     static getSelectedWorkbenchFile() {
-        let selectedWbFile = StateManager.workspaceState_selectedWorkbenchFile;
+        let selectedWbFile = StateManager.instance.workspaceState_selectedWorkbenchFile;
         if (selectedWbFile)
             return this.getWorkbenchFile(selectedWbFile.path);
     }
@@ -129,7 +133,7 @@ export class WorkbenchFileManager {
             let workbenchFile: ApolloWorkbench = new ApolloWorkbench();
             workbenchFile.graphName = graphName;
 
-            let results = await getGraphSchemasByVariant(StateManager.globalState_userApiKey, graphId, graphVariant);
+            let results = await getGraphSchemasByVariant(StateManager.instance.globalState_userApiKey, graphId, graphVariant);
             let monolithicService = results.service?.implementingServices as GetGraphSchemas_service_implementingServices_NonFederatedImplementingService;
             if (monolithicService?.graphID) {
                 workbenchFile.schemas['monolith'] = results.service?.schema?.document;
@@ -143,7 +147,7 @@ export class WorkbenchFileManager {
             }
 
             this.saveWorkbenchFile(workbenchFile);
-            StateManager.localWorkbenchFilesProvider.refresh();
+            StateManager.instance.localWorkbenchFilesProvider.refresh();
         }
     }
     static newWorkbenchFile(workbenchName: string) {
@@ -157,94 +161,17 @@ export class WorkbenchFileManager {
 
         console.log(`Creating ${workbenchName}`);
         this.saveWorkbenchFile(workbenchMaster);
-        StateManager.localWorkbenchFilesProvider.refresh();
+        StateManager.instance.localWorkbenchFilesProvider.refresh();
     }
 
     static async duplicateWorkbenchFile(workbenchFileName: string, filePath: string) {
         let newWorkbenchFileName = await window.showInputBox({ prompt: "Enter the name for new workbench file", value: `${workbenchFileName}-copy` });
         if (newWorkbenchFileName) {
             copyFileSync(filePath, `${this.openWorkspaceFolder}/${newWorkbenchFileName}${this.wbExt}`);
-            StateManager.localWorkbenchFilesProvider?.refresh();
+            StateManager.instance.localWorkbenchFilesProvider?.refresh();
         } else {
             window.showInformationMessage("No name entered, cancelling copy");
         }
-    }
-    static async getWorkbenchExtendableTypes() {
-        let workbenchFile = this.getSelectedWorkbenchFile();
-        if (workbenchFile) {
-            let doc = parse(workbenchFile.composedSchema);
-            return this.extractEntityNames(doc);
-        }
-    }
-
-    static isTypeNodeAnEntity(node: TypeDefinitionNode) {
-        let keyFields: string[] = [];
-
-        visit(node, {
-            Directive(directive) {
-                if (directive.name.value === 'key') {
-                    if (directive.arguments && (directive.arguments[0].value as any)?.value) {
-                        let keys = (directive.arguments[0].value as any).value as string;
-                        if (!keyFields.includes(keys))
-                            keyFields.push(keys)
-                    }
-                    // return BREAK;
-                }
-            },
-        });
-
-        return keyFields;
-    }
-
-
-    static getkeyFields(node: ObjectTypeDefinitionNode, keyFields: string) {
-        let fields: FieldWithType[] = [];
-        let fieldSplit = keyFields.replace('{', '').replace('}', '').split(' ');
-        fieldSplit.map(fieldName => {
-            if (fieldName) {
-                visit(node, {
-                    FieldDefinition(field) {
-                        if (field.name.value === fieldName) {
-                            console.log(field);
-                            let fieldType = field.type as any;
-                            let isNonNull = fieldType.kind == 'NonNullType';
-                            let typeString = fieldType?.name?.value ?? fieldType.type.name.value as string;
-                            if (isNonNull) typeString += '!';
-                            fields.push({ field: fieldName, type: typeString });
-
-                            return BREAK;
-                        }
-                    }
-                });
-            }
-        });
-
-        return fields;
-    }
-
-    static extractEntityNames(doc: DocumentNode) {
-        let extendables: { [serviceName: string]: { type: string, keyFields: FieldWithType[] }[] } = {};
-
-        visit(doc, {
-            ObjectTypeDefinition(node) {
-                let keyFieldsList = WorkbenchFileManager.isTypeNodeAnEntity(node);
-                if (keyFieldsList.length > 0) {
-                    let keyDirective = node.directives?.find(x => x.name.value == 'key');
-                    let serviceArg = keyDirective?.arguments?.find(x => x.name.value == 'graph')?.value as any;
-                    // let fieldsArgs = keyDirective?.arguments?.find(x => x.name.value == 'fields')?.value as any;
-
-                    let serviceName = serviceArg.value;
-                    if (!extendables[serviceName]) extendables[serviceName] = [];
-
-                    keyFieldsList.map(keys => {
-                        let keyFields = WorkbenchFileManager.getkeyFields(node, keys);
-                        extendables[serviceName].push({ type: node.name.value, keyFields });
-                    })
-                }
-            },
-        });
-
-        return extendables;
     }
 
     static async deleteWorkbenchFile(filePath: string) {
@@ -252,16 +179,16 @@ export class WorkbenchFileManager {
         if (result?.toLowerCase() != "yes") return;
 
         console.log(`${name}:Deleting WB: ${filePath}`);
-        let selectedWbFile = StateManager.workspaceState_selectedWorkbenchFile;
+        let selectedWbFile = StateManager.instance.workspaceState_selectedWorkbenchFile;
         if (selectedWbFile && selectedWbFile.path == filePath) {
-            StateManager.context?.workspaceState.update("selectedWbFile", "");
+            StateManager.instance.workspaceState_selectedWorkbenchFile = { name: "", path: "" };
 
-            StateManager.currentWorkbenchSchemasProvider?.refresh();
-            StateManager.currentWorkbenchOperationsProvider?.refresh();
+            StateManager.instance.currentWorkbenchSchemasProvider?.refresh();
+            StateManager.instance.currentWorkbenchOperationsProvider?.refresh();
         }
 
         unlinkSync(filePath);
-        StateManager.localWorkbenchFilesProvider?.refresh();
+        StateManager.instance.localWorkbenchFilesProvider?.refresh();
     }
     static async deleteWorkbenchFolder() {
         rmdirSync(this.hidenWorkbenchFolder, { recursive: true });
@@ -281,7 +208,6 @@ export class WorkbenchFileManager {
         let file = `${fileName}.apollo-workbench`;
         let preloadFileDir = join(__dirname, '..', '..', `/extension/preloaded-files/${file}`);
         await this.duplicateWorkbenchFile(fileName, preloadFileDir);
-        StateManager.updateSelectedWorkbenchFile(fileName, `${this.openWorkspaceFolder}/${fileName}${this.wbExt}`)
+        StateManager.instance.workspaceState_selectedWorkbenchFile = { name: fileName, path: `${this.openWorkspaceFolder}/${fileName}${this.wbExt}` };
     }
 }
-

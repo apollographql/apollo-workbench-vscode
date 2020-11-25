@@ -6,11 +6,8 @@ import { FileWatchManager } from '../fileWatchManager';
 import { WorkbenchFileManager } from '../workbenchFileManager';
 
 export class CurrentWorkbenchOpsTreeDataProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
-    context: vscode.ExtensionContext;
+    constructor(private workspaceRoot: string) { }
 
-    constructor(private workspaceRoot: string, context: vscode.ExtensionContext) {
-        this.context = context;
-    }
     private _onDidChangeTreeData: vscode.EventEmitter<WorkbenchOperationTreeItem | undefined> = new vscode.EventEmitter<WorkbenchOperationTreeItem | undefined>();
     readonly onDidChangeTreeData: vscode.Event<WorkbenchOperationTreeItem | undefined> = this._onDidChangeTreeData.event;
 

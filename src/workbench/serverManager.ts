@@ -1,14 +1,10 @@
-import { Diagnostic, DiagnosticSeverity, ProgressLocation, Range, Uri, window, workspace } from "vscode";
-import { BREAK, parse, TypeInfo, visit, visitWithTypeInfo } from "graphql";
-
 import { ApolloServer, gql } from "apollo-server";
 import plugin from 'apollo-server-plugin-operation-registry';
-import { buildFederatedSchema, composeAndValidate } from "@apollo/federation";
+import { buildFederatedSchema } from "@apollo/federation";
 import { ApolloServerPluginUsageReportingDisabled } from 'apollo-server-core';
 
 import { StateManager } from "./stateManager";
 import { OverrideApolloGateway } from "../gateway";
-import { ApolloWorkbench, compositionDiagnostics } from "../extension";
 import { WorkbenchFileManager } from "./workbenchFileManager";
 
 const { name } = require('../../package.json');
@@ -37,7 +33,6 @@ export class ServerManager {
             }
 
             this.startGateway();
-            // this.getComposedSchemaLogCompositionErrors(workbenchFile);
         } else
             console.log(`${name}:No selected workbench file to setup`);
     }
@@ -111,7 +106,7 @@ export class ServerManager {
             delete this.portMapping[serviceName];
     }
     startGateway() {
-        let gatewayPort = StateManager.settings_gatewayServerPort;
+        let gatewayPort = StateManager.instance.settings_gatewayServerPort;
         if (this.serversState[gatewayPort]) {
             console.log(`${name}:Stopping previous running gateway`);
             this.serversState[gatewayPort].stop();
@@ -124,13 +119,13 @@ export class ServerManager {
             this.serversState['gateway'] = new OverrideApolloGateway({ debug: true });
         } else {
             console.log(`${name}:Changing gateway instance polling interval to 10s`);
-            this.serversState['gateway'].experimental_pollInterval = StateManager.settings_gatewayReCompositionInterval ?? 10000;
+            this.serversState['gateway'].experimental_pollInterval = StateManager.instance.settings_gatewayReCompositionInterval ?? 10000;
         }
 
-        const graphApiKey = StateManager.settings_apiKey;
-        const graphVariant = StateManager.settings_graphVariant;
+        const graphApiKey = StateManager.instance.settings_apiKey;
+        const graphVariant = StateManager.instance.settings_graphVariant;
         let plugins = [ApolloServerPluginUsageReportingDisabled()];
-        const shouldRunOpReg = StateManager.settings_shouldRunOpRegistry;
+        const shouldRunOpReg = StateManager.instance.settings_shouldRunOpRegistry;
         if (shouldRunOpReg) {
             console.log(`${name}:Enabling operation registry for ${graphVariant}`);
             plugins = [ApolloServerPluginUsageReportingDisabled(), plugin({ graphVariant, forbidUnregisteredOperations: shouldRunOpReg, debug: true })()];
@@ -157,191 +152,10 @@ export class ServerManager {
         delete this.serversState[port];
     }
     private getNextAvailablePort() {
-        let port = StateManager.settings_startingServerPort;
+        let port = StateManager.instance.settings_startingServerPort;
         while (this.serversState[port])
             port++;
 
         return port;
-    }
-
-    getComposedSchema(workbenchFile: ApolloWorkbench) {
-        let sdls: any = [];
-        for (var key in workbenchFile.schemas) {
-            let localSchemaString = workbenchFile.schemas[key].sdl;
-            if (localSchemaString != '')
-                sdls.push({ name: key, typeDefs: gql(localSchemaString) });
-        }
-
-        const compositionResults = composeAndValidate(sdls);
-
-        return { ...compositionResults };
-    }
-    getComposedSchemaLogCompositionErrors(workbenchFile?: ApolloWorkbench): void {
-        if (!workbenchFile)
-            workbenchFile = WorkbenchFileManager.getSelectedWorkbenchFile() as ApolloWorkbench;
-        try {
-            const { errors, composedSdl } = this.getComposedSchema(workbenchFile);
-            if (errors.length > 0) {
-                console.log('Composition Errors Found:');
-
-                compositionDiagnostics.clear();
-
-                console.log(compositionDiagnostics.name);
-                let diagnosticsGroups = this.handleCompositionErrors(workbenchFile, errors);
-                for (var sn in diagnosticsGroups) {
-                    compositionDiagnostics.set(Uri.file(`${WorkbenchFileManager.workbenchSchemasFolderPath()}/${sn}.graphql`), diagnosticsGroups[sn]);
-                }
-            } else
-                compositionDiagnostics.clear();
-
-            if (composedSdl) {
-                workbenchFile.composedSchema = composedSdl;
-                WorkbenchFileManager.saveSelectedWorkbenchFile(workbenchFile);
-            }
-        }
-        catch (err) {
-            console.log(`${err}`);
-        }
-    }
-    handleCompositionErrors(wb: ApolloWorkbench, errors) {
-        let schemas = wb.schemas;
-        let diagnosticsGroups: { [key: string]: Diagnostic[]; } = {};
-        errors.map(err => {
-            let serviceName = "";
-            let typeToIgnore = "";
-            if (err.extensions) {
-                let errorCode = err.extensions.code;
-                let errSplit = err.message.split('] ');
-                serviceName = errSplit[0].substring(1);
-
-                switch (errorCode) {
-                    case "KEY_FIELDS_MISSING_EXTERNAL":
-                    case "KEY_FIELDS_MISSING_ON_BASE":
-                        typeToIgnore = errSplit[1].split(' ->')[0];
-                        break;
-
-                    case "EXECUTABLE_DIRECTIVES_IN_ALL_SERVICES":
-                        serviceName = ""
-                        let services = err.message.split(':')[1].split(',');
-                        if (services.length > 1)
-                            services.map(service => {
-                                let sn = service.includes('.') ? service.substring(1, service.length - 1) : service.substring(1, service.length);
-                                serviceName += `${sn}-:-`;
-                            });
-                        else serviceName = services[0];
-
-                        typeToIgnore = serviceName;
-                        break;
-                }
-
-                if (typeToIgnore) {
-                    if (serviceName.includes('-:-')) {
-                        let services = serviceName.split('-:-');
-                        services.map(s => {
-                            if (s) {
-                                if (!diagnosticsGroups[s]) diagnosticsGroups[s] = new Array<Diagnostic>();
-                                let diagnostic = this.getDiagnostic(typeToIgnore, err.message, schemas[s].sdl);
-                                diagnosticsGroups[s].push(diagnostic);
-                            }
-                        })
-                    } else {
-                        if (!diagnosticsGroups[serviceName]) diagnosticsGroups[serviceName] = new Array<Diagnostic>();
-
-                        let diagnostic = this.getDiagnostic(typeToIgnore, err.message, schemas[serviceName].sdl);
-                        diagnosticsGroups[serviceName].push(diagnostic);
-                    }
-                }
-
-                if (errorCode) {
-                    if (errorCode === 'EXECUTABLE_DIRECTIVES_IN_ALL_SERVICES') {
-                        let services = err.message.split(':')[1].split(',');
-                        services.map(service => {
-                            let sn = service.includes('.') ? service.substring(1, service.length - 1) : service.substring(1, service.length);
-                            if (!diagnosticsGroups[sn])
-                                diagnosticsGroups[sn] = new Array<Diagnostic>();
-                            diagnosticsGroups[sn].push(new Diagnostic(new Range(0, 0, 0, 1), err.message, DiagnosticSeverity.Error));
-                        });
-                    } else {
-                        if (!diagnosticsGroups[serviceName])
-                            diagnosticsGroups[serviceName] = new Array<Diagnostic>();
-                        diagnosticsGroups[serviceName].push(new Diagnostic(new Range(0, 0, 0, 1), err.message, DiagnosticSeverity.Error));
-                    }
-                } else {
-                    if (!diagnosticsGroups["workbench"])
-                        diagnosticsGroups["workbench"] = new Array<Diagnostic>();
-                    diagnosticsGroups["workbench"].push(new Diagnostic(new Range(0, 0, 0, 1), err.message, DiagnosticSeverity.Error));
-                }
-            }
-            else if (err.message.includes('Field "Query.') || err.message.includes('Field "Mutation.')) {
-                let fieldName = err.nodes[0].value;
-                let serviceName = '';
-                for (var sn in schemas)
-                    if (schemas[sn].sdl.includes(fieldName))
-                        serviceName = sn;
-
-                if (!diagnosticsGroups[serviceName])
-                    diagnosticsGroups[serviceName] = new Array<Diagnostic>();
-
-                diagnosticsGroups[serviceName].push(new Diagnostic(new Range(0, 0, 0, 1), err.message, DiagnosticSeverity.Error));
-            } else if (err.message.includes('There can be only one type named')) {
-                let definitionNode = err.nodes.find(n => n.kind == "ObjectTypeDefinition");
-                let serviceName = definitionNode.serviceName;
-                let typeToIgnore = definitionNode.name.value;
-
-                let diagnostic = this.getDiagnostic(typeToIgnore, err.message, schemas[serviceName].sdl);
-
-                if (!diagnosticsGroups[serviceName])
-                    diagnosticsGroups[serviceName] = new Array<Diagnostic>();
-
-                diagnosticsGroups[serviceName].push(diagnostic);
-
-            } else if (err.message.includes('Field') && err.message.includes('can only be defined once')) {
-                let serviceName = "workbench"; //definitionNode.serviceName; This is not populated
-                let splitMessage = err.message.split('.');
-                let typeToIgnore = splitMessage[0].split('"')[1];
-                let fieldToIgnore = splitMessage[1].split('"')[0];
-                fieldToIgnore = fieldToIgnore.substring(0, fieldToIgnore.length);
-
-                let diagnostic = new Diagnostic(new Range(0, 0, 0, 0), err.message, DiagnosticSeverity.Error);
-
-                if (!diagnosticsGroups[serviceName])
-                    diagnosticsGroups[serviceName] = new Array<Diagnostic>();
-
-                diagnosticsGroups[serviceName].push(diagnostic);
-            } else {
-                if (!diagnosticsGroups["workbench"])
-                    diagnosticsGroups["workbench"] = new Array<Diagnostic>();
-                diagnosticsGroups["workbench"].push(new Diagnostic(new Range(0, 0, 0, 1), err.message, DiagnosticSeverity.Error));
-            }
-        })
-
-        return diagnosticsGroups;
-    }
-    getDiagnostic(typeToLoc: string, errMessage: string, schema: string) {
-        let range = new Range(0, 0, 0, 0);
-        if (schema) {
-            let typeDefs = parse(schema);
-            let builtSchema = buildFederatedSchema({ typeDefs });
-            const typeInfo = new TypeInfo(builtSchema);
-
-            try {
-                visit(typeDefs,
-                    visitWithTypeInfo(typeInfo, {
-                        enter(node, key, parent, path, ancestors) {
-                            if ((node.kind == 'ObjectTypeDefinition' || node.kind == 'ObjectTypeExtension') && node.name.value === typeToLoc) {
-                                let startLine = node.loc?.startToken.line ? node.loc?.startToken.line - 1 : + 0;
-                                let endLine = node.loc?.endToken.line ? node.loc?.startToken.line - 1 : + 0;
-
-                                range = new Range(startLine, 0, endLine, 6 + typeToLoc.length);
-                                return BREAK;
-                            }
-                        }
-                    }));
-            } catch (err) {
-                console.log(err);
-            }
-        }
-
-        return new Diagnostic(range, errMessage, DiagnosticSeverity.Error);
     }
 }
