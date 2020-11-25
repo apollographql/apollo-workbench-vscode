@@ -2,11 +2,12 @@ import path from 'path';
 import * as vscode from 'vscode';
 import { getAccountGraphs, getGraphSchemasByVariant, getUserMemberships } from '../../studio-gql/graphClient';
 import { GetGraphSchemas_service_implementingServices_FederatedImplementingServices } from '../../studio-gql/types/GetGraphSchemas';
+import { StateManager } from '../stateManager';
 import { PreloadedWorkbenchTopLevel } from './preLoadedTreeItems';
 
 
 export class ApolloStudioGraphsTreeDataProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
-    constructor(private workspaceRoot: string, public context: vscode.ExtensionContext) { }
+    constructor(private workspaceRoot: string) { }
 
     private _onDidChangeTreeData: vscode.EventEmitter<vscode.TreeItem | undefined> = new vscode.EventEmitter<vscode.TreeItem | undefined>();
     readonly onDidChangeTreeData: vscode.Event<vscode.TreeItem | undefined> = this._onDidChangeTreeData.event;
@@ -23,9 +24,9 @@ export class ApolloStudioGraphsTreeDataProvider implements vscode.TreeDataProvid
         if (element) return element.children;
         let items: vscode.TreeItem[] = new Array<vscode.TreeItem>();
 
-        let apiKey = this.context.globalState.get("APOLLO_KEY") as string;
+        let apiKey = StateManager.instance.globalState_userApiKey;
         if (apiKey) {
-            let accountId = this.context.globalState.get("APOLLO_SELCTED_ACCOUNT") as string;
+            let accountId = StateManager.instance.globalState_selectedApolloAccount;
             if (!accountId) {
                 const myAccountIds = await getUserMemberships(apiKey);
                 const memberships = (myAccountIds?.me as any)?.memberships;
@@ -40,7 +41,7 @@ export class ApolloStudioGraphsTreeDataProvider implements vscode.TreeDataProvid
             }
 
             if (accountId) {
-                this.context.globalState.update("APOLLO_SELCTED_ACCOUNT", accountId);
+                StateManager.instance.globalState_selectedApolloAccount = accountId;
 
                 //Create objects for next for loop
                 //  Return A specific account with all graphs

@@ -1,5 +1,7 @@
 import { CancellationToken, CompletionItem, CompletionItemKind, MarkdownString, Position, SnippetString, TextDocument } from "vscode";
-import { WorkbenchFileManager } from "./workbenchFileManager";
+import { extractDefinedEntitiesByService } from "../utils/csdlParser";
+import { getServiceAvailableTypes } from "../utils/schemaParser";
+import { StateManager } from "./stateManager";
 
 export interface FieldWithType {
     field: string;
@@ -23,7 +25,7 @@ export const federationCompletionProvider = {
                 let trimmedText = lineText.trim();
                 let character = trimmedText.charAt(trimmedText.length - 1);
                 if (character == ':') {
-                    let completionTypes = await WorkbenchFileManager.getCurrentSchemaAvailableTypes(serviceName);
+                    let completionTypes = await getServiceAvailableTypes(serviceName);
                     for (var i = 0; i < completionTypes.length; i++) {
                         let typeName = completionTypes[i];
                         let details = '';
@@ -40,7 +42,17 @@ export const federationCompletionProvider = {
                                 details = `Object Types ${typeSplit[1]}`;
                                 completionKind = CompletionItemKind.Class;
                                 documentation.appendText('To learn more about object types, click [here](https://www.apollographql.com/docs/apollo-server/schema/schema/#object-types).');
+                            } else if (typeSplit[0] == 'S') {
+                                details = `Scalar Types ${typeSplit[1]}`;
+                                completionKind = CompletionItemKind.Struct;
+                                documentation.appendText('To learn more about object types, click [here](https://www.apollographql.com/docs/apollo-server/schema/scalars-enums/#custom-scalars).');
                             }
+                            else if (typeSplit[0] == 'E') {
+                                details = `Enum Types ${typeSplit[1]}`;
+                                completionKind = CompletionItemKind.Enum;
+                                documentation.appendText('To learn more about object types, click [here](https://www.apollographql.com/docs/apollo-server/schema/scalars-enums/#enums).');
+                            }
+
 
                             typeName = typeSplit[1];
                         } else {
@@ -58,7 +70,8 @@ export const federationCompletionProvider = {
             else {
                 //Add federation items that can be extended
 
-                let extendableTypes = await WorkbenchFileManager.getWorkbenchExtendableTypes();
+                let extendableTypes = //StateManager.instance.workspaceState_csdlDefinedEntities;
+                    await extractDefinedEntitiesByService();
 
                 for (var sn in extendableTypes)
                     if (sn != serviceName)
@@ -122,12 +135,11 @@ export class FederationEntityExtensionItem extends CompletionItem {
     constructor(typeToExtend: string, keyFields: FieldWithType[]) {
         super(typeToExtend, CompletionItemKind.Reference);
 
-        let comments = `"""\nThis is an extension of type ${typeToExtend}, docs:https://www.apollographql.com/docs/federation/entities/#extending\n"""`;
-        let insertSnippet = new SnippetString(`${comments}\nextend type `);
+        let insertSnippet = new SnippetString(`extend type `);
         let typeExtensionCodeBlock = `extend type ${typeToExtend} @key(fields:"`;
 
         insertSnippet.appendVariable("typeToExtend", typeToExtend);
-        insertSnippet.appendText('@key(fields:"');
+        insertSnippet.appendText(' @key(fields:"');
 
         let keys = '{ '
         for (var i = 0; i < keyFields.length; i++) {

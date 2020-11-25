@@ -1,5 +1,4 @@
-import { resolve } from "path";
-import { CancellationTokenSource, Event, ExtensionContext, window, workspace } from "vscode";
+import { ExtensionContext, window, workspace } from "vscode";
 import { getUserMemberships } from "../studio-gql/graphClient";
 import { CurrentWorkbenchOpsTreeDataProvider } from "./current-workbench-queries/currentWorkbenchOpsTreeDataProvider";
 import { CurrentWorkbenchSchemasTreeDataProvider } from "./current-workbench-schemas/currentWorkbenchSchemasTreeDataProvider";
@@ -8,96 +7,97 @@ import { ApolloStudioGraphsTreeDataProvider } from "./studio-graphs/apolloStudio
 import { ApolloStudioGraphOpsTreeDataProvider } from "./studio-operations/apolloStudioGraphOpsTreeDataProvider";
 
 export class StateManager {
-    static context: ExtensionContext;
-    static localWorkbenchFilesProvider: LocalWorkbenchFilesTreeDataProvider;
-    static currentWorkbenchSchemasProvider: CurrentWorkbenchSchemasTreeDataProvider;
-    static currentWorkbenchOperationsProvider: CurrentWorkbenchOpsTreeDataProvider;
-    static apolloStudioGraphsProvider: ApolloStudioGraphsTreeDataProvider;
-    static apolloStudioGraphOpsProvider: ApolloStudioGraphOpsTreeDataProvider;
+    private context?: ExtensionContext;
 
-    static get workspaceStoragePath(): string | undefined {
-        return StateManager.context.storageUri?.fsPath;
-    }
-    static get workbenchGlobalStoragePath(): string {
-        return StateManager.context.globalStorageUri.fsPath;
+    private static _instance: StateManager;
+    static get instance(): StateManager {
+        if (!this._instance)
+            throw new Error('You must call init() before using the state manager');
+
+        return this._instance;
     }
 
+    static init(context: ExtensionContext) {
+        this._instance = new StateManager();
+        this._instance.context = context;
+        this._instance.localWorkbenchFilesProvider = new LocalWorkbenchFilesTreeDataProvider(workspace.rootPath ?? ".");
+    }
 
-    static get settings_startingServerPort(): number {
+    localWorkbenchFilesProvider: LocalWorkbenchFilesTreeDataProvider = new LocalWorkbenchFilesTreeDataProvider(workspace.rootPath ?? ".");;
+    currentWorkbenchSchemasProvider: CurrentWorkbenchSchemasTreeDataProvider = new CurrentWorkbenchSchemasTreeDataProvider(workspace.rootPath ?? ".");
+    currentWorkbenchOperationsProvider: CurrentWorkbenchOpsTreeDataProvider = new CurrentWorkbenchOpsTreeDataProvider(workspace.rootPath ?? ".");;
+    apolloStudioGraphsProvider: ApolloStudioGraphsTreeDataProvider = new ApolloStudioGraphsTreeDataProvider(workspace.rootPath ?? ".");;
+    apolloStudioGraphOpsProvider: ApolloStudioGraphOpsTreeDataProvider = new ApolloStudioGraphOpsTreeDataProvider();
+
+    get workspaceStoragePath(): string | undefined {
+        return this.context?.storageUri?.fsPath;
+    }
+    get workbenchGlobalStoragePath(): string | undefined {
+        return this.context?.globalStorageUri.fsPath;
+    }
+
+    get settings_startingServerPort(): number {
         return workspace.getConfiguration("apollo-workbench").get('startingServerPort') as number;;
     }
-    static get settings_gatewayServerPort(): number {
+    get settings_gatewayServerPort(): number {
         return workspace.getConfiguration("apollo-workbench").get('gatewayPort') as number;;
     }
-    static get settings_apiKey() {
+    get settings_apiKey() {
         return workspace.getConfiguration("apollo-workbench").get('graphApiKey') as string ?? process.env.APOLLO_KEY ?? "";
     }
-    static get settings_graphVariant() {
+    get settings_graphVariant() {
         return workspace.getConfiguration("apollo-workbench").get('graphVariant') as string ?? process.env.APOLLO_GRAPH_VARIANT ?? "";
     }
-    static get settings_shouldRunOpRegistry() {
+    get settings_shouldRunOpRegistry() {
         return workspace.getConfiguration("apollo-workbench").get('runOperationRegistry') as boolean;
     }
-    static get settings_gatewayReCompositionInterval() {
+    get settings_gatewayReCompositionInterval() {
         return workspace.getConfiguration("apollo-workbench").get('gatewayReCompositionInterval') as number;
     }
-    static get globalState_userApiKey() {
-        return StateManager.context.globalState.get('APOLLO_KEY') as string;
+    private get settings_apolloOrg() {
+        return workspace.getConfiguration("apollo-workbench").get('apolloOrg') as string;
     }
-    static get workspaceState_selectedWorkbenchFile() {
-        return StateManager.context?.workspaceState.get('selectedWbFile') as WorkbenchFile;
+    get globalState_userApiKey() {
+        return this.context?.globalState.get('APOLLO_KEY') as string;
     }
-    static async setAccountId() {
-        let accountId = '';
-        let apiKey = this.context.globalState.get("APOLLO_KEY") as string;
-        if (apiKey) {
-            const myAccountIds = await getUserMemberships(apiKey);
-            const memberships = (myAccountIds?.me as any)?.memberships;
-            if (memberships?.length > 1) {
-                let accountMapping: { [key: string]: string } = {};
-                memberships.map(membership => {
-                    let accountId = membership.account.id;
-                    let accountName = membership.account.name;
-                    accountMapping[accountName] = accountId;
-                });
+    set globalState_userApiKey(apiKey: string) {
+        this.context?.globalState.update('APOLLO_KEY', apiKey);
 
-                let selectedOrgName = await window.showQuickPick(Object.keys(accountMapping), { placeHolder: "Select an account to load graphs from" }) ?? "";
-                accountId = accountMapping[selectedOrgName];
+        if (!apiKey) this.globalState_selectedApolloAccount = "";
 
-            } else {
-                accountId = memberships[0]?.account?.id ?? "";
-            }
+        this.apolloStudioGraphsProvider.refresh();
+        this.apolloStudioGraphOpsProvider.refresh();
+    }
+    get globalState_selectedApolloAccount() {
+        if (this.settings_apolloOrg) return this.settings_apolloOrg;
+        return this.context?.globalState.get('APOLLO_SELCTED_ACCOUNT') as string;
+    }
+    set globalState_selectedApolloAccount(accountId: string) {
+        this.context?.globalState.update("APOLLO_SELCTED_ACCOUNT", accountId);
+    }
+    get globalState_selectedGraph() {
+        return this.context?.globalState.get('APOLLO_SELCTED_GRAPH_ID') as string;
+    }
+    set globalState_selectedGraph(graphId: string) {
+        this.context?.globalState.update("APOLLO_SELCTED_GRAPH_ID", graphId);
 
-            if (accountId) {
-                this.context.globalState.update("APOLLO_SELCTED_GRAPH_ID", "");
-                this.context.globalState.update("APOLLO_SELCTED_ACCOUNT", accountId);
+        this.apolloStudioGraphOpsProvider.refresh();
+    }
 
-                StateManager.apolloStudioGraphsProvider.refresh();
-                StateManager.apolloStudioGraphOpsProvider.refresh();
-            }
-        }
+    get workspaceState_csdlDefinedEntities() {
+        return this.context?.workspaceState.get('csdlDefinedEntities') as any;
     }
-    static async setGraphId(graphId: string) {
-        StateManager.context.globalState.update("APOLLO_SELCTED_GRAPH_ID", graphId);
-        StateManager.apolloStudioGraphOpsProvider.refresh();
+    set workspaceState_csdlDefinedEntities(csdlDefinedEntities) {
+        this.context?.workspaceState.update('csdlDefinedEntities', csdlDefinedEntities);
     }
-    static async delteApiKey() {
-        StateManager.context.globalState.update('APOLLO_KEY', "");
-        StateManager.context.globalState.update('APOLLO_SELCTED_ACCOUNT', "");
-        StateManager.apolloStudioGraphsProvider.refresh();
-        StateManager.apolloStudioGraphOpsProvider.refresh();
+    get workspaceState_selectedWorkbenchFile() {
+        return this.context?.workspaceState.get('selectedWbFile') as WorkbenchFile;
     }
-    static async enterApiKey() {
-        let apiKey = await window.showInputBox({ placeHolder: "Enter User API Key - user:gh.michael-watson:023jr324tj....", })
-        if (apiKey) {
-            StateManager.context.globalState.update('APOLLO_KEY', apiKey);
-            StateManager.apolloStudioGraphsProvider.refresh();
-            StateManager.apolloStudioGraphOpsProvider.refresh();
-        }
-    }
-    static updateSelectedWorkbenchFile(name: string, path: string) {
-        StateManager.context.workspaceState.update("selectedWbFile", { name, path } as WorkbenchFile);
-        StateManager.currentWorkbenchSchemasProvider.refresh();
-        StateManager.currentWorkbenchOperationsProvider.refresh();
+    set workspaceState_selectedWorkbenchFile(wbFile: WorkbenchFile) {
+        this.context?.workspaceState.update("selectedWbFile", wbFile);
+        this.workspaceState_csdlDefinedEntities = {};
+
+        this.currentWorkbenchSchemasProvider.refresh();
+        this.currentWorkbenchOperationsProvider.refresh();
     }
 }

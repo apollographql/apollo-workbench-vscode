@@ -6,11 +6,9 @@ import { WorkbenchSchema } from '../../extension';
 import { WorkbenchFileManager } from '../workbenchFileManager';
 
 export class CurrentWorkbenchSchemasTreeDataProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
-    context: vscode.ExtensionContext;
 
-    constructor(private workspaceRoot: string, context: vscode.ExtensionContext) {
-        this.context = context;
-    }
+    constructor(private workspaceRoot: string) { }
+
     private _onDidChangeTreeData: vscode.EventEmitter<WorkbenchSchemaTreeItem | undefined> = new vscode.EventEmitter<WorkbenchSchemaTreeItem | undefined>();
     readonly onDidChangeTreeData: vscode.Event<WorkbenchSchemaTreeItem | undefined> = this._onDidChangeTreeData.event;
 

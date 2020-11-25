@@ -8,6 +8,7 @@ import { StateManager } from './stateManager';
 import { ServerManager } from './serverManager';
 
 import { WorkbenchFileManager } from './workbenchFileManager';
+import { getComposedSchemaLogCompositionErrors } from '../utils/composition';
 
 export class FileWatchManager {
     private schemasWatcher = chokidar.watch();
@@ -18,7 +19,6 @@ export class FileWatchManager {
         await this.resetWatchers();
         vscode.window.setStatusBarMessage('Workbench Reset...Syncing Files');
         vscode.window.setStatusBarMessage('Workbench File Sync Complete...Starting Listeners');
-
         this.schemasWatcher.add(WorkbenchFileManager.workbenchSchemasFolderPath())
             .on('ready', () => ServerManager.instance.startMocks())
             .on('change', (path) => this.updateSchema(path))
@@ -65,7 +65,7 @@ export class FileWatchManager {
                     delete workbenchFile.schemas[serviceName];
 
                     WorkbenchFileManager.saveSelectedWorkbenchFile(workbenchFile);
-                    StateManager.currentWorkbenchSchemasProvider.refresh();
+                    StateManager.instance.currentWorkbenchSchemasProvider.refresh();
                     await this.start();
                 }
             } catch (err) {
@@ -112,8 +112,8 @@ export class FileWatchManager {
         workbenchFile.schemas[serviceName] = new WorkbenchSchema();
         writeFileSync(`${WorkbenchFileManager.workbenchSchemasFolderPath()}/${serviceName}.graphql`, JSON.stringify(workbenchFile.schemas[serviceName]), { encoding: 'utf-8' })
         WorkbenchFileManager.saveSelectedWorkbenchFile(workbenchFile);
-        StateManager.currentWorkbenchSchemasProvider.refresh();
-        await ServerManager.instance.getComposedSchemaLogCompositionErrors(workbenchFile);
+        StateManager.instance.currentWorkbenchSchemasProvider.refresh();
+        await getComposedSchemaLogCompositionErrors(workbenchFile);
     }
 
     deleteSchema(path: string) {
@@ -130,7 +130,7 @@ export class FileWatchManager {
             WorkbenchFileManager.saveSelectedWorkbenchFile(workbenchFile);
             vscode.window.withProgress({ title: "Running composition", location: vscode.ProgressLocation.Notification }, (progress, token) => {
                 return new Promise(async resolve => {
-                    await ServerManager.instance.getComposedSchemaLogCompositionErrors(workbenchFile as ApolloWorkbench);
+                    await getComposedSchemaLogCompositionErrors(workbenchFile as ApolloWorkbench);
                     resolve();
                 })
             });
@@ -156,7 +156,7 @@ export class FileWatchManager {
 
                     vscode.window.withProgress({ title: "Running composition", location: vscode.ProgressLocation.Notification }, (progress, token) => {
                         return new Promise(async resolve => {
-                            await ServerManager.instance.getComposedSchemaLogCompositionErrors(workbenchFile as ApolloWorkbench);
+                            await getComposedSchemaLogCompositionErrors(workbenchFile as ApolloWorkbench);
                             resolve();
                         })
                     });
@@ -185,7 +185,7 @@ export class FileWatchManager {
             unlinkSync(`${WorkbenchFileManager.workbenchQueriesFolderPath()}/${operationName}.queryplan`);
 
             WorkbenchFileManager.saveSelectedWorkbenchFile(workbenchFile);
-            StateManager.currentWorkbenchOperationsProvider?.refresh();
+            StateManager.instance.currentWorkbenchOperationsProvider?.refresh();
         }
     }
 
@@ -194,7 +194,7 @@ export class FileWatchManager {
         const workbenchQueriesFolder = WorkbenchFileManager.workbenchQueriesFolderPath();
         const uri = vscode.Uri.parse(`${workbenchQueriesFolder}/${operationName}.graphql`);
         await vscode.window.showTextDocument(uri);
-        StateManager.apolloStudioGraphOpsProvider?.refresh();
+        StateManager.instance.apolloStudioGraphOpsProvider?.refresh();
     }
 
     async addOperation(operationName?: string, operationSignature?: string) {
@@ -215,8 +215,8 @@ export class FileWatchManager {
                 wb.queryPlans[operationName] = "";
 
                 WorkbenchFileManager.saveSelectedWorkbenchFile(wb);
-                StateManager.localWorkbenchFilesProvider?.refresh();
-                StateManager.currentWorkbenchOperationsProvider?.refresh();
+                StateManager.instance.localWorkbenchFilesProvider?.refresh();
+                StateManager.instance.currentWorkbenchOperationsProvider?.refresh();
             } else
                 vscode.window.showErrorMessage('You must select a workbench file from the list of local workbench files found or you can create a new workbench file');
         }
@@ -295,14 +295,14 @@ export class FileWatchManager {
             await this.stop();
             vscode.window.setStatusBarMessage(`${key}-Existing Mocks Stopped`);
             await WorkbenchFileManager.deleteWorkbenchFolder();
-            StateManager.updateSelectedWorkbenchFile(workbenchFileName, filePath);
+            StateManager.instance.workspaceState_selectedWorkbenchFile = { name: workbenchFileName, path: filePath };
             this.migrateWorkbenchFileToNext();
             vscode.window.setStatusBarMessage(`${key}-Starting Mocks`);
             await this.start();
             vscode.window.setStatusBarMessage(`${key}-Mocks Started`, 250);
 
             return new Promise(async resolve => {
-                await ServerManager.instance.getComposedSchemaLogCompositionErrors();
+                await getComposedSchemaLogCompositionErrors();
                 resolve();
             });
         });

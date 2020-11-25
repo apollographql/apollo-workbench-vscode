@@ -3,7 +3,7 @@
   "displayName": "Apollo Workbench",
   "description": "Tooling to help you develop and mock federated schemas using Apollo Federation",
   "icon": "media/logo-apollo.png",
-  "version": "0.1.1",
+  "version": "0.1.3",
   "publisher": "michael-watson",
   "engines": {
     "vscode": "^1.34.0"
@@ -25,6 +25,13 @@
           ],
           "default": "https://engine-graphql.apollographql.com/api/graphql",
           "description": "Specifies the url endpoint to be used for the Apollo Studio Graph"
+        },
+        "apollo-workbench.apolloOrg": {
+          "type": [
+            "string"
+          ],
+          "default": "",
+          "description": "This setting is meant to hardcode the org used"
         },
         "apollo-workbench.gatewayPort": {
           "type": [
@@ -341,6 +348,7 @@
   },
   "devDependencies": {
     "@types/graphql": "^14.5.0",
+    "@types/lodash": "^4.14.165",
     "@types/node": "^13.13.15",
     "@types/vscode": "^1.34.0",
     "@typescript-eslint/eslint-plugin": "^3.0.2",
@@ -350,12 +358,16 @@
   },
   "dependencies": {
     "@apollo/client": "^3.2.5",
-    "@apollo/federation": "^0.20.4",
+    "@apollo/federation": "https://1132-252760990-gh.circle-artifacts.com/0/packed/%40apollo/federation/federation-0.20.4.tgz",
     "@apollo/gateway": "^0.21.1",
     "@apollo/query-planner-wasm": "0.0.6",
     "apollo-server": "^2.19.0",
     "apollo-server-plugin-operation-registry": "^0.7.2",
     "chokidar": "^3.4.3",
-    "graphql": "^14.7.0"
+    "graphql": "^14.7.0",
+    "graphql-language-service-interface": "^2.4.2",
+    "graphql-language-service-parser": "^1.6.4",
+    "graphql-language-service-utils": "^2.4.3",
+    "lodash": "^4.17.20"
   }
 }

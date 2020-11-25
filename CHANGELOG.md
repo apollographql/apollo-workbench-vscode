@@ -1,3 +1,16 @@
+## Apollo Workbench VSCode 0.1.3
+
+### Improvements:
+
+- Cache csdl parsing - was taking a long time to load for large schemas
+
+## Apollo Workbench VSCode 0.1.2
+
+### Improvements:
+
+- Add graphql-parser functions for reading available type/extension/scalar/enum/interface definitions when developing
+- Added better location/type mapping
+
 ## Apollo Workbench VSCode 0.1.1
 
 ### Improvements:
