@@ -229,11 +229,11 @@ export class FileProvider implements FileSystemProvider {
         await window.showTextDocument(WorkbenchUri.parse(operationName, WorkbenchUriType.QUERIES));
     }
     async promptToAddOperation() {
-        let operationName = await window.showInputBox({ placeHolder: "Enter a unique name for the schema/service" }) ?? "";
+        let operationName = await window.showInputBox({ placeHolder: "Enter a unique name for the operation" }) ?? "";
         if (!operationName) {
             outputChannel.appendLine(`Create operation cancelled - No name entered.`);
         } else {
-            await this.addOperation(operationName);
+            await FileProvider.instance.addOperation(operationName);
         }
     }
     async addOperation(operationName: string, operationSignature?: string) {
@@ -269,7 +269,9 @@ export class FileProvider implements FileSystemProvider {
             } else if (uri.path.includes('/queryplans')) {
                 const operationName = uri.query;
                 const queryPlan = this.currrentWorkbenchOperationQueryPlans[operationName];
-                return Buffer.from(queryPlan);
+                if (queryPlan)
+                    return Buffer.from(queryPlan);
+                return Buffer.from('Either there is no valid composed schema or the query is not valid\nUnable to generate query plan');
             } else if (uri.path == '/csdl.graphql') {
                 return Buffer.from(this.currrentWorkbench.composedSchema);
             }
@@ -283,6 +285,16 @@ export class FileProvider implements FileSystemProvider {
                 const serviceName = uri.query;
                 this.currrentWorkbenchSchemas[serviceName].sdl = stringContent;
                 this.saveCurrentWorkbench();
+
+                //Come up with your list of things to be used in linting
+
+                //Parse individual file
+                //  This should include the 3 criteria:
+                //      1. missing @external
+                //      2. extending a type with no @key defined
+                //      3. mismastched value types/enums
+                //If Individual file is valid sdl, then try composition
+                //  Remove individual parse errors from composition errors
                 getComposedSchemaLogCompositionErrors(this.currrentWorkbench);
             } else if (uri.path.includes('/queries')) {
                 const operationName = uri.query;

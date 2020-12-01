@@ -91,8 +91,8 @@ export class EntityObjectTypeCompletionItem extends CompletionItem {
     constructor() {
         super('Entity Object type', CompletionItemKind.Snippet);
 
-        // let comments = `"""\nThis is an Entity, docs:https://www.apollographql.com/docs/federation/entities/\nYou will need to define a __resolveReference resolver for the type you define, docs: https://www.apollographql.com/docs/federation/entities/#resolving\n"""`;
-        let insertSnippet = new SnippetString(`type `);
+        let comments = `"""\nThis is an Entity, docs:https://www.apollographql.com/docs/federation/entities/\nYou will need to define a __resolveReference resolver for the type you define, docs: https://www.apollographql.com/docs/federation/entities/#resolving\n"""`;
+        let insertSnippet = new SnippetString(`${comments}\ntype `);
         insertSnippet.appendTabstop(1);
         insertSnippet.appendText(` @key(fields:"id") {\n\tid:ID!\n}`);
 

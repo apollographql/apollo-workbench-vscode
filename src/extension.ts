@@ -14,6 +14,7 @@ import { enterApiKey, setAccountId } from './utils/vscodeHelpers';
 import { FileProvider, WorkbenchUri, WorkbenchUriType } from './utils/files/fileProvider';
 import { GettingStartedTreeItem } from './workbench/local-workbench-files/gettingStartedTreeItems';
 import { GettingStartedDocProvider } from './workbench/gettingStartedDocProvider';
+import { ApolloConfig, schemaProviderFromConfig } from 'apollo-language-server';
 
 export const compositionDiagnostics: vscode.DiagnosticCollection = vscode.languages.createDiagnosticCollection("composition-errors");
 export const outputChannel = vscode.window.createOutputChannel("Apollo Workbench");
@@ -144,6 +145,14 @@ export async function activate(context: vscode.ExtensionContext) {
 				await vscode.window.showTextDocument(editor.document);
 			}
 		})
+	});
+	let queriesFolder = WorkbenchUri.parse('*', WorkbenchUriType.QUERIES).fsPath;
+	let schemasFolder = WorkbenchUri.parse('*').path;
+	console.log(queriesFolder);
+	let config = new ApolloConfig({ service: { localSchemaFile: WorkbenchUri.csdl().path, includes: [queriesFolder], excludes: [schemasFolder] } })
+	let provider = schemaProviderFromConfig(config);
+	provider.onSchemaChange(h => {
+		console.log(h);
 	});
 }
 

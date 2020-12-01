@@ -3,7 +3,7 @@
   "displayName": "Apollo Workbench",
   "description": "Tooling to help you develop and mock federated schemas using Apollo Federation",
   "icon": "media/logo-apollo.png",
-  "version": "0.1.3",
+  "version": "0.2.0",
   "publisher": "michael-watson",
   "engines": {
     "vscode": "^1.34.0"
@@ -389,6 +389,7 @@
     "@apollo/federation": "https://1132-252760990-gh.circle-artifacts.com/0/packed/%40apollo/federation/federation-0.20.4.tgz",
     "@apollo/gateway": "^0.21.1",
     "@apollo/query-planner-wasm": "0.0.6",
+    "apollo-language-server": "^1.24.1",
     "apollo-server": "^2.19.0",
     "apollo-server-plugin-operation-registry": "^0.7.2",
     "chokidar": "^3.4.3",
@@ -396,6 +397,7 @@
     "graphql-language-service-interface": "^2.4.2",
     "graphql-language-service-parser": "^1.6.4",
     "graphql-language-service-utils": "^2.4.3",
-    "lodash": "^4.17.20"
+    "lodash": "^4.17.20",
+    "vscode-languageclient": "^6.1.3"
   }
 }
