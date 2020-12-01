@@ -13,11 +13,10 @@ export interface FieldWithType {
 export const federationCompletionProvider = {
     async provideCompletionItems(document: TextDocument, position: Position, token: CancellationToken) {
         //Only provide completion items for schemas open in workbench
-        if (document.uri.fsPath.includes('workbench/schemas')) {
+        if (document.uri.scheme == 'workbench') {
             let line = document.lineAt(position.line);
             let lineText = line.text;
-            let splitPath = document.uri.fsPath.split('.graphql')[0].split('/');
-            let serviceName = splitPath[splitPath.length - 1];
+            let serviceName = document.uri.query;
 
             let completionItems = new Array<FederationEntityExtensionItem>();
             if (lineText && serviceName) {

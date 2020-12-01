@@ -3,7 +3,7 @@ import { parse } from 'graphql';
 import { Headers } from "apollo-server-env";
 import { ServiceDefinition } from '@apollo/federation';
 import { ServerManager } from "./workbench/serverManager";
-import { WorkbenchFileManager } from "./workbench/workbenchFileManager";
+import { FileProvider } from "./utils/files/fileProvider";
 
 function log(message: string) { console.log(`GATEWAY-${message}`); }
 
@@ -11,7 +11,7 @@ export class OverrideApolloGateway extends ApolloGateway {
     protected async loadServiceDefinitions(config: GatewayConfig): ReturnType<Experimental_UpdateServiceDefinitions> {
         let newDefinitions: Array<ServiceDefinition> = [];
 
-        let wb = WorkbenchFileManager.getSelectedWorkbenchFile();
+        let wb = FileProvider.instance.currrentWorkbench;
         if (wb) {
             for (var serviceName in wb.schemas) {
                 const service = wb.schemas[serviceName];

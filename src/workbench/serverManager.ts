@@ -5,7 +5,7 @@ import { ApolloServerPluginUsageReportingDisabled } from 'apollo-server-core';
 
 import { StateManager } from "./stateManager";
 import { OverrideApolloGateway } from "../gateway";
-import { WorkbenchFileManager } from "./workbenchFileManager";
+import { FileProvider } from "../utils/files/fileProvider";
 
 const { name } = require('../../package.json');
 
@@ -24,7 +24,7 @@ export class ServerManager {
 
     startMocks() {
         console.log(`${name}:Setting up mocks`);
-        let workbenchFile = WorkbenchFileManager.getSelectedWorkbenchFile();
+        let workbenchFile = FileProvider.instance.currrentWorkbench;
         if (workbenchFile) {
             console.log(`${name}:Mocking workbench file: ${workbenchFile.graphName}`);
             for (var serviceName in workbenchFile.schemas) {
@@ -47,6 +47,7 @@ export class ServerManager {
             }
         }
         this.portMapping = {};
+        this.stopGateway();
     }
     startServer(serviceName: string, schemaString: string) {
         const port = this.portMapping[serviceName] ?? this.getNextAvailablePort();
@@ -105,8 +106,16 @@ export class ServerManager {
         if (this.portMapping[serviceName])
             delete this.portMapping[serviceName];
     }
+    stopGateway() {
+        let gatewayPort = StateManager.settings_gatewayServerPort;
+        if (this.serversState[gatewayPort]) {
+            console.log(`${name}:Stopping previous running gateway`);
+            this.serversState[gatewayPort].stop();
+            delete this.serversState[gatewayPort];
+        }
+    }
     startGateway() {
-        let gatewayPort = StateManager.instance.settings_gatewayServerPort;
+        let gatewayPort = StateManager.settings_gatewayServerPort;
         if (this.serversState[gatewayPort]) {
             console.log(`${name}:Stopping previous running gateway`);
             this.serversState[gatewayPort].stop();
@@ -119,13 +128,13 @@ export class ServerManager {
             this.serversState['gateway'] = new OverrideApolloGateway({ debug: true });
         } else {
             console.log(`${name}:Changing gateway instance polling interval to 10s`);
-            this.serversState['gateway'].experimental_pollInterval = StateManager.instance.settings_gatewayReCompositionInterval ?? 10000;
+            this.serversState['gateway'].experimental_pollInterval = StateManager.settings_gatewayReCompositionInterval ?? 10000;
         }
 
-        const graphApiKey = StateManager.instance.settings_apiKey;
-        const graphVariant = StateManager.instance.settings_graphVariant;
+        const graphApiKey = StateManager.settings_apiKey;
+        const graphVariant = StateManager.settings_graphVariant;
         let plugins = [ApolloServerPluginUsageReportingDisabled()];
-        const shouldRunOpReg = StateManager.instance.settings_shouldRunOpRegistry;
+        const shouldRunOpReg = StateManager.settings_shouldRunOpRegistry;
         if (shouldRunOpReg) {
             console.log(`${name}:Enabling operation registry for ${graphVariant}`);
             plugins = [ApolloServerPluginUsageReportingDisabled(), plugin({ graphVariant, forbidUnregisteredOperations: shouldRunOpReg, debug: true })()];
@@ -152,7 +161,7 @@ export class ServerManager {
         delete this.serversState[port];
     }
     private getNextAvailablePort() {
-        let port = StateManager.instance.settings_startingServerPort;
+        let port = StateManager.settings_startingServerPort;
         while (this.serversState[port])
             port++;
 

@@ -1,14 +1,14 @@
-import { workspace } from "vscode";
+import { Uri, workspace } from "vscode";
 
 import { runOnlineParser } from './runOnlineParser';
 import { FieldWithType } from "../workbench/federationCompletionProvider";
-import { WorkbenchFileManager } from "../workbench/workbenchFileManager";
+import { WorkbenchUri } from "./files/fileProvider";
 
 export async function extractDefinedEntitiesByService() {
     let extendables: { [serviceName: string]: { type: string, keyFields: FieldWithType[] }[] } = {};
     try {
         let directivesState: { fields: Partial<FieldWithType>[], type?: string, serviceName?: string } = { fields: [] };
-        let textDoc = await workspace.openTextDocument(WorkbenchFileManager.composedSchemaPath);
+        let textDoc = await workspace.openTextDocument(WorkbenchUri.csdl());
 
         runOnlineParser(textDoc.getText(), (state, range, tokens) => {
             switch (state.kind) {
@@ -54,7 +54,9 @@ export async function extractDefinedEntitiesByService() {
                             fieldTypeThing.type = `${type?.type}!`;
                     }
                     break;
-
+                case "FieldDef":
+                    let test = state.name;
+                    break;
                 case "ObjectTypeDef":
                     let typeName = state.name;
                     let serviceName = directivesState.serviceName;

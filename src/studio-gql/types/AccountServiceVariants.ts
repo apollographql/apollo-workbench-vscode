@@ -7,6 +7,11 @@
 // GraphQL query operation: AccountServiceVariants
 // ====================================================
 
+export interface AccountServiceVariants_account_services_devGraphOwner {
+  __typename: "User";
+  id: string;
+}
+
 export interface AccountServiceVariants_account_services_variants {
   __typename: "GraphVariant";
   /**
@@ -19,6 +24,7 @@ export interface AccountServiceVariants_account_services {
   __typename: "Service";
   id: string;
   title: string;
+  devGraphOwner: AccountServiceVariants_account_services_devGraphOwner | null;
   /**
    * The list of variants that exist for this graph
    */

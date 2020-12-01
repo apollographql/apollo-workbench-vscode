@@ -54,6 +54,9 @@ export class ApolloStudioGraphsTreeDataProvider implements vscode.TreeDataProvid
                     for (var j = 0; j < services?.account?.services.length ?? 0; j++) {
                         //Cast graph
                         let graph = services?.account?.services[j];
+                        if (graph.devGraphOwner?.id) {
+                            continue;
+                        }
                         //Create objects for next for loop
                         //  Return A specific Graph with all variants
                         let graphTreeItem = new StudioGraphTreeItem(graph.id, graph.title);
@@ -64,31 +67,8 @@ export class ApolloStudioGraphsTreeDataProvider implements vscode.TreeDataProvid
                             //Cast graph variant
                             let graphVariant = graph.variants[k];
                             graphTreeItem.variants.push(graphVariant.name);
-                            //Create objects for next for loop
-                            //  Return A specific graph variant with all implementing services
+
                             let accountgraphVariantTreeItem = new StudioGraphVariantTreeItem(graph.id, graphVariant.name);
-                            // //TODO: The logic below should be moved to when the cell is clicked
-                            // //After investigating, it seems that we can't handle the open/close functinolaty to conditionally load the schemas for a given tag
-                            // //If you opened the carrot before clicking on the row, since there is no way to refresh a single cell, it doesn't show any data 
-                            // let graphVariantServiceTreeItems = new Array<StudioGraphVariantServiceTreeItem>();
-
-                            // //Query Studio for graph by variant
-                            // let variantServices = await getGraphSchemasByVariant(apiKey, graph.id, graphVariant.name);
-                            // let implementingServices = variantServices.service?.implementingServices as GetGraphSchemas_service_implementingServices_FederatedImplementingServices;
-
-                            // if (implementingServices) {
-                            //     //Loop through implemnting services and add to return objects
-                            //     for (var l = 0; l < implementingServices.services.length; l++) {
-                            //         let implemntingService = implementingServices.services[l];
-                            //         graphVariantServiceTreeItems.push(new StudioGraphVariantServiceTreeItem(graph.id, graphVariant.name, implemntingService.name, implemntingService.activePartialSchema.sdl));
-                            //     }
-                            // }
-                            // else {
-                            //     let schema = variantServices.service?.schema?.document;
-                            //     graphVariantServiceTreeItems.push(new StudioGraphVariantServiceTreeItem(graph.id, graphVariant.name, 'monolith-schema', schema));
-                            // }
-                            // // Set the implementing service tree items on the return objects
-                            // accountgraphVariantTreeItem.children = graphVariantServiceTreeItems;
                             graphVariantTreeItems.push(accountgraphVariantTreeItem);
                         }
                         //Set the implementing service tree items on the return objects 
@@ -101,7 +81,8 @@ export class ApolloStudioGraphsTreeDataProvider implements vscode.TreeDataProvid
                 items.push(accountTreeItem);
             }
 
-            items.push(new PreloadedWorkbenchTopLevel());
+            if (StateManager.settings_displayExampleGraphs)
+                items.push(new PreloadedWorkbenchTopLevel());
         } else {
             items.push(new NotLoggedInTreeItem());
             items.push(new vscode.TreeItem("Login to see Example Graphs", vscode.TreeItemCollapsibleState.None));
@@ -109,9 +90,6 @@ export class ApolloStudioGraphsTreeDataProvider implements vscode.TreeDataProvid
                 if (response === "Login")
                     vscode.commands.executeCommand("extension.enterStudioApiKey");
             });
-            // let response = await vscode.window.showInformationMessage('No user api key was found.', "Login");
-            // if (response === "Login")
-            //     vscode.commands.executeCommand("extension.enterStudioApiKey");
         }
 
         return items;

@@ -21,8 +21,10 @@ export class ApolloStudioGraphOpsTreeDataProvider implements vscode.TreeDataProv
 
         let items: { [operationName: string]: { operationId: string, operationSignature: string } } = {};
         let apiKey = StateManager.instance.globalState_userApiKey;
+        if (!apiKey) return [new NotLoggedInTreeItem()];
+
         let selectedGraphId = StateManager.instance.globalState_selectedGraph;
-        if (apiKey && selectedGraphId) {
+        if (selectedGraphId) {
             //Create objects for next for loop
             //  Return A specific account with all graphs
             let graphOps = await getGraphOps(apiKey, selectedGraphId);
@@ -34,8 +36,7 @@ export class ApolloStudioGraphOpsTreeDataProvider implements vscode.TreeDataProv
                     }
                 })
             }
-        } else
-            return [new NotLoggedInTreeItem()];
+        } else return [new vscode.TreeItem('Select a graph above to load operations from Apollo Studio', vscode.TreeItemCollapsibleState.None)]
 
         let itemsToReturn: vscode.TreeItem[] = new Array<vscode.TreeItem>();
 

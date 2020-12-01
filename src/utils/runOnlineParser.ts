@@ -43,126 +43,148 @@ function runOnlineParserInternal(documentText: string): Rule[] {
     let mutableState: State = { ...parser.startState() };
     let savedAncestorStates: Node[] = [];
     const allRules: Rule[] = [];
+    let blockComment = false;
     lines.forEach((line, lineIndex) => {
         const stream = new CharacterStream(`${line}\n`);
         while (!stream.eol()) {
-            const tokenType = parser.token(stream, mutableState);
-            // Aliased fields do not have their alias in the state, instead we get
-            // two different names at different steps in the rule. Attach the name
-            // for the first two steps as an alias.
-            if (mutableState.kind === 'AliasedField' && mutableState.step < 2) {
-                // mutableState.alias = mutableState.name;
-            }
-            const state: State = { ...mutableState };
-            const ancestorStates = getAncestorStates(state);
-            // monaco positions
-            const lineNumber = lineIndex;
-            const startColumn = stream.getStartOfToken();
-            const endColumn = stream.getCurrentPosition();
-            const tokenRange = new Range(
-                lineNumber,
-                startColumn,
-                lineNumber,
-                endColumn,
-            );
-            const lastState = savedAncestorStates.length
-                ? savedAncestorStates.slice(-1)[0]
-                : undefined;
-            if (
-                lastState &&
-                lastState.state.kind === state.kind &&
-                lastState.state.step <= state.step &&
-                ancestorStates.length === savedAncestorStates.length
-            ) {
-                // Continuing previous rule
-                // For each ancestor, send an incomplete callback
-                // These are non null as we checked
-                // `ancestorStates.length === savedAncestorStates.length` above
-                (zip(ancestorStates, savedAncestorStates) as [
-                    State,
-                    Node,
-                ][]).forEach(
-                    ([ancestorState, savedAncestorState]: [State, Node]) => {
-                        // eslint-disable-next-line no-param-reassign
-                        savedAncestorState.state = ancestorState;
-                        if (tokenType !== 'ws') {
-                            // eslint-disable-next-line no-param-reassign
-                            savedAncestorState.range = savedAncestorState.range.with(
-                                undefined,
-                                new Position(lineNumber, endColumn)
-                            );
-                        }
-                    },
-                );
+            // The parser doesn not handle multi line comments well, patch support
+            // for that in
+            if (blockComment) {
+                const restOfLine = line.slice(stream.getCurrentPosition());
+                const match = restOfLine.match(/^([^"]|("(?!"")))*"""/);
+                const matchEnd = match?.[0].length;
+                if (matchEnd) {
+                    blockComment = false;
+                    stream.skipTo(matchEnd);
+                } else {
+                    stream.skipToEnd();
+                }
             } else {
-                // Starting a new rule
-                let ancestorsToAdd: Node[] = [];
-                let includePunctuation = false;
-                // For each node that this is not a part of (complete nodes), call
-                // the callback
-                const ancestorPairs = zip(ancestorStates, savedAncestorStates);
-                ancestorPairs.reverse();
-                // eslint-disable-next-line no-loop-func
-                ancestorPairs.forEach(([ancestorState, savedAncestorState]) => {
-                    // Node matched, update saved node
-                    if (
-                        ancestorState &&
-                        savedAncestorState &&
-                        savedAncestorState.state.kind === ancestorState.kind &&
-                        (savedAncestorState.state.step === ancestorState.step ||
-                            ancestorState.step > 1 ||
-                            // `FragmentSpread`s start parsing at step 1
-                            (ancestorState.step > 0 &&
-                                savedAncestorState.state.kind !== 'FragmentSpread'))
-                    ) {
-                        // eslint-disable-next-line no-param-reassign
-                        savedAncestorState.state = ancestorState;
-                        if (tokenType !== 'ws') {
+                const tokenType = parser.token(stream, mutableState);
+                // Aliased fields do not have their alias in the state, instead we get
+                // two different names at different steps in the rule. Attach the name
+                // for the first two steps as an alias.
+                if (mutableState.kind === 'AliasedField' && mutableState.step < 2) {
+                    // mutableState.alias = mutableState.name;
+                }
+                const state: State = { ...mutableState };
+                const ancestorStates = getAncestorStates(state);
+                // monaco positions
+                const lineNumber = lineIndex + 1;
+                const startColumn = stream.getStartOfToken();
+                const endColumn = stream.getCurrentPosition();
+                const tokenText = line.slice(
+                    stream.getStartOfToken(),
+                    stream.getCurrentPosition(),
+                );
+                if (tokenType === 'invalidchar' && tokenText === '"""') {
+                    blockComment = true;
+                }
+                const tokenRange = new Range(
+                    lineNumber,
+                    startColumn,
+                    lineNumber,
+                    endColumn,
+                );
+                const lastState = savedAncestorStates.length
+                    ? savedAncestorStates.slice(-1)[0]
+                    : undefined;
+                if (
+                    lastState &&
+                    lastState.state.kind === state.kind &&
+                    lastState.state.step <= state.step &&
+                    ancestorStates.length === savedAncestorStates.length
+                ) {
+                    // Continuing previous rule
+                    // For each ancestor, send an incomplete callback
+                    // These are non null as we checked
+                    // `ancestorStates.length === savedAncestorStates.length` above
+                    (zip(ancestorStates, savedAncestorStates) as [
+                        State,
+                        Node,
+                    ][]).forEach(
+                        ([ancestorState, savedAncestorState]: [State, Node]) => {
                             // eslint-disable-next-line no-param-reassign
-                            savedAncestorState.range = savedAncestorState.range.with(
-                                undefined,
-                                new Position(lineNumber, endColumn)
-                            );
-                        }
-                    } else {
-                        if (savedAncestorState) {
-                            // Update node and call the complete callback.
-                            // Punctuation is not included as part of the rule, add it
-                            // manually.
-                            const rule = savedAncestorState.state.rule;
-                            const finalRule = Array.isArray(rule) && rule.slice(-1)[0];
-                            if (
-                                includePunctuation ||
-                                (finalRule &&
-                                    typeof finalRule === 'object' &&
-                                    finalRule.style === 'punctuation')
-                            ) {
+                            savedAncestorState.state = ancestorState;
+                            if (tokenType !== 'ws' && state.kind !== 'Invalid') {
                                 // eslint-disable-next-line no-param-reassign
                                 savedAncestorState.range = savedAncestorState.range.with(
                                     undefined,
-                                    new Position(lineNumber, startColumn + 1)
+                                    new Position(lineNumber, endColumn)
                                 );
-                                includePunctuation = true;
                             }
-                            allRules.push(savedAncestorState);
-                            savedAncestorStates.pop();
+                        },
+                    );
+                } else {
+                    // Starting a new rule
+                    let ancestorsToAdd: Node[] = [];
+                    let includePunctuation = false;
+                    // For each node that this is not a part of (complete nodes), call
+                    // the callback
+                    const ancestorPairs = zip(ancestorStates, savedAncestorStates);
+                    ancestorPairs.reverse();
+                    // eslint-disable-next-line no-loop-func
+                    ancestorPairs.forEach(([ancestorState, savedAncestorState]) => {
+                        // Node matched, update saved node
+                        if (
+                            ancestorState &&
+                            savedAncestorState &&
+                            savedAncestorState.state.kind === ancestorState.kind &&
+                            (savedAncestorState.state.step === ancestorState.step ||
+                                ancestorState.step > 1 ||
+                                // `FragmentSpread`s start parsing at step 1
+                                (ancestorState.step > 0 &&
+                                    savedAncestorState.state.kind !== 'FragmentSpread'))
+                        ) {
+                            // eslint-disable-next-line no-param-reassign
+                            savedAncestorState.state = ancestorState;
+                            if (tokenType !== 'ws' && state.kind !== 'Invalid') {
+                                // eslint-disable-next-line no-param-reassign
+                                savedAncestorState.range = savedAncestorState.range.with(
+                                    undefined,
+                                    new Position(lineNumber, endColumn)
+                                );
+                            }
+                        } else {
+                            if (savedAncestorState) {
+                                // Update node and call the complete callback.
+                                // Punctuation is not included as part of the rule, add it
+                                // manually.
+                                const rule = savedAncestorState.state.rule;
+                                const finalRule = Array.isArray(rule) && rule.slice(-1)[0];
+                                if (
+                                    includePunctuation ||
+                                    (finalRule &&
+                                        typeof finalRule === 'object' &&
+                                        finalRule.style === 'punctuation')
+                                ) {
+                                    // eslint-disable-next-line no-param-reassign
+                                    savedAncestorState.range = savedAncestorState.range.with(
+                                        undefined,
+                                        new Position(lineNumber, startColumn + 1),
+                                    );
+                                    includePunctuation = true;
+                                }
+                                allRules.push(savedAncestorState);
+                                savedAncestorStates.pop();
+                            }
+                            if (ancestorState) {
+                                const newAncestor = {
+                                    state: ancestorState,
+                                    range: tokenRange,
+                                    tokens: [],
+                                };
+                                ancestorsToAdd = [newAncestor, ...ancestorsToAdd];
+                            }
                         }
-                        if (ancestorState) {
-                            const newAncestor = {
-                                state: ancestorState,
-                                range: tokenRange,
-                                tokens: [],
-                            };
-                            ancestorsToAdd = [newAncestor, ...ancestorsToAdd];
-                        }
-                    }
-                });
-                savedAncestorStates = [...savedAncestorStates, ...ancestorsToAdd];
-            }
-            if (tokenType !== 'ws' && savedAncestorStates.length) {
-                savedAncestorStates.forEach((savedAncestorState) => {
-                    savedAncestorState.tokens.push({ range: tokenRange, state });
-                });
+                    });
+                    savedAncestorStates = [...savedAncestorStates, ...ancestorsToAdd];
+                }
+                if (tokenType !== 'ws' && savedAncestorStates.length) {
+                    savedAncestorStates.forEach((savedAncestorState) => {
+                        savedAncestorState.tokens.push({ range: tokenRange, state });
+                    });
+                }
             }
         }
         // If we reached an invalid state, reset to the base Document state

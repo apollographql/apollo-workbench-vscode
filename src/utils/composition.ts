@@ -2,17 +2,18 @@ import { composeAndValidate, ComposedGraphQLSchema } from "@apollo/federation";
 import { existsSync } from "fs";
 import { GraphQLError, parse } from "graphql";
 import { Diagnostic, DiagnosticSeverity, Range, Uri } from "vscode";
-import { ApolloWorkbench, compositionDiagnostics } from "../extension";
+import { compositionDiagnostics } from "../extension";
 import { StateManager } from "../workbench/stateManager";
-import { WorkbenchFileManager } from "../workbench/workbenchFileManager";
 import { extractDefinedEntitiesByService } from "./csdlParser";
+import { FileProvider, WorkbenchUri, WorkbenchUriType } from "./files/fileProvider";
+import { ApolloWorkbenchFile } from "./files/fileTypes";
 import { getRangeForFieldNamedType, getRangeForTypeDef } from "./schemaParser";
 import { getLastLineOfText, getLineText } from "./vscodeHelpers";
 
 
-export async function getComposedSchemaLogCompositionErrors(workbenchFile?: ApolloWorkbench): Promise<void> {
+export async function getComposedSchemaLogCompositionErrors(workbenchFile?: ApolloWorkbenchFile): Promise<void> {
     if (!workbenchFile)
-        workbenchFile = WorkbenchFileManager.getSelectedWorkbenchFile() as ApolloWorkbench;
+        workbenchFile = FileProvider.instance.currrentWorkbench;
     try {
         const { errors, composedSdl } = getComposedSchema(workbenchFile);
         if (errors.length > 0) {
@@ -26,18 +27,14 @@ export async function getComposedSchemaLogCompositionErrors(workbenchFile?: Apol
                 if (sn == 'workbench') {
                     compositionDiagnostics.set(Uri.file(StateManager.instance.workspaceState_selectedWorkbenchFile.path), diagnosticsGroups[sn]);
                 } else
-                    compositionDiagnostics.set(Uri.file(`${WorkbenchFileManager.workbenchSchemasFolderPath()}/${sn}.graphql`), diagnosticsGroups[sn]);
+                    compositionDiagnostics.set(WorkbenchUri.parse(sn), diagnosticsGroups[sn]);
             }
         } else
             compositionDiagnostics.clear();
 
         if (composedSdl) {
-            workbenchFile.composedSchema = composedSdl;
-            WorkbenchFileManager.saveComposedSdl(composedSdl);
-            WorkbenchFileManager.saveSelectedWorkbenchFile(workbenchFile);
-
-            // let extendableTypes = await extractDefinedEntitiesByService();
-            // StateManager.instance.workspaceState_csdlDefinedEntities = extendableTypes;
+            FileProvider.instance.currrentWorkbench.composedSchema = composedSdl;
+            FileProvider.instance.saveCurrentWorkbench();
         }
     }
     catch (err) {
@@ -45,7 +42,7 @@ export async function getComposedSchemaLogCompositionErrors(workbenchFile?: Apol
     }
 }
 
-export function getComposedSchema(workbenchFile: ApolloWorkbench) {
+export function getComposedSchema(workbenchFile: ApolloWorkbenchFile) {
     let sdls: any = [];
     let errors: GraphQLError[] = [];
     for (var key in workbenchFile.schemas) {
@@ -115,7 +112,7 @@ export function getComposedSchema(workbenchFile: ApolloWorkbench) {
     return { ...compositionResults };
 }
 
-async function handleErrors(wb: ApolloWorkbench, errors: GraphQLError[]) {
+export async function handleErrors(wb: ApolloWorkbenchFile, errors: GraphQLError[]) {
     let schemas = wb.schemas;
     let diagnosticsGroups: { [key: string]: Diagnostic[]; } = {};
 
@@ -135,10 +132,7 @@ async function handleErrors(wb: ApolloWorkbench, errors: GraphQLError[]) {
 
                 range = new Range(0, schemasIndex, 0, schemasIndex + emptySchemas.length);
             } else if (error.extensions?.noSchemaDefined || error.extensions?.invalidSchema) {
-                let schemaFilePath = `${WorkbenchFileManager.workbenchSchemasFolderPath()}/${serviceName}.graphql`;
-
-                while (!existsSync(schemaFilePath))
-                    await new Promise(resolve => setTimeout(resolve, 5))
+                // let schemaFilePath = `${WorkbenchFileManager.workbenchSchemasFolderPath()}/${serviceName}.graphql`;
 
                 if (error.extensions.unexpectedName) {
                     let unexpectedName = error.extensions.unexpectedName;
@@ -158,7 +152,7 @@ async function handleErrors(wb: ApolloWorkbench, errors: GraphQLError[]) {
 
                     range = new Range(lineNumber - 1, 0, lineNumber, 0);
                 } else {
-                    let lastLine = await getLastLineOfText(schemaFilePath);
+                    let lastLine = await getLastLineOfText(serviceName);
 
                     range = new Range(0, 0, lastLine.lineNumber, lastLine.text.length);
                 }

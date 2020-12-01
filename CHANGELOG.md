@@ -1,3 +1,29 @@
+## Apollo Workbench VSCode 0.2.1 (upcoming)
+
+- Better composition error pointing
+- Open any fodler
+- Intellisense for writing queries
+
+## Apollo Workbench VSCode 0.2.0
+
+### Potential Breaking Changes
+
+Extension now utilizes a file provider and workbench schema/query/queryplan files are no longer created in a `.workbench` folder. Any changes to a local schema file (that have not been synced to the workbench file) in previous extension versions will not update the workbench file. It is recommended to delete any `.workbench` files
+
+### Improvements:
+
+- Moved from chokidar to using a VSCode file provider
+- Added Getting Started section to local schema files tree, auto-preview markdown files for getting started
+- Mocks are no longer automatically started as they could linger in the background of a vscode window that had the extension opened at one point. Start/Stop commands have been introduced to toggle mocking
+
+### Known Bugs:
+
+- Intellisense does not currently recognize composite keys or multiple keys
+- Composition Errors sometimes don't point at the correct location in the document
+- Intellisense type completion is currently missing from writing operations, to be added back in shortly
+- Currently doesn't support opening workbench in a complex folder (i.e. a node project with a node_modules folder)
+  -
+
 ## Apollo Workbench VSCode 0.1.3
 
 ### Improvements:

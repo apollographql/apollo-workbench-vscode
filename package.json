@@ -3,7 +3,7 @@
   "displayName": "Apollo Workbench",
   "description": "Tooling to help you develop and mock federated schemas using Apollo Federation",
   "icon": "media/logo-apollo.png",
-  "version": "0.1.3",
+  "version": "0.2.0",
   "publisher": "michael-watson",
   "engines": {
     "vscode": "^1.34.0"
@@ -74,10 +74,28 @@
           ],
           "default": false,
           "description": "Specifies the url endpoint to be used for the Apollo Studio Graph"
+        },
+        "apollo-workbench.displayGettingStarted": {
+          "type": [
+            "boolean"
+          ],
+          "default": true,
+          "description": "Specifies whether to display the 'Getting Started' section is shown in the 'Local Schema Files' TreeView"
+        },
+        "apollo-workbench.displayExampleGraphs": {
+          "type": [
+            "boolean"
+          ],
+          "default": true,
+          "description": "Specifies whether to display the 'Example Graphs' section is shown in the 'Apollo Studio Graphs' TreeView"
         }
       }
     },
     "commands": [
+      {
+        "command": "extension.gettingStarted",
+        "title": "Getting Started"
+      },
       {
         "command": "extension.openFolder",
         "title": "Open Folder",
@@ -100,6 +118,16 @@
         "title": "Logout of Apollo",
         "category": "Apollo Workbench",
         "icon": "$(log-out)"
+      },
+      {
+        "command": "extension.startMocks",
+        "title": "Start Mocked Servers",
+        "category": "Apollo Workbench"
+      },
+      {
+        "command": "extension.stopMocks",
+        "title": "Stop Mocked Servers",
+        "category": "Apollo Workbench"
       },
       {
         "command": "current-workbench-schemas.refreshSchemas",
@@ -361,6 +389,7 @@
     "@apollo/federation": "https://1132-252760990-gh.circle-artifacts.com/0/packed/%40apollo/federation/federation-0.20.4.tgz",
     "@apollo/gateway": "^0.21.1",
     "@apollo/query-planner-wasm": "0.0.6",
+    "apollo-language-server": "^1.24.1",
     "apollo-server": "^2.19.0",
     "apollo-server-plugin-operation-registry": "^0.7.2",
     "chokidar": "^3.4.3",
@@ -368,6 +397,7 @@
     "graphql-language-service-interface": "^2.4.2",
     "graphql-language-service-parser": "^1.6.4",
     "graphql-language-service-utils": "^2.4.3",
-    "lodash": "^4.17.20"
+    "lodash": "^4.17.20",
+    "vscode-languageclient": "^6.1.3"
   }
 }

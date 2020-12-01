@@ -1,9 +1,6 @@
-import * as vscode from 'vscode';
-import * as fs from 'fs';
 import * as path from 'path';
-import { FileWatchManager } from '../fileWatchManager';
-import { WorkbenchSchema } from '../../extension';
-import { WorkbenchFileManager } from '../workbenchFileManager';
+import * as vscode from 'vscode';
+import { FileProvider } from '../../utils/files/fileProvider';
 
 export class CurrentWorkbenchSchemasTreeDataProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
 
@@ -13,7 +10,6 @@ export class CurrentWorkbenchSchemasTreeDataProvider implements vscode.TreeDataP
     readonly onDidChangeTreeData: vscode.Event<WorkbenchSchemaTreeItem | undefined> = this._onDidChangeTreeData.event;
 
     refresh(): void {
-        fs.rmdirSync(WorkbenchFileManager.workbenchSchemasFolderPath(false), { recursive: true });
         this._onDidChangeTreeData.fire(undefined);
     }
 
@@ -22,10 +18,7 @@ export class CurrentWorkbenchSchemasTreeDataProvider implements vscode.TreeDataP
     }
 
     getChildren(element?: WorkbenchSchemaTreeItem): Thenable<vscode.TreeItem[]> {
-        if (!this.workspaceRoot) {
-            vscode.window.showInformationMessage('No workbench file found in workspace');
-            return Promise.resolve([]);
-        }
+        if (!this.workspaceRoot || this.workspaceRoot == '.') return Promise.resolve([]);
 
         if (element) {
 
@@ -33,6 +26,7 @@ export class CurrentWorkbenchSchemasTreeDataProvider implements vscode.TreeDataP
             let items = this.getSchemasFromWorkbenchFile();
             if (items.length == 0)
                 items.push(new WorkbenchSchemaTreeItem("No schemas in workbench file yet", "", vscode.TreeItemCollapsibleState.None));
+            else if (FileProvider.instance?.currrentWorkbench?.composedSchema) items.splice(0, 0, new WorkbenchCsdlTreeItem());
 
             return Promise.resolve(items);
         }
@@ -41,14 +35,9 @@ export class CurrentWorkbenchSchemasTreeDataProvider implements vscode.TreeDataP
     }
 
     private getSchemasFromWorkbenchFile(): vscode.TreeItem[] {
-        const workbenchFile = WorkbenchFileManager.getSelectedWorkbenchFile();
-        if (workbenchFile) {
-            let workbenchSchemasFolder = WorkbenchFileManager.workbenchSchemasFolderPath();
-
-            const toDep = (serviceName: string, wbSchema: WorkbenchSchema): WorkbenchSchemaTreeItem => {
-                if (!this.pathExists(`${workbenchSchemasFolder}/${serviceName}.graphql`))
-                    fs.writeFileSync(`${workbenchSchemasFolder}/${serviceName}.graphql`, wbSchema.sdl);
-
+        const schemas = FileProvider.instance.currrentWorkbenchSchemas;
+        if (schemas) {
+            const toDep = (serviceName: string, wbSchema: { sdl: string }): WorkbenchSchemaTreeItem => {
                 return new WorkbenchSchemaTreeItem(
                     serviceName,
                     wbSchema.sdl,
@@ -56,22 +45,22 @@ export class CurrentWorkbenchSchemasTreeDataProvider implements vscode.TreeDataP
                 );
             };
 
-            const deps = workbenchFile.schemas
-                ? Object.keys(workbenchFile.schemas).map(serviceName => toDep(serviceName, workbenchFile.schemas[serviceName])) : [];
+            const deps = schemas ? Object.keys(schemas).map(serviceName => toDep(serviceName, schemas[serviceName])) : [];
 
             return deps;
         } else {
             return [new vscode.TreeItem("No workbench file selected", vscode.TreeItemCollapsibleState.None)];
         }
     }
+}
 
-    private pathExists(p: string): boolean {
-        try {
-            fs.accessSync(p);
-        } catch (err) {
-            return false;
-        }
-        return true;
+export class WorkbenchCsdlTreeItem extends vscode.TreeItem {
+    constructor() {
+        super('Latest Composed Schema', vscode.TreeItemCollapsibleState.None);
+        this.command = {
+            command: "current-workbench-schemas.viewCsdl",
+            title: "View Latest Composed Schema"
+        };
     }
 }
 
