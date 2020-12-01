@@ -5,6 +5,16 @@ import { UserMemberships } from './types/UserMemberships';
 import { AccountServiceVariants } from './types/AccountServiceVariants';
 import { GetGraphSchemas } from './types/GetGraphSchemas';
 import { GraphOperations } from './types/GraphOperations';
+import { CheckUserApiKey, CheckUserApiKey_me_User } from './types/CheckUserApiKey';
+
+const keyCheck = gql`
+    query CheckUserApiKey {
+        me {
+            ...on User {
+                id
+            }
+        }
+    }`;
 
 const userMemberships = gql`
     query UserMemberships {
@@ -26,6 +36,11 @@ const accountServiceVariants = gql`
             services  {
                 id
                 title
+                devGraphOwner {
+                    ...on User {
+                        id
+                    }
+                }
                 variants {
                     name
                 }
@@ -69,6 +84,14 @@ const getGraphOperations = gql`
           }
       }
   }`
+
+export async function isValidKey(apiKey: string) {
+    let result = await toPromise(execute(createLink(apiKey), { query: keyCheck }));
+    let data = result.data as CheckUserApiKey;
+    if ((data.me as CheckUserApiKey_me_User)?.id) return true;
+    return false;
+
+}
 
 export async function getUserMemberships(apiKey: string) {
     let result = await toPromise(execute(createLink(apiKey), { query: userMemberships }));

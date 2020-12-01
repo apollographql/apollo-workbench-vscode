@@ -67,6 +67,7 @@ export class StateManager {
 
         this.apolloStudioGraphsProvider.refresh();
         this.apolloStudioGraphOpsProvider.refresh();
+        this.localWorkbenchFilesProvider.refresh();
     }
     get globalState_selectedApolloAccount() {
         if (this.settings_apolloOrg) return this.settings_apolloOrg;

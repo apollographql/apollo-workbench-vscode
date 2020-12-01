@@ -1,17 +1,17 @@
 import { Uri, window, workspace } from "vscode";
-import { getUserMemberships } from "../studio-gql/graphClient";
+import { getUserMemberships, isValidKey } from "../studio-gql/graphClient";
 import { StateManager } from "../workbench/stateManager";
 
-export async function getLineText(docPath: string, lineAt: number = 0): Promise<string> {
-    let doc = await workspace.openTextDocument(Uri.file(docPath));
+export async function getLineText(serviceName: string, lineAt: number = 0): Promise<string> {
+    let doc = await workspace.openTextDocument(Uri.parse(`workbench:/schemas/${serviceName}.graphql?${serviceName}`));
     if (doc)
         return doc.lineAt(lineAt).text;
 
     return "";
 }
 
-export async function getLastLineOfText(schemaFilePath: string) {
-    let doc = await workspace.openTextDocument(Uri.file(schemaFilePath));
+export async function getLastLineOfText(serviceName: string) {
+    let doc = await workspace.openTextDocument(Uri.parse(`workbench:/schemas/${serviceName}.graphql?${serviceName}`));
     let docLine = doc.lineAt(doc.lineCount - 1);
 
     return docLine;
@@ -19,7 +19,7 @@ export async function getLastLineOfText(schemaFilePath: string) {
 
 export async function enterApiKey() {
     let apiKey = await window.showInputBox({ placeHolder: "Enter User API Key - user:gh.michael-watson:023jr324tj....", })
-    if (apiKey) {
+    if (apiKey && await isValidKey(apiKey)) {
         StateManager.instance.globalState_userApiKey = apiKey;
     }
 }

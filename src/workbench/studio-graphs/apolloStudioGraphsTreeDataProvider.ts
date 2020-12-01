@@ -54,6 +54,9 @@ export class ApolloStudioGraphsTreeDataProvider implements vscode.TreeDataProvid
                     for (var j = 0; j < services?.account?.services.length ?? 0; j++) {
                         //Cast graph
                         let graph = services?.account?.services[j];
+                        if (graph.devGraphOwner?.id) {
+                            continue;
+                        }
                         //Create objects for next for loop
                         //  Return A specific Graph with all variants
                         let graphTreeItem = new StudioGraphTreeItem(graph.id, graph.title);
@@ -109,9 +112,6 @@ export class ApolloStudioGraphsTreeDataProvider implements vscode.TreeDataProvid
                 if (response === "Login")
                     vscode.commands.executeCommand("extension.enterStudioApiKey");
             });
-            // let response = await vscode.window.showInformationMessage('No user api key was found.', "Login");
-            // if (response === "Login")
-            //     vscode.commands.executeCommand("extension.enterStudioApiKey");
         }
 
         return items;

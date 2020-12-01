@@ -1,5 +1,5 @@
 import { TreeItem, TreeItemCollapsibleState } from "vscode";
-import { WorkbenchFileManager } from "../workbenchFileManager";
+import { FileProvider } from "../../utils/files/fileProvider";
 
 export class PreloadedWorkbenchTopLevel extends TreeItem {
     children: PreloadedWorkbenchFile[] = new Array<PreloadedWorkbenchFile>();
@@ -7,7 +7,7 @@ export class PreloadedWorkbenchTopLevel extends TreeItem {
     constructor() {
         super("Example Graphs", TreeItemCollapsibleState.Collapsed);
 
-        let preloadedFiles = WorkbenchFileManager.getPreloadedWorkbenchFiles();
+        let preloadedFiles = FileProvider.instance.getPreloadedWorkbenchFiles();
         preloadedFiles.map(preloadedFile => {
             this.children.push(new PreloadedWorkbenchFile(preloadedFile.fileName));
         })

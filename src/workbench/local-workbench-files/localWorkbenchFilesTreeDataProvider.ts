@@ -1,7 +1,11 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
-import { ApolloWorkbench, fileWatchManager } from '../../extension';
+import { FileProvider } from '../../utils/files/fileProvider';
+import { PreloadedWorkbenchTopLevel } from '../studio-graphs/preLoadedTreeItems';
+import { StateManager } from '../stateManager';
+import { NotLoggedInTreeItem } from '../studio-graphs/apolloStudioGraphsTreeDataProvider';
+import { GettingStartedTopLevel } from './gettingStartedTreeItems';
 
 export interface WorkbenchFile {
     name: string,
@@ -47,10 +51,8 @@ export class LocalWorkbenchFilesTreeDataProvider implements vscode.TreeDataProvi
 
     getChildren(element?: WorkbenchFileTreeItem): Thenable<vscode.TreeItem[]> {
         if (element == undefined) {
-            if (!this.workspaceRoot) {
-                vscode.window.showInformationMessage('No workbench file found in workspace');
-                return Promise.resolve([]);
-            }
+            if (!this.workspaceRoot || this.workspaceRoot == '.') return Promise.resolve([new GettingStartedTopLevel(vscode.TreeItemCollapsibleState.Expanded)]);
+
             let items = new Array<vscode.TreeItem>();
             if (element) {
                 //I think this is for re-use
@@ -65,9 +67,12 @@ export class LocalWorkbenchFilesTreeDataProvider implements vscode.TreeDataProvi
             if (items.length == 0) {
                 vscode.window.showInformationMessage("No workspace files found in current directory", "Create New Workbench").then((value) => {
                     if (value === "Create New Workbench")
-                        fileWatchManager.newWorkbenchFile();
+                        FileProvider.instance.promptToCreateWorkbenchFile();
                 });
+                items.push(new GettingStartedTopLevel(vscode.TreeItemCollapsibleState.Expanded) as vscode.TreeItem);
             }
+            else
+                items.push(new GettingStartedTopLevel() as vscode.TreeItem);
 
             return Promise.resolve(items);
         } else {
@@ -84,10 +89,7 @@ export class WorkbenchFileTreeItem extends vscode.TreeItem {
         public readonly workbenchFileName: string,
         public readonly filePath: string
     ) {
-        super(workbenchFileName, vscode.TreeItemCollapsibleState.Collapsed);
-
-        let wbFileRaw = fs.readFileSync(filePath, { encoding: 'utf8' });
-        let wb: ApolloWorkbench = JSON.parse(wbFileRaw);
+        super(workbenchFileName, vscode.TreeItemCollapsibleState.None);
 
         if (this.workbenchFileName.includes(wbExt)) {
             let index = this.workbenchFileName.indexOf(wbExt);
@@ -95,15 +97,6 @@ export class WorkbenchFileTreeItem extends vscode.TreeItem {
             this.tooltip = tooltip
         } else
             this.tooltip = this.workbenchFileName;
-
-        let keys = Object.keys(wb.schemas) ?? 0;
-
-        keys.forEach(key => {
-            let item = new vscode.TreeItem(key, vscode.TreeItemCollapsibleState.None);
-            let iconPath = path.join(__filename, '..', '..', '..', '..', 'media', 'graphql-logo.png');
-            item.iconPath = iconPath;
-            this.children.push(item);
-        });
 
         this.command = {
             command: "local-workbench-files.loadFile",

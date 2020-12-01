@@ -1,6 +1,7 @@
 import { BREAK, EnumTypeDefinitionNode, InterfaceTypeDefinitionNode, ObjectTypeDefinitionNode, parse, ScalarTypeDefinitionNode, visit } from "graphql";
+import { Uri } from "vscode";
+import { FileProvider } from "./files/fileProvider";
 
-import { WorkbenchFileManager } from "../workbench/workbenchFileManager";
 import { runOnlineParser } from "./runOnlineParser";
 
 export function getServiceAvailableTypes(serviceName: string): string[] {
@@ -11,8 +12,8 @@ export function getServiceAvailableTypes(serviceName: string): string[] {
     let scalars: string[] = [];
 
     try {
-        let localSchema = WorkbenchFileManager.getLocalSchemaFromFile(serviceName);
-        let doc = parse(localSchema);
+        let localSchema = FileProvider.instance.currrentWorkbenchSchemas[serviceName];
+        let doc = parse(localSchema.sdl);
 
         visit(doc, {
             ObjectTypeDefinition(objectTypeNode: ObjectTypeDefinitionNode) {

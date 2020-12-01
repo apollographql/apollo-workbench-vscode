@@ -5,7 +5,7 @@ import { ApolloServerPluginUsageReportingDisabled } from 'apollo-server-core';
 
 import { StateManager } from "./stateManager";
 import { OverrideApolloGateway } from "../gateway";
-import { WorkbenchFileManager } from "./workbenchFileManager";
+import { FileProvider } from "../utils/files/fileProvider";
 
 const { name } = require('../../package.json');
 
@@ -24,7 +24,7 @@ export class ServerManager {
 
     startMocks() {
         console.log(`${name}:Setting up mocks`);
-        let workbenchFile = WorkbenchFileManager.getSelectedWorkbenchFile();
+        let workbenchFile = FileProvider.instance.currrentWorkbench;
         if (workbenchFile) {
             console.log(`${name}:Mocking workbench file: ${workbenchFile.graphName}`);
             for (var serviceName in workbenchFile.schemas) {
@@ -47,6 +47,7 @@ export class ServerManager {
             }
         }
         this.portMapping = {};
+        this.stopGateway();
     }
     startServer(serviceName: string, schemaString: string) {
         const port = this.portMapping[serviceName] ?? this.getNextAvailablePort();
@@ -104,6 +105,14 @@ export class ServerManager {
 
         if (this.portMapping[serviceName])
             delete this.portMapping[serviceName];
+    }
+    stopGateway() {
+        let gatewayPort = StateManager.instance.settings_gatewayServerPort;
+        if (this.serversState[gatewayPort]) {
+            console.log(`${name}:Stopping previous running gateway`);
+            this.serversState[gatewayPort].stop();
+            delete this.serversState[gatewayPort];
+        }
     }
     startGateway() {
         let gatewayPort = StateManager.instance.settings_gatewayServerPort;

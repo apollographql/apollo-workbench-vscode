@@ -79,6 +79,10 @@
     },
     "commands": [
       {
+        "command": "extension.gettingStarted",
+        "title": "Getting Started"
+      },
+      {
         "command": "extension.openFolder",
         "title": "Open Folder",
         "category": "Apollo Workbench"
@@ -100,6 +104,16 @@
         "title": "Logout of Apollo",
         "category": "Apollo Workbench",
         "icon": "$(log-out)"
+      },
+      {
+        "command": "extension.startMocks",
+        "title": "Start Mocked Servers",
+        "category": "Apollo Workbench"
+      },
+      {
+        "command": "extension.stopMocks",
+        "title": "Stop Mocked Servers",
+        "category": "Apollo Workbench"
       },
       {
         "command": "current-workbench-schemas.refreshSchemas",
