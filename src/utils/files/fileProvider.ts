@@ -11,6 +11,27 @@ import { StateManager } from '../../workbench/stateManager';
 import { getComposedSchema, getComposedSchemaLogCompositionErrors, handleErrors } from '../composition';
 import { ApolloWorkbenchFile } from './fileTypes';
 
+export enum WorkbenchUriType {
+    SCHEMAS,
+    QUERIES,
+    QUERY_PLANS
+}
+export class WorkbenchUri {
+    static csdl(): Uri {
+        return Uri.parse(`workbench:/csdl.graphql`);
+    }
+    static parse(name: string, type: WorkbenchUriType = WorkbenchUriType.SCHEMAS): Uri {
+        switch (type) {
+            case WorkbenchUriType.SCHEMAS:
+                return Uri.parse(`workbench:/schemas/${name}.graphql?${name}`);
+            case WorkbenchUriType.QUERIES:
+                return Uri.parse(`workbench:/queries/${name}.graphql?${name}`);
+            case WorkbenchUriType.QUERY_PLANS:
+                return Uri.parse(`workbench:/queryplans/${name}.queryplan?${name}`);
+        }
+    }
+}
+
 export class FileProvider implements FileSystemProvider {
     //Singleton implementation
     private static _instance: FileProvider;
@@ -114,7 +135,6 @@ export class FileProvider implements FileSystemProvider {
 
         StateManager.instance.localWorkbenchFilesProvider?.refresh();
     }
-
     createNewWorkbenchFile(workbenchFileName: string, graphName?: string) {
         const path = `${workspace.rootPath}/${workbenchFileName}.apollo-workbench`;
         const uri = Uri.parse(path);
@@ -174,16 +194,14 @@ export class FileProvider implements FileSystemProvider {
         StateManager.instance.workspaceState_selectedWorkbenchFile = { name: workbenchFileName, path: filePath };
         await getComposedSchemaLogCompositionErrors(this.currrentWorkbench);
     }
-
     saveCurrentWorkbench() {
         writeFileSync(StateManager.instance.workspaceState_selectedWorkbenchFile.path, JSON.stringify(this.currrentWorkbench), { encoding: "utf8" });
         StateManager.instance.currentWorkbenchSchemasProvider.refresh();
         StateManager.instance.currentWorkbenchOperationsProvider.refresh();
     }
-
     //Schema File Implementations
     async openSchema(serviceName: string) {
-        await window.showTextDocument(Uri.parse(`workbench:/schemas/${serviceName}.graphql?${serviceName}`));
+        await window.showTextDocument(WorkbenchUri.parse(serviceName));
     }
     async promptToAddSchema() {
         let serviceName = await window.showInputBox({ placeHolder: "Enter a unique name for the schema/service" }) ?? "";
@@ -203,14 +221,13 @@ export class FileProvider implements FileSystemProvider {
         if (!newServiceName) {
             outputChannel.appendLine(`Renaming schema cancelled - No new name entered.`);
         } else {
-            await this.rename(Uri.parse(`workbench:/schemas?${serviceToRename}`), Uri.parse(`workbench:/schemas?${newServiceName}`), { overwrite: true });
+            await this.rename(WorkbenchUri.parse(serviceToRename), WorkbenchUri.parse(newServiceName), { overwrite: true });
         }
     }
     //Operation File Implementations
     async openOperation(operationName: string) {
-        await window.showTextDocument(Uri.parse(`workbench:/queries/${operationName}.graphql?${operationName}`));
+        await window.showTextDocument(WorkbenchUri.parse(operationName, WorkbenchUriType.QUERIES));
     }
-
     async promptToAddOperation() {
         let operationName = await window.showInputBox({ placeHolder: "Enter a unique name for the schema/service" }) ?? "";
         if (!operationName) {
@@ -230,34 +247,15 @@ export class FileProvider implements FileSystemProvider {
         if (!newOperationName) {
             outputChannel.appendLine(`Renaming schema cancelled - No new name entered.`);
         } else {
-            await this.rename(Uri.parse(`workbench:/queries?${operationToRename}`), Uri.parse(`workbench:/schemas?${newOperationName}`), { overwrite: true });
+            await this.rename(WorkbenchUri.parse(operationToRename, WorkbenchUriType.QUERIES), WorkbenchUri.parse(newOperationName, WorkbenchUriType.QUERIES), { overwrite: true });
         }
     }
     //Operation Query Plan File Implementations
     async openOperationQueryPlan(operationName: string) {
-        await window.showTextDocument(Uri.parse(`workbench:/queryplans/${operationName}.queryplan?${operationName}`));
+        await window.showTextDocument(WorkbenchUri.parse(operationName, WorkbenchUriType.QUERY_PLANS));
     }
-
     //FileSystemProvider Implementations
     //File chagnes are watched at the `vscode.workspace.onDidChangeTextDocument` level
-    watch(uri: Uri, options: { recursive: boolean; excludes: string[]; }): Disposable {
-        return new Disposable(() => { });
-    }
-    stat(uri: Uri): FileStat | Thenable<FileStat> {
-        const now = Date.now();
-        return {
-            ctime: now,
-            mtime: now,
-            size: 0,
-            type: FileType.File
-        }
-    }
-    readDirectory(uri: Uri): [string, FileType][] | Thenable<[string, FileType][]> {
-        throw new Error('Method not implemented.');
-    }
-    createDirectory(uri: Uri): void | Thenable<void> {
-        throw new Error('Method not implemented.');
-    }
     readFile(uri: Uri): Uint8Array | Thenable<Uint8Array> {
         if (this.currrentWorkbench) {
             if (uri.path.includes('/schemas')) {
@@ -279,7 +277,7 @@ export class FileProvider implements FileSystemProvider {
         throw new Error('No workbench currently selected');
     }
     writeFile(uri: Uri, content: Uint8Array, options: { create: boolean; overwrite: boolean; }): void | Thenable<void> {
-        if (this.currrentWorkbench && uri.scheme == 'workbench') {
+        if (this.currrentWorkbench && uri.scheme == 'workbench' && !uri.path.includes('queryplans')) {
             const stringContent = content.toString();
             if (uri.path.includes('/schemas')) {
                 const serviceName = uri.query;
@@ -342,6 +340,24 @@ export class FileProvider implements FileSystemProvider {
 
             this.saveCurrentWorkbench();
         }
+    }
+    watch(uri: Uri, options: { recursive: boolean; excludes: string[]; }): Disposable {
+        return new Disposable(() => { });
+    }
+    stat(uri: Uri): FileStat | Thenable<FileStat> {
+        const now = Date.now();
+        return {
+            ctime: now,
+            mtime: now,
+            size: 0,
+            type: FileType.File
+        }
+    }
+    readDirectory(uri: Uri): [string, FileType][] | Thenable<[string, FileType][]> {
+        throw new Error('Method not implemented.');
+    }
+    createDirectory(uri: Uri): void | Thenable<void> {
+        throw new Error('Method not implemented.');
     }
     onDidChangeEmitter = new EventEmitter<FileChangeEvent[]>();
     onDidChangeFile = this.onDidChangeEmitter.event;

@@ -5,7 +5,7 @@ import { Diagnostic, DiagnosticSeverity, Range, Uri } from "vscode";
 import { compositionDiagnostics } from "../extension";
 import { StateManager } from "../workbench/stateManager";
 import { extractDefinedEntitiesByService } from "./csdlParser";
-import { FileProvider } from "./files/fileProvider";
+import { FileProvider, WorkbenchUri, WorkbenchUriType } from "./files/fileProvider";
 import { ApolloWorkbenchFile } from "./files/fileTypes";
 import { getRangeForFieldNamedType, getRangeForTypeDef } from "./schemaParser";
 import { getLastLineOfText, getLineText } from "./vscodeHelpers";
@@ -27,7 +27,7 @@ export async function getComposedSchemaLogCompositionErrors(workbenchFile?: Apol
                 if (sn == 'workbench') {
                     compositionDiagnostics.set(Uri.file(StateManager.instance.workspaceState_selectedWorkbenchFile.path), diagnosticsGroups[sn]);
                 } else
-                    compositionDiagnostics.set(Uri.parse(`workbench:/schams/${sn}.graphql?${sn}`), diagnosticsGroups[sn]);
+                    compositionDiagnostics.set(WorkbenchUri.parse(sn), diagnosticsGroups[sn]);
             }
         } else
             compositionDiagnostics.clear();

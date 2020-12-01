@@ -36,23 +36,29 @@ export class StateManager {
         return this.context?.globalStorageUri.fsPath;
     }
 
-    get settings_startingServerPort(): number {
+    static get settings_startingServerPort(): number {
         return workspace.getConfiguration("apollo-workbench").get('startingServerPort') as number;;
     }
-    get settings_gatewayServerPort(): number {
+    static get settings_gatewayServerPort(): number {
         return workspace.getConfiguration("apollo-workbench").get('gatewayPort') as number;;
     }
-    get settings_apiKey() {
+    static get settings_apiKey() {
         return workspace.getConfiguration("apollo-workbench").get('graphApiKey') as string ?? process.env.APOLLO_KEY ?? "";
     }
-    get settings_graphVariant() {
+    static get settings_graphVariant() {
         return workspace.getConfiguration("apollo-workbench").get('graphVariant') as string ?? process.env.APOLLO_GRAPH_VARIANT ?? "";
     }
-    get settings_shouldRunOpRegistry() {
+    static get settings_shouldRunOpRegistry() {
         return workspace.getConfiguration("apollo-workbench").get('runOperationRegistry') as boolean;
     }
-    get settings_gatewayReCompositionInterval() {
+    static get settings_gatewayReCompositionInterval() {
         return workspace.getConfiguration("apollo-workbench").get('gatewayReCompositionInterval') as number;
+    }
+    static get settings_displayGettingStarted() {
+        return workspace.getConfiguration("apollo-workbench").get('displayGettingStarted') as boolean;
+    }
+    static get settings_displayExampleGraphs() {
+        return workspace.getConfiguration("apollo-workbench").get('displayExampleGraphs') as boolean;
     }
     private get settings_apolloOrg() {
         return workspace.getConfiguration("apollo-workbench").get('apolloOrg') as string;
@@ -85,18 +91,18 @@ export class StateManager {
         this.apolloStudioGraphOpsProvider.refresh();
     }
 
-    get workspaceState_csdlDefinedEntities() {
-        return this.context?.workspaceState.get('csdlDefinedEntities') as any;
-    }
-    set workspaceState_csdlDefinedEntities(csdlDefinedEntities) {
-        this.context?.workspaceState.update('csdlDefinedEntities', csdlDefinedEntities);
-    }
+    // get workspaceState_csdlDefinedEntities() {
+    //     return this.context?.workspaceState.get('csdlDefinedEntities') as any;
+    // }
+    // set workspaceState_csdlDefinedEntities(csdlDefinedEntities) {
+    //     this.context?.workspaceState.update('csdlDefinedEntities', csdlDefinedEntities);
+    // }
     get workspaceState_selectedWorkbenchFile() {
         return this.context?.workspaceState.get('selectedWbFile') as WorkbenchFile;
     }
     set workspaceState_selectedWorkbenchFile(wbFile: WorkbenchFile) {
         this.context?.workspaceState.update("selectedWbFile", wbFile);
-        this.workspaceState_csdlDefinedEntities = {};
+        // this.workspaceState_csdlDefinedEntities = {};
 
         this.currentWorkbenchSchemasProvider.refresh();
         this.currentWorkbenchOperationsProvider.refresh();

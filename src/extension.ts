@@ -11,7 +11,7 @@ import { ServerManager } from './workbench/serverManager';
 import { federationCompletionProvider } from './workbench/federationCompletionProvider';
 import { PreloadedWorkbenchFile } from './workbench/studio-graphs/preLoadedTreeItems';
 import { enterApiKey, setAccountId } from './utils/vscodeHelpers';
-import { FileProvider } from './utils/files/fileProvider';
+import { FileProvider, WorkbenchUri, WorkbenchUriType } from './utils/files/fileProvider';
 import { GettingStartedTreeItem } from './workbench/local-workbench-files/gettingStartedTreeItems';
 import { GettingStartedDocProvider } from './workbench/gettingStartedDocProvider';
 
@@ -77,14 +77,14 @@ export async function activate(context: vscode.ExtensionContext) {
 	vscode.commands.registerCommand('current-workbench-schemas.addSchema', async () => await FileProvider.instance.promptToAddSchema());
 	vscode.commands.registerCommand("current-workbench-schemas.editSchema", async (item: WorkbenchSchemaTreeItem) => FileProvider.instance.openSchema(item.serviceName));
 	vscode.commands.registerCommand("current-workbench-schemas.renameSchema", async (serviceToRename: WorkbenchSchemaTreeItem) => await FileProvider.instance.renameSchema(serviceToRename.serviceName));
-	vscode.commands.registerCommand("current-workbench-schemas.deleteSchema", async (serviceToDelete: WorkbenchSchemaTreeItem) => FileProvider.instance.delete(vscode.Uri.parse(`workbench:/schemas?${serviceToDelete.serviceName}`), { recursive: true }));
+	vscode.commands.registerCommand("current-workbench-schemas.deleteSchema", async (serviceToDelete: WorkbenchSchemaTreeItem) => FileProvider.instance.delete(WorkbenchUri.parse(serviceToDelete.serviceName), { recursive: true }));
 	vscode.commands.registerCommand('current-workbench-schemas.refreshSchemas', async () => StateManager.instance.currentWorkbenchSchemasProvider.refresh());
-	vscode.commands.registerCommand('current-workbench-schemas.viewCsdl', async () => vscode.window.showTextDocument(vscode.Uri.parse('workbench:/csdl.graphql?csdl')));
+	vscode.commands.registerCommand('current-workbench-schemas.viewCsdl', async () => vscode.window.showTextDocument(WorkbenchUri.csdl()));
 
 	//Current Loaded Workbench Operations Commands
 	vscode.commands.registerCommand('current-workbench-operations.addOperation', FileProvider.instance.promptToAddOperation);
 	vscode.commands.registerCommand("current-workbench-operations.editOperation", async (operation: WorkbenchOperationTreeItem) => await FileProvider.instance.openOperation(operation.operationName));
-	vscode.commands.registerCommand("current-workbench-operations.deleteOperation", async (operation: WorkbenchOperationTreeItem) => FileProvider.instance.delete(vscode.Uri.parse(`workbench:/queries?${operation.operationName}`), { recursive: true }));
+	vscode.commands.registerCommand("current-workbench-operations.deleteOperation", async (operation: WorkbenchOperationTreeItem) => FileProvider.instance.delete(WorkbenchUri.parse(operation.operationName, WorkbenchUriType.QUERIES), { recursive: true }));
 	vscode.commands.registerCommand('current-workbench-operations.refreshOperations', async () => StateManager.instance.currentWorkbenchOperationsProvider.refresh());
 	vscode.commands.registerCommand('current-workbench-operations.openQueryPlan', async (op: StudioOperationTreeItem) => await FileProvider.instance.openOperationQueryPlan(op.operationName));
 

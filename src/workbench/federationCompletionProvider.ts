@@ -13,11 +13,10 @@ export interface FieldWithType {
 export const federationCompletionProvider = {
     async provideCompletionItems(document: TextDocument, position: Position, token: CancellationToken) {
         //Only provide completion items for schemas open in workbench
-        if (document.uri.fsPath.includes('workbench/schemas')) {
+        if (document.uri.scheme == 'workbench') {
             let line = document.lineAt(position.line);
             let lineText = line.text;
-            let splitPath = document.uri.fsPath.split('.graphql')[0].split('/');
-            let serviceName = splitPath[splitPath.length - 1];
+            let serviceName = document.uri.query;
 
             let completionItems = new Array<FederationEntityExtensionItem>();
             if (lineText && serviceName) {
@@ -92,8 +91,8 @@ export class EntityObjectTypeCompletionItem extends CompletionItem {
     constructor() {
         super('Entity Object type', CompletionItemKind.Snippet);
 
-        let comments = `"""\nThis is an Entity, docs:https://www.apollographql.com/docs/federation/entities/\nYou will need to define a __resolveReference resolver for the type you define, docs: https://www.apollographql.com/docs/federation/entities/#resolving\n"""`;
-        let insertSnippet = new SnippetString(`${comments}\ntype `);
+        // let comments = `"""\nThis is an Entity, docs:https://www.apollographql.com/docs/federation/entities/\nYou will need to define a __resolveReference resolver for the type you define, docs: https://www.apollographql.com/docs/federation/entities/#resolving\n"""`;
+        let insertSnippet = new SnippetString(`type `);
         insertSnippet.appendTabstop(1);
         insertSnippet.appendText(` @key(fields:"id") {\n\tid:ID!\n}`);
 

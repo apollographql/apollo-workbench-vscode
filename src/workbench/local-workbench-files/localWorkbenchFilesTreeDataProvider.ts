@@ -69,9 +69,10 @@ export class LocalWorkbenchFilesTreeDataProvider implements vscode.TreeDataProvi
                     if (value === "Create New Workbench")
                         FileProvider.instance.promptToCreateWorkbenchFile();
                 });
-                items.push(new GettingStartedTopLevel(vscode.TreeItemCollapsibleState.Expanded) as vscode.TreeItem);
+                if (StateManager.settings_displayExampleGraphs)
+                    items.push(new GettingStartedTopLevel(vscode.TreeItemCollapsibleState.Expanded) as vscode.TreeItem);
             }
-            else
+            else if (StateManager.settings_displayExampleGraphs)
                 items.push(new GettingStartedTopLevel() as vscode.TreeItem);
 
             return Promise.resolve(items);

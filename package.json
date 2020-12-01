@@ -74,6 +74,20 @@
           ],
           "default": false,
           "description": "Specifies the url endpoint to be used for the Apollo Studio Graph"
+        },
+        "apollo-workbench.displayGettingStarted": {
+          "type": [
+            "boolean"
+          ],
+          "default": true,
+          "description": "Specifies whether to display the 'Getting Started' section is shown in the 'Local Schema Files' TreeView"
+        },
+        "apollo-workbench.displayExampleGraphs": {
+          "type": [
+            "boolean"
+          ],
+          "default": true,
+          "description": "Specifies whether to display the 'Example Graphs' section is shown in the 'Apollo Studio Graphs' TreeView"
         }
       }
     },

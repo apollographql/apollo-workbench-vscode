@@ -107,7 +107,7 @@ export class ServerManager {
             delete this.portMapping[serviceName];
     }
     stopGateway() {
-        let gatewayPort = StateManager.instance.settings_gatewayServerPort;
+        let gatewayPort = StateManager.settings_gatewayServerPort;
         if (this.serversState[gatewayPort]) {
             console.log(`${name}:Stopping previous running gateway`);
             this.serversState[gatewayPort].stop();
@@ -115,7 +115,7 @@ export class ServerManager {
         }
     }
     startGateway() {
-        let gatewayPort = StateManager.instance.settings_gatewayServerPort;
+        let gatewayPort = StateManager.settings_gatewayServerPort;
         if (this.serversState[gatewayPort]) {
             console.log(`${name}:Stopping previous running gateway`);
             this.serversState[gatewayPort].stop();
@@ -128,13 +128,13 @@ export class ServerManager {
             this.serversState['gateway'] = new OverrideApolloGateway({ debug: true });
         } else {
             console.log(`${name}:Changing gateway instance polling interval to 10s`);
-            this.serversState['gateway'].experimental_pollInterval = StateManager.instance.settings_gatewayReCompositionInterval ?? 10000;
+            this.serversState['gateway'].experimental_pollInterval = StateManager.settings_gatewayReCompositionInterval ?? 10000;
         }
 
-        const graphApiKey = StateManager.instance.settings_apiKey;
-        const graphVariant = StateManager.instance.settings_graphVariant;
+        const graphApiKey = StateManager.settings_apiKey;
+        const graphVariant = StateManager.settings_graphVariant;
         let plugins = [ApolloServerPluginUsageReportingDisabled()];
-        const shouldRunOpReg = StateManager.instance.settings_shouldRunOpRegistry;
+        const shouldRunOpReg = StateManager.settings_shouldRunOpRegistry;
         if (shouldRunOpReg) {
             console.log(`${name}:Enabling operation registry for ${graphVariant}`);
             plugins = [ApolloServerPluginUsageReportingDisabled(), plugin({ graphVariant, forbidUnregisteredOperations: shouldRunOpReg, debug: true })()];
@@ -161,7 +161,7 @@ export class ServerManager {
         delete this.serversState[port];
     }
     private getNextAvailablePort() {
-        let port = StateManager.instance.settings_startingServerPort;
+        let port = StateManager.settings_startingServerPort;
         while (this.serversState[port])
             port++;
 
