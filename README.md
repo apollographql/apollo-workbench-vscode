@@ -2,7 +2,7 @@
 
 To get the most out of GraphQL, your organization should expose a single data graph that provides a unified interface for querying any combination of your backing data sources. However, it can be challenging to represent an enterprise-scale data graph with a single, monolithic GraphQL server. Apollo Federation enables you to divide your graph's implementation across multiple composable services and Workbench is the tool to help you design that out with only schema files.
 
-![Getting Started Video](https://storage.googleapis.com/apollo-workbench-vscode/workbench-vscode-getting-started.gif)
+TODO - Add Gif
 
 The Apollo Workbench extension for VS Code brings an all-in-one tooling experience for developing federated graphs.
 
@@ -34,15 +34,13 @@ The Apollo Workbench extension for VS Code brings an all-in-one tooling experien
 
 ### Mocking `.apollo-workbench` files
 
-Apollo Workbench VS Code contains all the internals needed to mock the schemas you design out. After selecting a file in the **Local Workbench Files** tree view, each schema file in the `apollo-workbench` file will be mocked.
+Apollo Workbench VS Code contains all the internals needed to mock the schemas you design out. After selecting a file in the **Local Workbench Files** tree view, each schema file in the `apollo-workbench` file can be mocked.
 
-![Selecting a workbench file](https://storage.googleapis.com/apollo-workbench-vscode/workbench-selecting-wbFile.png)
+![Starting Mocks](https://storage.googleapis.com/apollo-workbench-vscode/workbench-start-mocks.png)
 
-Everytime you edit and save a schema file, three things happen:
+The gateway will recompose every 10 seconds (you can change this in the VS Code settings under `apollo-workbench.gatewayReCompositionInterval` - note this setting is in milliseconds). You can also stop the mocks at anytime:
 
-1. The schema is updated in the `apollo-workbench file`
-2. The mocked server running that schema is restarted
-3. The gateway will recompose every 10 seconds (you can change this in the VS Code settings under `apollo-workbench.gatewayReCompositionInterval` - note this setting is in milliseconds)
+![Stopping Mocks](https://storage.googleapis.com/apollo-workbench-vscode/workbench-stop-mocks.png)
 
 ### Composition Errors in the Problems Panel
 
@@ -67,23 +65,6 @@ You may see some operations that have the same name, but different `id`'s next t
 Everytime you make a change to any operation in the current loaded workbench will try generating a new query plan for it. If you have a graph with composition errors, you'll need to resolve those composition errors before you can view the query plan of the given operatiion. To view the query plan, either right click the operation and select **Open Query Plan** or click the query plan icon in the row:
 
 ![View Query Plan](https://storage.googleapis.com/apollo-workbench-vscode/workbench-view-query-plan.png)
-
-### Using the Apollo GraphQL VS Extension with Apollo Workbench VS Code Extension
-
-If the opened folder doesn't contain a `apollo.config.js` file in it, this extension will automatically create one at the root of this folder which enables you to use **Apollo: Reload Schema** anytime have a new composed schema that you want to write queries against. Below is an example of what is generated for you:
-
-```javascript
-module.exports = {
-  client: {
-    service: {
-      url: 'http://localhost:4000',
-    },
-    includes: ['.workbench/queries/*.graphql'],
-  },
-};
-```
-
-_Note: you **do not** need to use the Apollo GraphQL VS Code Extension to use Apollo Workbench_
 
 ## Troubleshooting
 
