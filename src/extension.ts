@@ -15,6 +15,7 @@ import { FileProvider, WorkbenchUri, WorkbenchUriType } from './utils/files/file
 import { GettingStartedTreeItem } from './workbench/local-workbench-files/gettingStartedTreeItems';
 import { GettingStartedDocProvider } from './workbench/gettingStartedDocProvider';
 import { ApolloConfig, schemaProviderFromConfig } from 'apollo-language-server';
+import { DockerImageManager } from './utils/docker';
 
 export const compositionDiagnostics: vscode.DiagnosticCollection = vscode.languages.createDiagnosticCollection("composition-errors");
 export const outputChannel = vscode.window.createOutputChannel("Apollo Workbench");
@@ -102,6 +103,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	vscode.commands.registerCommand("local-workbench-files.duplicateFile", async (item: WorkbenchFileTreeItem) => await FileProvider.instance.duplicateWorkbenchFile(item.workbenchFileName, item.filePath));
 	vscode.commands.registerCommand("local-workbench-files.deleteFile", async (item: WorkbenchFileTreeItem) => await FileProvider.instance.promptToDeleteWorkbenchFile(item.filePath));
 	vscode.commands.registerCommand('local-workbench-files.refresh', async () => StateManager.instance.localWorkbenchFilesProvider.refresh());
+	vscode.commands.registerCommand('local-workbench-files.dockerize', async (item: WorkbenchFileTreeItem) => DockerImageManager.create(item.filePath));
 
 	//Apollo Studio Graphs Commands
 	vscode.commands.registerCommand('studio-graphs.refresh', () => StateManager.instance.apolloStudioGraphsProvider.refresh());

@@ -174,7 +174,7 @@ export class FileProvider implements FileSystemProvider {
         let isCancelled = false;
         let lastEditor: any;
         while (window.activeTextEditor && window.visibleTextEditors.length > 0 && !isCancelled) {
-            if (lastEditor == window.activeTextEditor) {
+            if (lastEditor && window.activeTextEditor && lastEditor == window.activeTextEditor) {
                 let cancelledMessage = `Cancelled Loading WB:${workbenchFileName}`;
                 console.log(cancelledMessage);
                 window.setStatusBarMessage(cancelledMessage, 500);

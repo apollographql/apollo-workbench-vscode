@@ -203,6 +203,10 @@
         "icon": "$(refresh)"
       },
       {
+        "command": "local-workbench-files.dockerize",
+        "title": "Create Docker Image"
+      },
+      {
         "command": "studio-graphs.createWorkbenchFromGraph",
         "title": "Create Workbench File from Graph"
       },
@@ -332,6 +336,11 @@
           "group": "1"
         },
         {
+          "command": "local-workbench-files.dockerize",
+          "when": "view == local-workbench-files && viewItem == workbenchFileTreeItem",
+          "group": "1"
+        },
+        {
           "command": "local-workbench-files.duplicateFile",
           "when": "view == local-workbench-files && viewItem == workbenchFileTreeItem",
           "group": "1"
@@ -389,6 +398,7 @@
     "@apollo/federation": "https://1132-252760990-gh.circle-artifacts.com/0/packed/%40apollo/federation/federation-0.20.4.tgz",
     "@apollo/gateway": "^0.21.1",
     "@apollo/query-planner-wasm": "0.0.6",
+    "adm-zip": "^0.5.1",
     "apollo-language-server": "^1.24.1",
     "apollo-server": "^2.19.0",
     "apollo-server-plugin-operation-registry": "^0.7.2",
