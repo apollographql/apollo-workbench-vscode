@@ -50,6 +50,12 @@ Composition errors in your designed schema will be written to the **Problems** p
 
 _Note: Since this is the beta release, some of the composition error pointers might be broken - like having the wrong range selected. All `workbench.graphql` errors won't point at the correct file as the proper `serviceName` needs to be identified. The error message should provide the details of what needs to be done. Stay tuned for more fixes in this area_
 
+### Writing GraphQL Operations in workbench
+
+If you have a valid fully composed schema, you should get intellisense when writing your queries with feedback in the Problems panel.
+
+![](https://storage.googleapis.com/apollo-workbench-vscode/workbench-first-operation.png)
+
 ### Loading GraphQL operaitons from Apollo Studio into workbench
 
 You can load all of the operaitons for a given graph into the **Apollo Studio Graph Operations** tree view by clicking on a graph in the **Apollo Studio Graphs**:
