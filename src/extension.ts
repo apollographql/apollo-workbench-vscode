@@ -92,6 +92,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	vscode.workspace.onDidChangeTextDocument(e => {
 		if (e.document.uri.scheme == 'workbench') {
 			console.log(e);
+			// let test = getAutocompleteSuggestions();
 		}
 	})
 

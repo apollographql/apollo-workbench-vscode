@@ -1,3 +1,4 @@
+import { GraphQLSchema } from "graphql";
 import { ExtensionContext, window, workspace } from "vscode";
 import { getUserMemberships } from "../studio-gql/graphClient";
 import { CurrentWorkbenchOpsTreeDataProvider } from "./current-workbench-queries/currentWorkbenchOpsTreeDataProvider";
@@ -106,5 +107,11 @@ export class StateManager {
 
         this.currentWorkbenchSchemasProvider.refresh();
         this.currentWorkbenchOperationsProvider.refresh();
+    }
+    get workspaceState_schema() {
+        return this.context?.workspaceState.get("schema") as GraphQLSchema;
+    }
+    set workspaceState_schema(schema: GraphQLSchema) {
+        this.context?.workspaceState.update("schema", schema);
     }
 }
