@@ -1,7 +1,10 @@
-import { CancellationToken, CompletionItem, CompletionItemKind, MarkdownString, Position, SnippetString, TextDocument } from "vscode";
+import { CancellationToken, CompletionItem, CompletionItemKind, MarkdownString, Position, SnippetString, TextDocument, window, workspace } from "vscode";
 import { extractDefinedEntitiesByService } from "../utils/csdlParser";
 import { getServiceAvailableTypes } from "../utils/schemaParser";
 import { StateManager } from "./stateManager";
+import { getAutocompleteSuggestions } from "@apollographql/graphql-language-service-interface";
+import { WorkbenchUri } from "../utils/files/fileProvider";
+import { extend } from "lodash";
 
 export interface FieldWithType {
     field: string;
@@ -13,12 +16,14 @@ export interface FieldWithType {
 export const federationCompletionProvider = {
     async provideCompletionItems(document: TextDocument, position: Position, token: CancellationToken) {
         //Only provide completion items for schemas open in workbench
-        if (document.uri.scheme == 'workbench') {
+        let uri = document.uri;
+        let completionItems = new Array<CompletionItem>();
+
+        if (uri.scheme == 'workbench' && uri.path.includes('schemas')) {
             let line = document.lineAt(position.line);
             let lineText = line.text;
             let serviceName = document.uri.query;
 
-            let completionItems = new Array<FederationEntityExtensionItem>();
             if (lineText && serviceName) {
                 //If not undefined, we're inside a word/something and shouldn't return anything
                 let trimmedText = lineText.trim();
@@ -69,8 +74,7 @@ export const federationCompletionProvider = {
             else {
                 //Add federation items that can be extended
 
-                let extendableTypes = //StateManager.instance.workspaceState_csdlDefinedEntities;
-                    await extractDefinedEntitiesByService();
+                let extendableTypes = await extractDefinedEntitiesByService();
 
                 for (var sn in extendableTypes)
                     if (sn != serviceName)
@@ -81,9 +85,37 @@ export const federationCompletionProvider = {
                 completionItems.push(new InterfaceCompletionItem());
                 completionItems.push(new EntityObjectTypeCompletionItem());
             }
-
-            if (completionItems.length > 0) return completionItems;
         }
+        else if (uri.scheme == 'workbench' && uri.path.includes('/queries/')) {
+            let schema = StateManager.instance.workspaceState_schema;
+            if (schema) {
+                let query = document.getText();
+                let suggestions = getAutocompleteSuggestions(schema, query, position);
+                if (suggestions.length > 0) {
+                    suggestions.forEach(ci => completionItems.push(new QueryCompletionItem(ci)));
+                }
+            } else {
+                completionItems.push(new NoValidSchema());
+            }
+        }
+
+        if (completionItems.length > 0) return completionItems;
+    }
+}
+
+class NoValidSchema extends CompletionItem {
+    constructor() {
+        super("No composed schema in workbench", CompletionItemKind.Constant);
+        this.insertText = "";
+    }
+}
+
+export class QueryCompletionItem extends CompletionItem {
+    constructor(ci: any) {
+        super(ci.label, CompletionItemKind.Constant);
+        this.detail = ci.detail;
+        this.insertText = ci.label;
+        this.documentation = ci.documentation
     }
 }
 

@@ -15,7 +15,7 @@ export async function getComposedSchemaLogCompositionErrors(workbenchFile?: Apol
     if (!workbenchFile)
         workbenchFile = FileProvider.instance.currrentWorkbench;
     try {
-        const { errors, composedSdl } = getComposedSchema(workbenchFile);
+        const { errors, composedSdl, schema } = getComposedSchema(workbenchFile);
         if (errors.length > 0) {
             console.log('Composition Errors Found:');
 
@@ -36,6 +36,10 @@ export async function getComposedSchemaLogCompositionErrors(workbenchFile?: Apol
             FileProvider.instance.currrentWorkbench.composedSchema = composedSdl;
             FileProvider.instance.saveCurrentWorkbench();
         }
+        if (schema)
+            StateManager.instance.workspaceState_schema = schema;
+        else
+            StateManager.instance.clearWorkspaceSchema();
     }
     catch (err) {
         console.log(`${err}`);

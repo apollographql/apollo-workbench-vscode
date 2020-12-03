@@ -20,28 +20,28 @@ export function getServiceAvailableTypes(serviceName: string): string[] {
                 let typeNode = `O:${objectTypeNode.name.value}`;
                 if (!interfaces.includes(typeNode)) {
                     interfaces.push(typeNode);
-                    interfaces.push(`${typeNode}[]`);
+                    interfaces.push(`[${typeNode}]`);
                 }
             },
             InterfaceTypeDefinition(interfaceNode: InterfaceTypeDefinitionNode) {
                 let typeNode = `I:${interfaceNode.name.value}`;
                 if (!objectTypes.includes(typeNode)) {
                     objectTypes.push(typeNode);
-                    objectTypes.push(`${typeNode}[]`);
+                    objectTypes.push(`[${typeNode}]`);
                 }
             },
             EnumTypeDefinition(enumNode: EnumTypeDefinitionNode) {
                 let typeNode = `E:${enumNode.name.value}`;
                 if (!enums.includes(typeNode)) {
                     enums.push(typeNode);
-                    enums.push(`${typeNode}[]`);
+                    enums.push(`[${typeNode}]`);
                 }
             },
             ScalarTypeDefinition(scalarNode: ScalarTypeDefinitionNode) {
                 let typeNode = `S:${scalarNode.name.value}`;
                 if (!scalars.includes(typeNode)) {
                     scalars.push(typeNode);
-                    scalars.push(`${typeNode}[]`);
+                    scalars.push(`[${typeNode}]`);
                 }
             }
         });
@@ -59,12 +59,12 @@ export function getServiceAvailableTypes(serviceName: string): string[] {
     types.push('ID');
     types.push('Int');
     types.push('String');
-    types.push('String[]');
-    types.push('Int[]');
+    types.push('[String]');
+    types.push('[Int]');
     types.push('Float');
-    types.push('Float[]');
+    types.push('[Float]');
     types.push('Boolean');
-    types.push('Boolean[]');
+    types.push('[Boolean]');
 
     return types;
 }
