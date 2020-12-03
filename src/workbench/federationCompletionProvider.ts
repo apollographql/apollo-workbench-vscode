@@ -19,7 +19,7 @@ export const federationCompletionProvider = {
         let uri = document.uri;
         let completionItems = new Array<CompletionItem>();
 
-        if (uri.scheme == 'workbench' && uri.path.includes('/schemas/')) {
+        if (uri.scheme == 'workbench' && uri.path.includes('schemas')) {
             let line = document.lineAt(position.line);
             let lineText = line.text;
             let serviceName = document.uri.query;
@@ -74,8 +74,7 @@ export const federationCompletionProvider = {
             else {
                 //Add federation items that can be extended
 
-                let extendableTypes = //StateManager.instance.workspaceState_csdlDefinedEntities;
-                    await extractDefinedEntitiesByService();
+                let extendableTypes = await extractDefinedEntitiesByService();
 
                 for (var sn in extendableTypes)
                     if (sn != serviceName)
@@ -89,14 +88,25 @@ export const federationCompletionProvider = {
         }
         else if (uri.scheme == 'workbench' && uri.path.includes('/queries/')) {
             let schema = StateManager.instance.workspaceState_schema;
-            let query = document.getText();
-            let suggestions = getAutocompleteSuggestions(schema, query, position);
-            if (suggestions.length > 0) {
-                suggestions.forEach(ci => completionItems.push(new QueryCompletionItem(ci)));
+            if (schema) {
+                let query = document.getText();
+                let suggestions = getAutocompleteSuggestions(schema, query, position);
+                if (suggestions.length > 0) {
+                    suggestions.forEach(ci => completionItems.push(new QueryCompletionItem(ci)));
+                }
+            } else {
+                completionItems.push(new NoValidSchema());
             }
         }
 
         if (completionItems.length > 0) return completionItems;
+    }
+}
+
+class NoValidSchema extends CompletionItem {
+    constructor() {
+        super("No composed schema in workbench", CompletionItemKind.Constant);
+        this.insertText = "";
     }
 }
 

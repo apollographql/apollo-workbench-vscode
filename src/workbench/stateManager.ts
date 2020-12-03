@@ -91,22 +91,18 @@ export class StateManager {
 
         this.apolloStudioGraphOpsProvider.refresh();
     }
-
-    // get workspaceState_csdlDefinedEntities() {
-    //     return this.context?.workspaceState.get('csdlDefinedEntities') as any;
-    // }
-    // set workspaceState_csdlDefinedEntities(csdlDefinedEntities) {
-    //     this.context?.workspaceState.update('csdlDefinedEntities', csdlDefinedEntities);
-    // }
     get workspaceState_selectedWorkbenchFile() {
         return this.context?.workspaceState.get('selectedWbFile') as WorkbenchFile;
     }
     set workspaceState_selectedWorkbenchFile(wbFile: WorkbenchFile) {
         this.context?.workspaceState.update("selectedWbFile", wbFile);
-        // this.workspaceState_csdlDefinedEntities = {};
+        this.clearWorkspaceSchema();
 
         this.currentWorkbenchSchemasProvider.refresh();
         this.currentWorkbenchOperationsProvider.refresh();
+    }
+    clearWorkspaceSchema() {
+        this.context?.workspaceState.update("schema", undefined);
     }
     get workspaceState_schema() {
         return this.context?.workspaceState.get("schema") as GraphQLSchema;

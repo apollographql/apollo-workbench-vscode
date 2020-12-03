@@ -19,6 +19,7 @@ import { Kind, parse, Source } from 'graphql';
 import { collectExecutableDefinitionDiagnositics } from 'apollo-language-server/lib/diagnostics';
 import { GraphQLDocument } from 'apollo-language-server/lib/document';
 import { defaultValidationRules } from 'apollo-language-server/lib/errors/validation';
+import { DiagnosticSeverity } from 'vscode-languageclient';
 
 export const compositionDiagnostics: vscode.DiagnosticCollection = vscode.languages.createDiagnosticCollection("composition-errors");
 export const operationDiagnostics: vscode.DiagnosticCollection = vscode.languages.createDiagnosticCollection("operation-errors");
@@ -99,28 +100,33 @@ export async function activate(context: vscode.ExtensionContext) {
 		let document = new GraphQLDocument(new Source(e.document.getText()));
 		if (uri.scheme == 'workbench') {
 			if (uri.path.includes('queries')) {
-				const fragments = Object.create(null);
-				if (document.ast) {
-					for (const definition of document.ast.definitions) {
-						if (definition.kind === Kind.FRAGMENT_DEFINITION) {
-							fragments[definition.name.value] = definition;
+				const schema = StateManager.instance.workspaceState_schema;
+				if (schema) {
+					const fragments = Object.create(null);
+					if (document.ast) {
+						for (const definition of document.ast.definitions) {
+							if (definition.kind === Kind.FRAGMENT_DEFINITION) {
+								fragments[definition.name.value] = definition;
+							}
 						}
 					}
-				}
-				let schema = StateManager.instance.workspaceState_schema;
-				let opDiagnostics = collectExecutableDefinitionDiagnositics(schema, document, fragments, defaultValidationRules);
-				if (opDiagnostics.length > 0) {
-					operationDiagnostics.clear();
-					let diagnostics = new Array<vscode.Diagnostic>();
-					opDiagnostics.forEach(opDiag => {
-						let start = opDiag.range.start;
-						let end = opDiag.range.end;
-						let range = new vscode.Range(new vscode.Position(start.line, start.character), new vscode.Position(end.line, end.character));
-						diagnostics.push(new vscode.Diagnostic(range, opDiag.message, opDiag.severity))
-					});
-					operationDiagnostics.set(uri, diagnostics);
+					let opDiagnostics = collectExecutableDefinitionDiagnositics(schema, document, fragments, defaultValidationRules);
+					if (opDiagnostics.length > 0) {
+						operationDiagnostics.clear();
+						let diagnostics = new Array<vscode.Diagnostic>();
+						opDiagnostics.forEach(opDiag => {
+							let start = opDiag.range.start;
+							let end = opDiag.range.end;
+							let range = new vscode.Range(new vscode.Position(start.line, start.character), new vscode.Position(end.line, end.character));
+							diagnostics.push(new vscode.Diagnostic(range, opDiag.message, opDiag.severity))
+						});
+						operationDiagnostics.set(uri, diagnostics);
+					} else {
+						operationDiagnostics.clear();
+					}
 				} else {
 					operationDiagnostics.clear();
+					operationDiagnostics.set(uri, [new vscode.Diagnostic(new vscode.Range(0, 0, 0, 0), "No valid composed schema", DiagnosticSeverity.Warning)]);
 				}
 			}
 		}
