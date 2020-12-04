@@ -3,7 +3,7 @@
   "displayName": "Apollo Workbench",
   "description": "Tooling to help you develop and mock federated schemas using Apollo Federation",
   "icon": "media/logo-apollo.png",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "publisher": "michael-watson",
   "engines": {
     "vscode": "^1.34.0"
@@ -128,6 +128,33 @@
         "command": "extension.stopMocks",
         "title": "Stop Mocked Servers",
         "category": "Apollo Workbench"
+      },
+      {
+        "command": "local-workbench-files.loadFile",
+        "title": "Load Workbench File",
+        "icon": "$(arrow-up)"
+      },
+      {
+        "command": "local-workbench-files.renameGraph",
+        "title": "Rename Workbench Graph"
+      },
+      {
+        "command": "local-workbench-files.deleteFile",
+        "title": "Delete Workbench File",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "local-workbench-files.duplicateFile",
+        "title": "Duplicate Workbench File"
+      },
+      {
+        "command": "local-workbench-files.refresh",
+        "title": "Refresh local workbench files",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "local-workbench-files.dockerize",
+        "title": "Create Docker Image"
       },
       {
         "command": "current-workbench-schemas.refreshSchemas",
@@ -336,14 +363,19 @@
           "group": "1"
         },
         {
+          "command": "local-workbench-files.renameGraph",
+          "when": "view == local-workbench-files && viewItem == workbenchFileTreeItem",
+          "group": "1@1"
+        },
+        {
           "command": "local-workbench-files.dockerize",
           "when": "view == local-workbench-files && viewItem == workbenchFileTreeItem",
-          "group": "1"
+          "group": "1@3"
         },
         {
           "command": "local-workbench-files.duplicateFile",
           "when": "view == local-workbench-files && viewItem == workbenchFileTreeItem",
-          "group": "1"
+          "group": "1@2"
         },
         {
           "command": "local-workbench-files.deleteFile",

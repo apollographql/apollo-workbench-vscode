@@ -32,7 +32,7 @@ export class CurrentWorkbenchOpsTreeDataProvider implements vscode.TreeDataProvi
 
     private getOperationsFromWorkbenchFile(): vscode.TreeItem[] {
         const operations = FileProvider.instance.currrentWorkbenchOperations;
-        if (operations) {
+        if (operations != {}) {
             const toDep = (operationName: string, operation: string): WorkbenchOperationTreeItem => {
                 return new WorkbenchOperationTreeItem(
                     operationName,

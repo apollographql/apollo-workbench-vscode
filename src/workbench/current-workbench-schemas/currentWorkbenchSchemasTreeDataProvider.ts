@@ -36,7 +36,7 @@ export class CurrentWorkbenchSchemasTreeDataProvider implements vscode.TreeDataP
 
     private getSchemasFromWorkbenchFile(): vscode.TreeItem[] {
         const schemas = FileProvider.instance.currrentWorkbenchSchemas;
-        if (schemas) {
+        if (Object.keys(schemas).length != 0) {
             const toDep = (serviceName: string, wbSchema: { sdl: string }): WorkbenchSchemaTreeItem => {
                 return new WorkbenchSchemaTreeItem(
                     serviceName,

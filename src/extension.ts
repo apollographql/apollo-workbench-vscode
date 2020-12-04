@@ -14,9 +14,7 @@ import { enterApiKey, setAccountId } from './utils/vscodeHelpers';
 import { FileProvider, WorkbenchUri, WorkbenchUriType } from './utils/files/fileProvider';
 import { GettingStartedTreeItem } from './workbench/local-workbench-files/gettingStartedTreeItems';
 import { GettingStartedDocProvider } from './workbench/gettingStartedDocProvider';
-import { ApolloConfig, schemaProviderFromConfig } from 'apollo-language-server';
-import { DockerImageManager } from './utils/docker';
-import { Kind, parse, Source } from 'graphql';
+import { Kind, Source } from 'graphql';
 import { collectExecutableDefinitionDiagnositics } from 'apollo-language-server/lib/diagnostics';
 import { GraphQLDocument } from 'apollo-language-server/lib/document';
 import { defaultValidationRules } from 'apollo-language-server/lib/errors/validation';
@@ -136,11 +134,13 @@ export async function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(vscode.workspace.registerFileSystemProvider('workbench', FileProvider.instance, { isCaseSensitive: true }));
 
 	//Local Workbench Files Commands
-	vscode.commands.registerCommand("local-workbench-files.loadFile", async (item: WorkbenchFileTreeItem) => await FileProvider.instance.loadWorkbenchFile(item.workbenchFileName, item.filePath));
-	vscode.commands.registerCommand("local-workbench-files.duplicateFile", async (item: WorkbenchFileTreeItem) => await FileProvider.instance.duplicateWorkbenchFile(item.workbenchFileName, item.filePath));
+	vscode.commands.registerCommand("local-workbench-files.loadFile", async (item: WorkbenchFileTreeItem) => await FileProvider.instance.loadWorkbenchFile(item.graphName, item.filePath));
+	vscode.commands.registerCommand("local-workbench-files.renameGraph", async (item: WorkbenchFileTreeItem) => await FileProvider.instance.promptToRenameWorkbenchFile(item.graphName, item.filePath));
+	vscode.commands.registerCommand("local-workbench-files.duplicateFile", async (item: WorkbenchFileTreeItem) => await FileProvider.instance.duplicateWorkbenchFile(item.graphName, item.filePath));
 	vscode.commands.registerCommand("local-workbench-files.deleteFile", async (item: WorkbenchFileTreeItem) => await FileProvider.instance.promptToDeleteWorkbenchFile(item.filePath));
 	vscode.commands.registerCommand('local-workbench-files.refresh', async () => StateManager.instance.localWorkbenchFilesProvider.refresh());
-	vscode.commands.registerCommand('local-workbench-files.dockerize', async (item: WorkbenchFileTreeItem) => DockerImageManager.create(item.filePath));
+	//TODO: released once propery tested
+	// vscode.commands.registerCommand('local-workbench-files.dockerize', async (item: WorkbenchFileTreeItem) => DockerImageManager.create(item.filePath));
 
 	//Apollo Studio Graphs Commands
 	vscode.commands.registerCommand('studio-graphs.refresh', () => StateManager.instance.apolloStudioGraphsProvider.refresh());
@@ -184,14 +184,6 @@ export async function activate(context: vscode.ExtensionContext) {
 				await vscode.window.showTextDocument(editor.document);
 			}
 		})
-	});
-	let queriesFolder = WorkbenchUri.parse('*', WorkbenchUriType.QUERIES).fsPath;
-	let schemasFolder = WorkbenchUri.parse('*').path;
-	console.log(queriesFolder);
-	let config = new ApolloConfig({ service: { localSchemaFile: WorkbenchUri.csdl().path, includes: [queriesFolder], excludes: [schemasFolder] } })
-	let provider = schemaProviderFromConfig(config);
-	provider.onSchemaChange(h => {
-		console.log(h);
 	});
 }
 
