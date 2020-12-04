@@ -36,8 +36,10 @@ export class FileProvider implements FileSystemProvider {
     //Singleton implementation
     private static _instance: FileProvider;
     static get instance(): FileProvider {
-        if (!this._instance)
-            this._instance = new FileProvider(workspace.rootPath ?? '.');
+        if (!this._instance) {
+            if (workspace.rootPath)
+                this._instance = new FileProvider(workspace.rootPath ?? '.');
+        }
 
         return this._instance;
     }
@@ -51,10 +53,12 @@ export class FileProvider implements FileSystemProvider {
     }
 
     //All workbench files in opened VS Code folder
-    private workbenchFiles: Map<string, ApolloWorkbenchFile> = new Map();
+    workbenchFiles: Map<string, ApolloWorkbenchFile> = new Map();
 
-    get currrentWorkbench() { return this.workbenchFiles.get(StateManager.instance.workspaceState_selectedWorkbenchFile.path) as ApolloWorkbenchFile; }
-    get currrentWorkbenchSchemas() { return this.currrentWorkbench?.schemas; }
+    get currrentWorkbench() {
+        return this.workbenchFiles.get(StateManager.instance.workspaceState_selectedWorkbenchFile.path) as ApolloWorkbenchFile;
+    }
+    get currrentWorkbenchSchemas() { return this.currrentWorkbench?.schemas ?? {}; }
     get currrentWorkbenchOperations() { return this.currrentWorkbench?.operations; }
     get currrentWorkbenchOperationQueryPlans() { return this.currrentWorkbench?.queryPlans; }
 
@@ -134,6 +138,27 @@ export class FileProvider implements FileSystemProvider {
         unlinkSync(filePath);
 
         StateManager.instance.localWorkbenchFilesProvider?.refresh();
+    }
+    async promptToRenameWorkbenchFile(oldGraphName: string, wbFilePath: string) {
+        let result = await window.showInputBox({ prompt: "Enter what you want to rename your graph to", value: oldGraphName });
+        if (!result) return;
+
+        let shouldSelectAfterRename = false;
+        if (result == this.currrentWorkbench?.graphName)
+            shouldSelectAfterRename = true;
+
+        let workbenchFileToRename = this.workbenchFiles.get(wbFilePath);
+        if (workbenchFileToRename) {
+            workbenchFileToRename.graphName = result;
+            writeFileSync(wbFilePath, JSON.stringify(workbenchFileToRename), { encoding: "utf8" });
+
+            if (shouldSelectAfterRename) {
+                StateManager.instance.workspaceState_selectedWorkbenchFile = { name: workbenchFileToRename.graphName, path: wbFilePath };
+            }
+
+            StateManager.instance.localWorkbenchFilesProvider?.refresh();
+        } else
+            window.showErrorMessage(`Workbench file was not found in  virtual documents: ${wbFilePath}`);
     }
     createNewWorkbenchFile(workbenchFileName: string, graphName?: string) {
         const path = `${workspace.rootPath}/${workbenchFileName}.apollo-workbench`;
@@ -387,9 +412,9 @@ export class FileProvider implements FileSystemProvider {
             const dirents = readdirSync(directory, { withFileTypes: true });
             for (const dirent of dirents) {
                 const directoryPath = path.resolve(directory, dirent.name);
-                if (dirent.isDirectory()) {
+                if (dirent.isDirectory() && dirent.name != 'node_modules') {
                     directories.push(directoryPath);
-                } else if (dirent.name.includes('apollo-workbench')) {
+                } else if (dirent.name.includes('.apollo-workbench')) {
                     workbenchFiles.push(Uri.parse(directoryPath));
                 }
             }
