@@ -29,6 +29,7 @@ export interface GraphOperations_service_stats {
 
 export interface GraphOperations_service {
   __typename: "Service";
+  title: string;
   stats: GraphOperations_service_stats;
 }
 
@@ -42,4 +43,5 @@ export interface GraphOperations {
 export interface GraphOperationsVariables {
   id: string;
   from: any;
+  variant?: string | null;
 }

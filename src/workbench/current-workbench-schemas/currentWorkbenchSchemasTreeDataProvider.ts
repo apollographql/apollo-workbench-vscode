@@ -1,6 +1,7 @@
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { FileProvider } from '../../utils/files/fileProvider';
+import { StateManager } from '../stateManager';
 
 export class CurrentWorkbenchSchemasTreeDataProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
 
@@ -36,7 +37,11 @@ export class CurrentWorkbenchSchemasTreeDataProvider implements vscode.TreeDataP
 
     private getSchemasFromWorkbenchFile(): vscode.TreeItem[] {
         const schemas = FileProvider.instance.currrentWorkbenchSchemas;
-        if (Object.keys(schemas).length != 0) {
+        if (schemas == undefined) {
+            return [new vscode.TreeItem("No workbench file selected", vscode.TreeItemCollapsibleState.None)];
+        } else if (Object.keys(schemas).length == 0) {
+            return [new vscode.TreeItem("No schemas in selected workbench file", vscode.TreeItemCollapsibleState.None)];
+        } else {
             const toDep = (serviceName: string, wbSchema: { sdl: string }): WorkbenchSchemaTreeItem => {
                 return new WorkbenchSchemaTreeItem(
                     serviceName,
@@ -45,18 +50,14 @@ export class CurrentWorkbenchSchemasTreeDataProvider implements vscode.TreeDataP
                 );
             };
 
-            const deps = schemas ? Object.keys(schemas).map(serviceName => toDep(serviceName, schemas[serviceName])) : [];
-
-            return deps;
-        } else {
-            return [new vscode.TreeItem("No workbench file selected", vscode.TreeItemCollapsibleState.None)];
+            return Object.keys(schemas).map(serviceName => toDep(serviceName, schemas[serviceName]));
         }
     }
 }
 
 export class WorkbenchCsdlTreeItem extends vscode.TreeItem {
     constructor() {
-        super('Latest Composed Schema', vscode.TreeItemCollapsibleState.None);
+        super('Composed Schema (CSDL)', vscode.TreeItemCollapsibleState.None);
         this.command = {
             command: "current-workbench-schemas.viewCsdl",
             title: "View Latest Composed Schema"

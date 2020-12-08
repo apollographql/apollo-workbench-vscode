@@ -22,6 +22,10 @@ export async function enterApiKey() {
     let apiKey = await window.showInputBox({ placeHolder: "Enter User API Key - user:gh.michael-watson:023jr324tj....", })
     if (apiKey && await isValidKey(apiKey)) {
         StateManager.instance.globalState_userApiKey = apiKey;
+    } else if (apiKey) {
+        window.showErrorMessage("Invalid API key entered");
+    } else if (apiKey == '') {
+        window.setStatusBarMessage("Login cancelled, no API key entered", 2000);
     }
 }
 
@@ -51,7 +55,7 @@ export async function setAccountId() {
         }
 
         if (accountId) {
-            StateManager.instance.globalState_selectedGraph = "";
+            StateManager.instance.setSelectedGraph("");
             StateManager.instance.globalState_selectedApolloAccount = accountId;
         }
     }

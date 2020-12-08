@@ -30,11 +30,8 @@ export class StateManager {
     apolloStudioGraphsProvider: ApolloStudioGraphsTreeDataProvider = new ApolloStudioGraphsTreeDataProvider(workspace.rootPath ?? ".");;
     apolloStudioGraphOpsProvider: ApolloStudioGraphOpsTreeDataProvider = new ApolloStudioGraphOpsTreeDataProvider();
 
-    get workspaceStoragePath(): string | undefined {
-        return this.context?.storageUri?.fsPath;
-    }
-    get workbenchGlobalStoragePath(): string | undefined {
-        return this.context?.globalStorageUri.fsPath;
+    static workspaceRoot(): string | undefined {
+        return workspace.workspaceFolders ? workspace.workspaceFolders[0].uri.fsPath : undefined;
     }
 
     static get settings_startingServerPort(): number {
@@ -48,6 +45,9 @@ export class StateManager {
     }
     static get settings_graphVariant() {
         return workspace.getConfiguration("apollo-workbench").get('graphVariant') as string ?? process.env.APOLLO_GRAPH_VARIANT ?? "";
+    }
+    static get settings_daysOfOperationsToFetch(): number {
+        return workspace.getConfiguration("apollo-workbench").get('daysOfOperationsToFetch') as number;;
     }
     static get settings_shouldRunOpRegistry() {
         return workspace.getConfiguration("apollo-workbench").get('runOperationRegistry') as boolean;
@@ -83,14 +83,23 @@ export class StateManager {
     set globalState_selectedApolloAccount(accountId: string) {
         this.context?.globalState.update("APOLLO_SELCTED_ACCOUNT", accountId);
     }
-    get globalState_selectedGraph() {
-        return this.context?.globalState.get('APOLLO_SELCTED_GRAPH_ID') as string;
-    }
-    set globalState_selectedGraph(graphId: string) {
+    setSelectedGraph(graphId: string, variant?: string) {
         this.context?.globalState.update("APOLLO_SELCTED_GRAPH_ID", graphId);
+        this.context?.globalState.update("APOLLO_SELCTED_GRAPH_VARIANT", variant);
 
         this.apolloStudioGraphOpsProvider.refresh();
     }
+    get globalState_selectedGraphVariant() {
+        return this.context?.globalState.get('APOLLO_SELCTED_GRAPH_VARIANT') as string;
+    }
+    get globalState_selectedGraph() {
+        return this.context?.globalState.get('APOLLO_SELCTED_GRAPH_ID') as string;
+    }
+    // set globalState_selectedGraph(graphId: string) {
+    //     this.context?.globalState.update("APOLLO_SELCTED_GRAPH_ID", graphId);
+
+    //     this.apolloStudioGraphOpsProvider.refresh();
+    // }
     get workspaceState_selectedWorkbenchFile() {
         return this.context?.workspaceState.get('selectedWbFile') as WorkbenchFile;
     }

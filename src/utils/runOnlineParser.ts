@@ -70,7 +70,7 @@ function runOnlineParserInternal(documentText: string): Rule[] {
                 const state: State = { ...mutableState };
                 const ancestorStates = getAncestorStates(state);
                 // monaco positions
-                const lineNumber = lineIndex + 1;
+                const lineNumber = lineIndex;
                 const startColumn = stream.getStartOfToken();
                 const endColumn = stream.getCurrentPosition();
                 const tokenText = line.slice(

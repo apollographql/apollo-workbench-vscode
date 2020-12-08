@@ -1,4 +1,4 @@
-import { Uri, workspace } from "vscode";
+import { workspace } from "vscode";
 
 import { runOnlineParser } from './runOnlineParser';
 import { FieldWithType } from "../workbench/federationCompletionProvider";
@@ -54,9 +54,6 @@ export async function extractDefinedEntitiesByService() {
                             fieldTypeThing.type = `${type?.type}!`;
                     }
                     break;
-                case "FieldDef":
-                    let test = state.name;
-                    break;
                 case "ObjectTypeDef":
                     let typeName = state.name;
                     let serviceName = directivesState.serviceName;
@@ -81,6 +78,3 @@ export async function extractDefinedEntitiesByService() {
 
     return extendables;
 }
-
-
-

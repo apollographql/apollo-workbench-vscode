@@ -71,6 +71,9 @@ export class ApolloStudioGraphsTreeDataProvider implements vscode.TreeDataProvid
                             let accountgraphVariantTreeItem = new StudioGraphVariantTreeItem(graph.id, graphVariant.name);
                             graphVariantTreeItems.push(accountgraphVariantTreeItem);
                         }
+                        if (graphVariantTreeItems.length == 0)
+                            graphVariantTreeItems.push(new StudioGraphVariantTreeItem(graph.id, 'current'));
+
                         //Set the implementing service tree items on the return objects 
                         graphTreeItem.children = graphVariantTreeItems;
                         accountServiceTreeItems.push(graphTreeItem);
@@ -85,7 +88,7 @@ export class ApolloStudioGraphsTreeDataProvider implements vscode.TreeDataProvid
                 items.push(new PreloadedWorkbenchTopLevel());
         } else {
             items.push(new NotLoggedInTreeItem());
-            items.push(new vscode.TreeItem("Login to see Example Graphs", vscode.TreeItemCollapsibleState.None));
+            items.push(new NotLoggedInTreeItem("Login to see Example Graphs"));
             vscode.window.showInformationMessage('No user api key was found.', "Login").then(response => {
                 if (response === "Login")
                     vscode.commands.executeCommand("extension.enterStudioApiKey");
@@ -97,8 +100,8 @@ export class ApolloStudioGraphsTreeDataProvider implements vscode.TreeDataProvid
 }
 
 export class NotLoggedInTreeItem extends vscode.TreeItem {
-    constructor() {
-        super("Click here to login with your user api key", vscode.TreeItemCollapsibleState.None);
+    constructor(message: string = "Click here to login with your user api key") {
+        super(message, vscode.TreeItemCollapsibleState.None);
         this.command = {
             title: "Login to Apollo",
             command: "extension.enterStudioApiKey"
@@ -151,6 +154,12 @@ export class StudioGraphVariantTreeItem extends vscode.TreeItem {
     ) {
         super(graphVariant, vscode.TreeItemCollapsibleState.None);
         this.contextValue = 'studioGraphVariantTreeItem';
+        this.command =
+        {
+            title: "Load Graph Operations",
+            command: "studio-graphs.loadOperations",
+            arguments: [this, graphVariant]
+        }
     }
     getChildren(element?: vscode.TreeItem): Thenable<vscode.TreeItem[]> {
         return new Promise(() => this.children);

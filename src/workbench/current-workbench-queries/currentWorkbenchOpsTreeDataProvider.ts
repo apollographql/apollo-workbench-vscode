@@ -1,6 +1,7 @@
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { FileProvider } from '../../utils/files/fileProvider';
+import { StateManager } from '../stateManager';
 
 export class CurrentWorkbenchOpsTreeDataProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
     constructor(private workspaceRoot: string) { }
@@ -32,7 +33,11 @@ export class CurrentWorkbenchOpsTreeDataProvider implements vscode.TreeDataProvi
 
     private getOperationsFromWorkbenchFile(): vscode.TreeItem[] {
         const operations = FileProvider.instance.currrentWorkbenchOperations;
-        if (operations != {}) {
+        if (operations == undefined) {
+            return [new vscode.TreeItem("No workbench file selected", vscode.TreeItemCollapsibleState.None)];
+        } else if (operations == {}) {
+            return [new vscode.TreeItem("No operations in selected workbench file", vscode.TreeItemCollapsibleState.None)];
+        } else {
             const toDep = (operationName: string, operation: string): WorkbenchOperationTreeItem => {
                 return new WorkbenchOperationTreeItem(
                     operationName,
@@ -40,11 +45,7 @@ export class CurrentWorkbenchOpsTreeDataProvider implements vscode.TreeDataProvi
                 );
             };
 
-            const deps = operations ? Object.keys(operations).map(operationName => toDep(operationName, operations[operationName])) : [];
-
-            return deps;
-        } else {
-            return [new vscode.TreeItem("No workbench file selected", vscode.TreeItemCollapsibleState.None)];
+            return Object.keys(operations).map(operationName => toDep(operationName, operations[operationName]));
         }
     }
 }

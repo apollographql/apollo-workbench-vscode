@@ -31,10 +31,16 @@ export async function getComposedSchemaLogCompositionErrors(workbenchFile?: Apol
         } else
             compositionDiagnostics.clear();
 
-        if (composedSdl) {
-            FileProvider.instance.currrentWorkbench.composedSchema = composedSdl;
-            FileProvider.instance.saveCurrentWorkbench();
-        }
+        FileProvider.instance.currrentWorkbench.composedSchema = composedSdl ?? "";
+        FileProvider.instance.saveCurrentWorkbench();
+
+        // if (composedSdl) {
+        //     FileProvider.instance.currrentWorkbench.composedSchema = composedSdl;
+        //     FileProvider.instance.saveCurrentWorkbench();
+        // } else {
+
+        // }
+
         if (schema)
             StateManager.instance.workspaceState_schema = schema;
         else

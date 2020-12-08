@@ -36,20 +36,20 @@ export class FileProvider implements FileSystemProvider {
     //Singleton implementation
     private static _instance: FileProvider;
     static get instance(): FileProvider {
-        if (!this._instance) {
-            if (workspace.rootPath)
-                this._instance = new FileProvider(workspace.rootPath ?? '.');
-        }
+        if (!this._instance)
+            this._instance = new FileProvider(StateManager.workspaceRoot());
 
         return this._instance;
     }
 
-    constructor(workspaceRoot: string) {
-        let workbenchFiles = this.getWorkbenchFilesInDirectory(workspaceRoot);
-        workbenchFiles.forEach(workbenchFile => {
-            const wbFile = JSON.parse(readFileSync(workbenchFile.fsPath, { encoding: 'utf-8' })) as ApolloWorkbenchFile;
-            this.workbenchFiles.set(workbenchFile.fsPath, wbFile);
-        });
+    constructor(workspaceRoot?: string) {
+        if (workspaceRoot) {
+            let workbenchFiles = this.getWorkbenchFilesInDirectory(workspaceRoot);
+            workbenchFiles.forEach(workbenchFile => {
+                const wbFile = JSON.parse(readFileSync(workbenchFile.fsPath, { encoding: 'utf-8' })) as ApolloWorkbenchFile;
+                this.workbenchFiles.set(workbenchFile.fsPath, wbFile);
+            });
+        }
     }
 
     //All workbench files in opened VS Code folder
@@ -58,71 +58,90 @@ export class FileProvider implements FileSystemProvider {
     get currrentWorkbench() {
         return this.workbenchFiles.get(StateManager.instance.workspaceState_selectedWorkbenchFile.path) as ApolloWorkbenchFile;
     }
-    get currrentWorkbenchSchemas() { return this.currrentWorkbench?.schemas ?? {}; }
+    get currrentWorkbenchSchemas() { return this.currrentWorkbench?.schemas; }
     get currrentWorkbenchOperations() { return this.currrentWorkbench?.operations; }
     get currrentWorkbenchOperationQueryPlans() { return this.currrentWorkbench?.queryPlans; }
 
+    async promptOpenFolder() {
+        let openFolder = "Open Folder";
+        let response = await window.showErrorMessage("You must open a folder to create Apollo Workbench files", openFolder);
+        if (response == openFolder)
+            await commands.executeCommand('extension.openFolder');
+    }
+
     //Workbench File Implementations
     async promptToCreateWorkbenchFileFromGraph(graphId: string, graphVariants: string[]) {
-        let selectedVariant = '';
-        let defaultGraphName = `${graphId}@${selectedVariant}-`;
-
-        if (graphVariants.length == 0) {
-            selectedVariant = 'currrent'
-        } else if (graphVariants.length == 1) {
-            selectedVariant = graphVariants[0];
+        if (!StateManager.workspaceRoot()) {
+            await this.promptOpenFolder();
         } else {
-            selectedVariant = await window.showQuickPick(graphVariants) ?? '';
-        }
+            let selectedVariant = '';
 
-        if (selectedVariant == '') {
-            window.showInformationMessage("You must select a variant to load the graph from")
-        } else {
-            let graphName = await window.showInputBox({
-                prompt: "Enter a name for your new workbench file",
-                placeHolder: defaultGraphName,
-                value: defaultGraphName
-            });
-            if (graphName) {
-                let workbenchFile: ApolloWorkbenchFile = new ApolloWorkbenchFile();
-                workbenchFile.graphName = graphName;
-
-                let results = await getGraphSchemasByVariant(StateManager.instance.globalState_userApiKey, graphId, selectedVariant);
-                let monolithicService = results.service?.implementingServices as GetGraphSchemas_service_implementingServices_NonFederatedImplementingService;
-                if (monolithicService?.graphID) {
-                    workbenchFile.schemas['monolith'] = results.service?.schema?.document;
-                } else {
-                    let implementingServices = results.service?.implementingServices as GetGraphSchemas_service_implementingServices_FederatedImplementingServices;
-                    implementingServices?.services?.map(service => {
-                        let serviceName = service.name;
-                        let schema = service.activePartialSchema.sdl;
-                        workbenchFile.schemas[serviceName] = { sdl: schema, shouldMock: true };
-                    });
-                }
-
-                const path = `${workspace.rootPath}/${graphName}.apollo-workbench`;
-
-                let compositionResults = getComposedSchema(workbenchFile);
-                if (compositionResults.composedSdl) workbenchFile.composedSchema = compositionResults.composedSdl;
-                else await handleErrors(workbenchFile, compositionResults.errors);
-
-                this.workbenchFiles.set(path, workbenchFile);
-                writeFileSync(path, JSON.stringify(workbenchFile), { encoding: "utf8" });
-
-                StateManager.instance.localWorkbenchFilesProvider.refresh();
+            if (graphVariants.length == 0) {
+                selectedVariant = 'currrent'
+            } else if (graphVariants.length == 1) {
+                selectedVariant = graphVariants[0];
             } else {
-                window.showInformationMessage("You must provide a name to create a new workbench file")
+                selectedVariant = await window.showQuickPick(graphVariants) ?? '';
+            }
+
+            if (selectedVariant == '') {
+                window.showInformationMessage("You must select a variant to load the graph from")
+            } else {
+                let defaultGraphName = `${graphId}:${selectedVariant}-`;
+                let graphName = await window.showInputBox({
+                    prompt: "Enter a name for your new workbench file",
+                    placeHolder: defaultGraphName,
+                    value: defaultGraphName
+                });
+                if (graphName) {
+                    let workbenchFile: ApolloWorkbenchFile = new ApolloWorkbenchFile();
+                    workbenchFile.graphName = graphName;
+
+                    let results = await getGraphSchemasByVariant(StateManager.instance.globalState_userApiKey, graphId, selectedVariant);
+                    let monolithicService = results.service?.implementingServices as GetGraphSchemas_service_implementingServices_NonFederatedImplementingService;
+                    if (monolithicService?.graphID) {
+                        workbenchFile.schemas['monolith'] = results.service?.schema?.document;
+                    } else {
+                        let implementingServices = results.service?.implementingServices as GetGraphSchemas_service_implementingServices_FederatedImplementingServices;
+                        implementingServices?.services?.map(service => {
+                            let serviceName = service.name;
+                            let schema = service.activePartialSchema.sdl;
+                            workbenchFile.schemas[serviceName] = { sdl: schema, shouldMock: true };
+                        });
+                    }
+
+                    const path = `${workspace.rootPath}/${graphName}.apollo-workbench`;
+
+                    let compositionResults = getComposedSchema(workbenchFile);
+                    if (compositionResults.composedSdl) workbenchFile.composedSchema = compositionResults.composedSdl;
+                    else await handleErrors(workbenchFile, compositionResults.errors);
+
+                    this.workbenchFiles.set(path, workbenchFile);
+                    writeFileSync(path, JSON.stringify(workbenchFile), { encoding: "utf8" });
+
+                    StateManager.instance.localWorkbenchFilesProvider.refresh();
+                } else {
+                    window.showInformationMessage("You must provide a name to create a new workbench file")
+                }
             }
         }
     }
     async promptToCreateWorkbenchFile() {
-        let workbenchName = await window.showInputBox({ placeHolder: "Enter name for workbench file" });
-        if (!workbenchName) {
-            const msg = 'No name was provided for the file.\n Cancelling new workbench create';
-            outputChannel.appendLine(msg);
-            window.showErrorMessage(msg);
+        if (!StateManager.workspaceRoot()) {
+            await this.promptOpenFolder();
         } else {
-            FileProvider.instance.createNewWorkbenchFile(workbenchName);
+            let workbenchName = await window.showInputBox({ placeHolder: "Enter name for workbench file" });
+            if (!workbenchName) {
+                const msg = 'No name was provided for the file.\n Cancelling new workbench create';
+                outputChannel.appendLine(msg);
+                window.showErrorMessage(msg);
+            } else {
+                FileProvider.instance.createNewWorkbenchFile(workbenchName);
+                let shouldLoad = await window.showInformationMessage("Would you like to load the new workbench file?", "Yes");
+                if (shouldLoad?.toLowerCase() == "yes") {
+                    await this.loadWorkbenchFile(workbenchName, `${StateManager.workspaceRoot()}/${workbenchName}.apollo-workbench`)
+                }
+            }
         }
     }
     async promptToDeleteWorkbenchFile(filePath: string) {
@@ -160,14 +179,14 @@ export class FileProvider implements FileSystemProvider {
         } else
             window.showErrorMessage(`Workbench file was not found in  virtual documents: ${wbFilePath}`);
     }
-    createNewWorkbenchFile(workbenchFileName: string, graphName?: string) {
+    private createNewWorkbenchFile(workbenchFileName: string, graphName?: string) {
         const path = `${workspace.rootPath}/${workbenchFileName}.apollo-workbench`;
         const uri = Uri.parse(path);
         const wbFile = new ApolloWorkbenchFile();
         wbFile.graphName = graphName ?? workbenchFileName;
 
         this.workbenchFiles.set(uri.fsPath, wbFile);
-        writeFileSync(path, wbFile);
+        writeFileSync(path, JSON.stringify(wbFile));
         StateManager.instance.localWorkbenchFilesProvider?.refresh();
     }
     async duplicateWorkbenchFile(workbenchFileName: string, filePathToDuplicate: string) {
@@ -176,10 +195,12 @@ export class FileProvider implements FileSystemProvider {
             const newUri = Uri.parse(`${workspace.rootPath}/${newWorkbenchFileName}.apollo-workbench`);
             const workbenchFileToDuplicate = this.workbenchFiles.get(filePathToDuplicate);
             if (workbenchFileToDuplicate) {
+                workbenchFileToDuplicate.graphName = newWorkbenchFileName;
                 this.workbenchFiles.set(newUri.fsPath, workbenchFileToDuplicate);
 
                 copyFileSync(filePathToDuplicate, newUri.fsPath);
-                StateManager.instance.localWorkbenchFilesProvider?.refresh();
+
+                // return workbenchFileToDuplicate;
             } else {
                 window.showInformationMessage(`Original workspace file not found: ${workbenchFileName}`);
             }
@@ -188,11 +209,18 @@ export class FileProvider implements FileSystemProvider {
         }
     }
     async copyPreloadedWorkbenchFile(fileName: string) {
-        let file = `${fileName}.apollo-workbench`;
-        let preloadFileDir = join(__dirname, '..', '..', '..', 'media', `preloaded-files`, file);
-        let workbenchFile = JSON.parse(readFileSync(preloadFileDir, { encoding: 'utf-8' })) as ApolloWorkbenchFile;
-        this.workbenchFiles.set(preloadFileDir, workbenchFile);
-        await this.duplicateWorkbenchFile(fileName, preloadFileDir);
+        if (!StateManager.workspaceRoot()) {
+            await this.promptOpenFolder();
+        } else {
+            let file = `${fileName}.apollo-workbench`;
+            let preloadFileDir = join(__dirname, '..', '..', '..', 'media', `preloaded-files`, file);
+            let workbenchFile = JSON.parse(readFileSync(preloadFileDir, { encoding: 'utf-8' })) as ApolloWorkbenchFile;
+            workbenchFile.graphName = fileName;
+            this.workbenchFiles.set(preloadFileDir, workbenchFile);
+            await this.duplicateWorkbenchFile(fileName, preloadFileDir);
+            this.workbenchFiles.delete(preloadFileDir);
+            StateManager.instance.localWorkbenchFilesProvider?.refresh();
+        }
     }
     async loadWorkbenchFile(workbenchFileName: string, filePath: string) {
         ServerManager.instance.stopMocks();
@@ -245,6 +273,8 @@ export class FileProvider implements FileSystemProvider {
         let newServiceName = await window.showInputBox({ placeHolder: "Enter a unique name for the schema/service" }) ?? "";
         if (!newServiceName) {
             outputChannel.appendLine(`Renaming schema cancelled - No new name entered.`);
+        } else if (this.currrentWorkbenchSchemas[newServiceName]) {
+            window.showErrorMessage(`Rename cancelled, there is already another service named ${newServiceName}`)
         } else {
             await this.rename(WorkbenchUri.parse(serviceToRename), WorkbenchUri.parse(newServiceName), { overwrite: true });
         }
@@ -271,6 +301,8 @@ export class FileProvider implements FileSystemProvider {
         let newOperationName = await window.showInputBox({ placeHolder: "Enter a unique name for the schema/service" }) ?? "";
         if (!newOperationName) {
             outputChannel.appendLine(`Renaming schema cancelled - No new name entered.`);
+        } else if (this.currrentWorkbenchOperations[newOperationName]) {
+            window.showErrorMessage(`Rename cancelled, there is already another operation named ${newOperationName}`)
         } else {
             await this.rename(WorkbenchUri.parse(operationToRename, WorkbenchUriType.QUERIES), WorkbenchUri.parse(newOperationName, WorkbenchUriType.QUERIES), { overwrite: true });
         }
@@ -329,7 +361,7 @@ export class FileProvider implements FileSystemProvider {
                     let queryPlan = getQueryPlan(queryPlanPointer, stringContent, { autoFragmentization: false });
                     this.currrentWorkbench.queryPlans[operationName] = serializeQueryPlan(queryPlan);
                 } catch (err) {
-                    //Wasn't a valid query
+                    //TODO: Wasn't a valid query - to handle errors better
                     console.log(err);
                 }
 
@@ -368,6 +400,7 @@ export class FileProvider implements FileSystemProvider {
                 this.currrentWorkbenchSchemas[newName] = this.currrentWorkbenchSchemas[oldName];
                 delete this.currrentWorkbenchSchemas[oldName];
 
+                getComposedSchemaLogCompositionErrors(this.currrentWorkbench);
             } else if (oldUri.path.includes('/queries')) {
                 this.currrentWorkbenchOperations[newName] = this.currrentWorkbenchOperations[oldName];
                 delete this.currrentWorkbenchOperations[oldName];

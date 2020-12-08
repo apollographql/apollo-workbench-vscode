@@ -68,6 +68,13 @@
           "default": "current",
           "description": "Specifies the gateway graph variant to be used for the Apollo Studio Graph. This will change operation registry if `apollo-workbench.runOperationRegistry` is set to `true`"
         },
+        "apollo-workbench.daysOfOperationsToFetch": {
+          "type": [
+            "number"
+          ],
+          "default": 30,
+          "description": "Specifies the number of days to select operations from Apollo Studio (to current day)"
+        },
         "apollo-workbench.runOperationRegistry": {
           "type": [
             "boolean"
