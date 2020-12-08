@@ -1,6 +1,30 @@
 ## Apollo Workbench VSCode 0.2.x (upcoming)
 
 - Better composition error pointing
+- Provide visual indicators of what is going on during composition and loading of workbench file (large schemas can take a second to load)
+
+## Apollo Workbench VSCode 0.2.3
+
+### Improvements:
+
+- General stability across basic functions:
+  - Getting started
+    - Streamlined creating new folder
+    - Enter API key has feedback
+  - Creating a workbench file from multiple sources
+    - New (blank)
+    - From Apollo Studio Graph
+    - From Example Graph
+  - Rename workbench files
+  - Composition now updates CSDL visible if error
+  - Studio graphs loading
+    - Enable loading operations when clicking on any graph
+    - Enable setting to change days for traces fetched from Apollo Studio
+  - Studio Operations Viewing
+    - Open edit-only view of graphql operations from Studio when clicking on a row in graph loaded operations
+
+## Apollo Workbench VSCode 0.2.2
+
 - Open any fodler
 
 ## Apollo Workbench VSCode 0.2.1
