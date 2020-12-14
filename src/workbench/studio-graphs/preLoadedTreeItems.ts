@@ -7,7 +7,7 @@ export class PreloadedWorkbenchTopLevel extends TreeItem {
     constructor() {
         super("Example Graphs", TreeItemCollapsibleState.Collapsed);
 
-        let preloadedFiles = FileProvider.instance.getPreloadedWorkbenchFiles();
+        let preloadedFiles = FileProvider.instance?.getPreloadedWorkbenchFiles();
         preloadedFiles.map(preloadedFile => {
             this.children.push(new PreloadedWorkbenchFile(preloadedFile.fileName));
         })

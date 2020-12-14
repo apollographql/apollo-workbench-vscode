@@ -3,6 +3,7 @@ import { ExtensionContext, window, workspace } from "vscode";
 import { getUserMemberships } from "../studio-gql/graphClient";
 import { CurrentWorkbenchOpsTreeDataProvider } from "./current-workbench-queries/currentWorkbenchOpsTreeDataProvider";
 import { CurrentWorkbenchSchemasTreeDataProvider } from "./current-workbench-schemas/currentWorkbenchSchemasTreeDataProvider";
+import { FieldWithType } from "./federationCompletionProvider";
 import { LocalWorkbenchFilesTreeDataProvider, WorkbenchFile } from "./local-workbench-files/localWorkbenchFilesTreeDataProvider";
 import { ApolloStudioGraphsTreeDataProvider } from "./studio-graphs/apolloStudioGraphsTreeDataProvider";
 import { ApolloStudioGraphOpsTreeDataProvider } from "./studio-operations/apolloStudioGraphOpsTreeDataProvider";
@@ -100,6 +101,12 @@ export class StateManager {
 
     //     this.apolloStudioGraphOpsProvider.refresh();
     // }
+    get workspaceState_selectedWorkbenchAvailableEntities() {
+        return this.context?.workspaceState.get('selectedWorkbenchAvailableEntities') as { [serviceName: string]: { type: string, keyFields: FieldWithType[] }[] };
+    }
+    set workspaceState_selectedWorkbenchAvailableEntities(entities: { [serviceName: string]: { type: string, keyFields: FieldWithType[] }[] }) {
+        this.context?.workspaceState.update('selectedWorkbenchAvailableEntities', entities);
+    }
     get workspaceState_selectedWorkbenchFile() {
         return this.context?.workspaceState.get('selectedWbFile') as WorkbenchFile;
     }
@@ -107,6 +114,7 @@ export class StateManager {
         this.context?.workspaceState.update("selectedWbFile", wbFile);
         this.clearWorkspaceSchema();
 
+        this.workspaceState_selectedWorkbenchAvailableEntities = {};
         this.currentWorkbenchSchemasProvider.refresh();
         this.currentWorkbenchOperationsProvider.refresh();
     }

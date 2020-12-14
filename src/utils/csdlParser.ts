@@ -1,15 +1,15 @@
-import { workspace } from "vscode";
+import { window, workspace } from "vscode";
 
 import { runOnlineParser } from './runOnlineParser';
 import { FieldWithType } from "../workbench/federationCompletionProvider";
-import { WorkbenchUri } from "./files/fileProvider";
+import { FileProvider, WorkbenchUri } from "./files/fileProvider";
+import { StateManager } from "../workbench/stateManager";
 
 export async function extractDefinedEntitiesByService() {
     let extendables: { [serviceName: string]: { type: string, keyFields: FieldWithType[] }[] } = {};
     try {
         let directivesState: { fields: Partial<FieldWithType>[], type?: string, serviceName?: string } = { fields: [] };
         let textDoc = await workspace.openTextDocument(WorkbenchUri.csdl());
-
         runOnlineParser(textDoc.getText(), (state, range, tokens) => {
             switch (state.kind) {
                 case "StringValue" as any:
@@ -37,10 +37,9 @@ export async function extractDefinedEntitiesByService() {
                     break;
                 case "Type" as any:
                     let fieldDef = state?.prevState?.name;
-                    let fieldType = textDoc.getText(range);
                     let fieldTypeThing = directivesState.fields.find(f => f.field === fieldDef && !f.type);
                     if (fieldDef && fieldTypeThing)
-                        fieldTypeThing.type = fieldType;
+                        fieldTypeThing.type = textDoc.getText(range);
 
                     break;
                 case "NonNullType":
@@ -75,6 +74,8 @@ export async function extractDefinedEntitiesByService() {
     } catch (err) {
         console.log(err);
     }
+
+    StateManager.instance.workspaceState_selectedWorkbenchAvailableEntities = extendables;
 
     return extendables;
 }

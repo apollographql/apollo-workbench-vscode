@@ -3,6 +3,16 @@
 - Better composition error pointing
 - Provide visual indicators of what is going on during composition and loading of workbench file (large schemas can take a second to load)
 
+## Apollo Workbench VSCode 0.2.5
+
+- Added new icons
+- Pretty print operations
+
+### Bugs
+
+- Intellisense takes along time to load with large generated csdl
+  - Excessive calls to `getText` in csdlParser removed
+
 ## Apollo Workbench VSCode 0.2.3
 
 ### Improvements:

@@ -4,6 +4,7 @@ import { GraphQLError, parse } from "graphql";
 import { Diagnostic, DiagnosticSeverity, Range, Uri } from "vscode";
 import { compositionDiagnostics } from "../extension";
 import { StateManager } from "../workbench/stateManager";
+import { extractDefinedEntitiesByService } from "./csdlParser";
 import { FileProvider, WorkbenchUri } from "./files/fileProvider";
 import { ApolloWorkbenchFile } from "./files/fileTypes";
 import { getRangeForFieldNamedType, getRangeForTypeDef } from "./schemaParser";
@@ -34,12 +35,11 @@ export async function getComposedSchemaLogCompositionErrors(workbenchFile?: Apol
         FileProvider.instance.currrentWorkbench.composedSchema = composedSdl ?? "";
         FileProvider.instance.saveCurrentWorkbench();
 
-        // if (composedSdl) {
-        //     FileProvider.instance.currrentWorkbench.composedSchema = composedSdl;
-        //     FileProvider.instance.saveCurrentWorkbench();
-        // } else {
-
-        // }
+        if (composedSdl) {
+            FileProvider.instance.currrentWorkbench.composedSchema = composedSdl;
+            FileProvider.instance.saveCurrentWorkbench();
+            await extractDefinedEntitiesByService();
+        }
 
         if (schema)
             StateManager.instance.workspaceState_schema = schema;

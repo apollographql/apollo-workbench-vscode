@@ -10,6 +10,7 @@ import { ServerManager } from '../../workbench/serverManager';
 import { StateManager } from '../../workbench/stateManager';
 import { getComposedSchema, getComposedSchemaLogCompositionErrors, handleErrors } from '../composition';
 import { ApolloWorkbenchFile } from './fileTypes';
+import { parse, print } from 'graphql';
 
 export enum WorkbenchUriType {
     SCHEMAS,
@@ -43,18 +44,28 @@ export class FileProvider implements FileSystemProvider {
     }
 
     constructor(workspaceRoot?: string) {
-        if (workspaceRoot) {
-            let workbenchFiles = this.getWorkbenchFilesInDirectory(workspaceRoot);
-            workbenchFiles.forEach(workbenchFile => {
-                const wbFile = JSON.parse(readFileSync(workbenchFile.fsPath, { encoding: 'utf-8' })) as ApolloWorkbenchFile;
-                this.workbenchFiles.set(workbenchFile.fsPath, wbFile);
-            });
-        }
+        this.refreshLocalWorkbenchFiles();
     }
 
     //All workbench files in opened VS Code folder
     workbenchFiles: Map<string, ApolloWorkbenchFile> = new Map();
+    refreshLocalWorkbenchFiles() {
+        this.workbenchFiles.clear();
+        const workspaceRoot = StateManager.workspaceRoot();
+        if (workspaceRoot) {
+            let workbenchFiles = this.getWorkbenchFilesInDirectory(workspaceRoot);
+            workbenchFiles.forEach(workbenchFile => {
+                try {
+                    const wbFile = JSON.parse(readFileSync(workbenchFile.fsPath, { encoding: 'utf-8' })) as ApolloWorkbenchFile;
+                    this.workbenchFiles.set(workbenchFile.fsPath, wbFile);
+                } catch (err) {
+                    window.showErrorMessage(`Workbench file was not in the correct format. File located at ${workbenchFile.fsPath}`);
+                }
+            });
+        }
 
+        return this.workbenchFiles;
+    }
     get currrentWorkbench() {
         return this.workbenchFiles.get(StateManager.instance.workspaceState_selectedWorkbenchFile.path) as ApolloWorkbenchFile;
     }
@@ -198,9 +209,7 @@ export class FileProvider implements FileSystemProvider {
                 workbenchFileToDuplicate.graphName = newWorkbenchFileName;
                 this.workbenchFiles.set(newUri.fsPath, workbenchFileToDuplicate);
 
-                copyFileSync(filePathToDuplicate, newUri.fsPath);
-
-                // return workbenchFileToDuplicate;
+                writeFileSync(newUri.fsPath, JSON.stringify(workbenchFileToDuplicate), { encoding: 'utf-8' });
             } else {
                 window.showInformationMessage(`Original workspace file not found: ${workbenchFileName}`);
             }
@@ -244,8 +253,13 @@ export class FileProvider implements FileSystemProvider {
             }
         }
         compositionDiagnostics.clear();
-        StateManager.instance.workspaceState_selectedWorkbenchFile = { name: workbenchFileName, path: filePath };
-        await getComposedSchemaLogCompositionErrors(this.currrentWorkbench);
+        if (this.workbenchFiles.get(filePath)) {
+            StateManager.instance.workspaceState_selectedWorkbenchFile = { name: workbenchFileName, path: filePath };
+            await getComposedSchemaLogCompositionErrors(this.currrentWorkbench);
+        } else {
+            window.showErrorMessage(`Worbench file ${workbenchFileName} does not exist at ${filePath}`);
+            StateManager.instance.localWorkbenchFilesProvider.refresh();
+        }
     }
     saveCurrentWorkbench() {
         writeFileSync(StateManager.instance.workspaceState_selectedWorkbenchFile.path, JSON.stringify(this.currrentWorkbench), { encoding: "utf8" });
@@ -293,8 +307,10 @@ export class FileProvider implements FileSystemProvider {
     }
     async addOperation(operationName: string, operationSignature?: string) {
         if (!operationSignature) operationSignature = `query ${operationName} {\n\t\n}`
+        else operationSignature = print(parse(operationSignature));
+
         this.currrentWorkbenchOperations[operationName] = operationSignature;
-        this.saveCurrentWorkbench();
+        await this.writeFile(WorkbenchUri.parse(operationName, WorkbenchUriType.QUERIES), Buffer.from(operationSignature), { create: true, overwrite: true });
         await this.openOperation(operationName);
     }
     async renameOperation(operationToRename: string) {

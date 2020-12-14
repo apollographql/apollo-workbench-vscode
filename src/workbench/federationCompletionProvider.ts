@@ -74,7 +74,8 @@ export const federationCompletionProvider = {
             else {
                 //Add federation items that can be extended
 
-                let extendableTypes = await extractDefinedEntitiesByService();
+                let extendableTypes = StateManager.instance.workspaceState_selectedWorkbenchAvailableEntities;
+                // await extractDefinedEntitiesByService();
 
                 for (var sn in extendableTypes)
                     if (sn != serviceName)

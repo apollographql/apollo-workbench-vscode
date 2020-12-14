@@ -1,10 +1,8 @@
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { FileProvider } from '../../utils/files/fileProvider';
-import { StateManager } from '../stateManager';
 
 export class CurrentWorkbenchSchemasTreeDataProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
-
     constructor(private workspaceRoot: string) { }
 
     private _onDidChangeTreeData: vscode.EventEmitter<WorkbenchSchemaTreeItem | undefined> = new vscode.EventEmitter<WorkbenchSchemaTreeItem | undefined>();
@@ -19,10 +17,8 @@ export class CurrentWorkbenchSchemasTreeDataProvider implements vscode.TreeDataP
     }
 
     getChildren(element?: WorkbenchSchemaTreeItem): Thenable<vscode.TreeItem[]> {
-        if (!this.workspaceRoot || this.workspaceRoot == '.') return Promise.resolve([]);
-
         if (element) {
-
+            return Promise.resolve([]);
         } else {
             let items = this.getSchemasFromWorkbenchFile();
             if (items.length == 0)
@@ -31,8 +27,6 @@ export class CurrentWorkbenchSchemasTreeDataProvider implements vscode.TreeDataP
 
             return Promise.resolve(items);
         }
-
-        return Promise.resolve([]);
     }
 
     private getSchemasFromWorkbenchFile(): vscode.TreeItem[] {

@@ -1,7 +1,6 @@
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { FileProvider } from '../../utils/files/fileProvider';
-import { StateManager } from '../stateManager';
 
 export class CurrentWorkbenchOpsTreeDataProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
     constructor(private workspaceRoot: string) { }
@@ -18,8 +17,6 @@ export class CurrentWorkbenchOpsTreeDataProvider implements vscode.TreeDataProvi
     }
 
     getChildren(element?: WorkbenchOperationTreeItem): Thenable<vscode.TreeItem[]> {
-        if (!this.workspaceRoot || this.workspaceRoot == '.') return Promise.resolve([]);
-
         if (element) {
             throw new Error('Element?');
         } else {
