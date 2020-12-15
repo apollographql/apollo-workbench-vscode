@@ -102,9 +102,9 @@ export class StateManager {
     //     this.apolloStudioGraphOpsProvider.refresh();
     // }
     get workspaceState_selectedWorkbenchAvailableEntities() {
-        return this.context?.workspaceState.get('selectedWorkbenchAvailableEntities') as { [serviceName: string]: { type: string, keyFields: FieldWithType[] }[] };
+        return this.context?.workspaceState.get('selectedWorkbenchAvailableEntities') as { [serviceName: string]: { type: string, keys: { [key: string]: FieldWithType[] } }[] };
     }
-    set workspaceState_selectedWorkbenchAvailableEntities(entities: { [serviceName: string]: { type: string, keyFields: FieldWithType[] }[] }) {
+    set workspaceState_selectedWorkbenchAvailableEntities(entities: { [serviceName: string]: { type: string, keys: { [key: string]: FieldWithType[] } }[] }) {
         this.context?.workspaceState.update('selectedWorkbenchAvailableEntities', entities);
     }
     get workspaceState_selectedWorkbenchFile() {
