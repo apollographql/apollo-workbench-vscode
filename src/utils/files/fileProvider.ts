@@ -19,7 +19,7 @@ export enum WorkbenchUriType {
 }
 export class WorkbenchUri {
     static csdl(): Uri {
-        return Uri.parse(`workbench:/csdl.graphql`);
+        return Uri.parse(`workbench:/csdl.graphql?${FileProvider.instance.currrentWorkbench.graphName}`);
     }
     static parse(name: string, type: WorkbenchUriType = WorkbenchUriType.SCHEMAS): Uri {
         switch (type) {
@@ -357,7 +357,6 @@ export class FileProvider implements FileSystemProvider {
             if (uri.path.includes('/schemas')) {
                 const serviceName = uri.query;
                 this.currrentWorkbenchSchemas[serviceName].sdl = stringContent;
-                this.saveCurrentWorkbench();
 
                 //Come up with your list of things to be used in linting
 
@@ -373,7 +372,8 @@ export class FileProvider implements FileSystemProvider {
                 const operationName = uri.query;
 
                 try {
-                    const queryPlanPointer = getQueryPlanner(this.currrentWorkbench.composedSchema);
+                    const csdl = this.readFile(WorkbenchUri.csdl());
+                    const queryPlanPointer = getQueryPlanner(csdl.toString());
                     let queryPlan = getQueryPlan(queryPlanPointer, stringContent, { autoFragmentization: false });
                     this.currrentWorkbench.queryPlans[operationName] = serializeQueryPlan(queryPlan);
                 } catch (err) {
@@ -382,6 +382,8 @@ export class FileProvider implements FileSystemProvider {
                 }
 
                 this.currrentWorkbenchOperations[operationName] = stringContent;
+            } else if (uri.path == '/csdl.graphql') {
+                this.currrentWorkbench.composedSchema = stringContent;
             } else {
                 throw new Error('Unknown uri format')
             }

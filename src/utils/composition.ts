@@ -36,8 +36,7 @@ export async function getComposedSchemaLogCompositionErrors(workbenchFile?: Apol
         FileProvider.instance.saveCurrentWorkbench();
 
         if (composedSdl) {
-            FileProvider.instance.currrentWorkbench.composedSchema = composedSdl;
-            FileProvider.instance.saveCurrentWorkbench();
+            FileProvider.instance.writeFile(WorkbenchUri.csdl(), Buffer.from(composedSdl), { create: true, overwrite: true })
             await extractDefinedEntitiesByService();
         }
 
