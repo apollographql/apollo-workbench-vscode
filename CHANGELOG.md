@@ -3,6 +3,14 @@
 - Better composition error pointing
 - Provide visual indicators of what is going on during composition and loading of workbench file (large schemas can take a second to load)
 
+## Apollo Workbench VSCode 0.2.6
+
+- Support composite keys in intellisense :tada:
+
+### Bugs
+
+- CSDL file not refreshing properly. Moved to not use openTextDocument as VS Code pulls from a cache instead of consitently calling the `FileProvier.readFile`
+
 ## Apollo Workbench VSCode 0.2.5
 
 - Added new icons
