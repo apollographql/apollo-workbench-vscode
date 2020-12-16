@@ -1,5 +1,4 @@
 import { CancellationToken, CompletionItem, CompletionItemKind, MarkdownString, Position, SnippetString, TextDocument, window, workspace } from "vscode";
-import { extractDefinedEntitiesByService } from "../utils/csdlParser";
 import { getServiceAvailableTypes } from "../utils/schemaParser";
 import { StateManager } from "./stateManager";
 import { getAutocompleteSuggestions } from "@apollographql/graphql-language-service-interface";
@@ -8,7 +7,7 @@ import { extend } from "lodash";
 
 export interface FieldWithType {
     field: string;
-    type: string;
+    type?: string;
 }
 
 //Extremely basic/naive implementation to find extendable entities
@@ -74,11 +73,16 @@ export const federationCompletionProvider = {
             else {
                 //Add federation items that can be extended
 
-                let extendableTypes = await extractDefinedEntitiesByService();
+                let extendableTypes = StateManager.instance.workspaceState_selectedWorkbenchAvailableEntities;
+                // await extractDefinedEntitiesByService();
 
                 for (var sn in extendableTypes)
                     if (sn != serviceName)
-                        extendableTypes[sn].map(type => completionItems.push(new FederationEntityExtensionItem(type.type, type.keyFields)));
+                        extendableTypes[sn].map(({ type, keys }) => {
+                            Object.keys(keys).forEach(key => {
+                                completionItems.push(new FederationEntityExtensionItem(key, type, keys[key], sn))
+                            })
+                        });
 
                 //Add default items for creating new entity/type/interface
                 completionItems.push(new ObjectTypeCompletionItem());
@@ -122,6 +126,7 @@ export class QueryCompletionItem extends CompletionItem {
 export class EntityObjectTypeCompletionItem extends CompletionItem {
     constructor() {
         super('Entity Object type', CompletionItemKind.Snippet);
+        this.sortText = 'b';
 
         let comments = `"""\nThis is an Entity, docs:https://www.apollographql.com/docs/federation/entities/\nYou will need to define a __resolveReference resolver for the type you define, docs: https://www.apollographql.com/docs/federation/entities/#resolving\n"""`;
         let insertSnippet = new SnippetString(`${comments}\ntype `);
@@ -137,6 +142,7 @@ export class EntityObjectTypeCompletionItem extends CompletionItem {
 export class ObjectTypeCompletionItem extends CompletionItem {
     constructor() {
         super('Object type', CompletionItemKind.Snippet);
+        this.sortText = 'b';
 
         let insertSnippet = new SnippetString('"""\nHere are some helpful details about your type\n"""\ntype ');
         insertSnippet.appendTabstop(1);
@@ -151,6 +157,7 @@ export class ObjectTypeCompletionItem extends CompletionItem {
 export class InterfaceCompletionItem extends CompletionItem {
     constructor() {
         super('Interface', CompletionItemKind.Snippet);
+        this.sortText = 'b';
 
         let insertSnippet = new SnippetString('interface ');
         insertSnippet.appendTabstop(1);
@@ -163,32 +170,17 @@ export class InterfaceCompletionItem extends CompletionItem {
 }
 
 export class FederationEntityExtensionItem extends CompletionItem {
-    constructor(typeToExtend: string, keyFields: FieldWithType[]) {
-        super(typeToExtend, CompletionItemKind.Reference);
+    constructor(key: string, typeToExtend: string, keyFields: FieldWithType[], owningServiceName: string) {
+        super(`extend ${typeToExtend} by "${key}"`, CompletionItemKind.Reference);
+        this.sortText = 'a';
 
         let insertSnippet = new SnippetString(`extend type `);
-        let typeExtensionCodeBlock = `extend type ${typeToExtend} @key(fields:"`;
+        let typeExtensionCodeBlock = `extend type ${typeToExtend} @key(fields:"${key}") {\n`;
 
         insertSnippet.appendVariable("typeToExtend", typeToExtend);
         insertSnippet.appendText(' @key(fields:"');
-
-        let keys = '{ '
-        for (var i = 0; i < keyFields.length; i++) {
-            let keyField = keyFields[i];
-            if (i == keyFields.length - 1) {
-                keys += `${keyField.field} }`;
-                typeExtensionCodeBlock += keyField.field;
-                insertSnippet.appendText(keyField.field);
-            } else {
-                let fieldWithSpace = `${keyField.field} `;
-                keys += fieldWithSpace;
-                typeExtensionCodeBlock += fieldWithSpace;
-                insertSnippet.appendText(fieldWithSpace);
-            }
-        }
-
-        typeExtensionCodeBlock += `"){\n`;
-        insertSnippet.appendText(`"){\n`);
+        insertSnippet.appendVariable("key", key);
+        insertSnippet.appendText('") {\n');
 
         for (var i = 0; i < keyFields.length; i++) {
             let keyField = keyFields[i];
@@ -197,16 +189,18 @@ export class FederationEntityExtensionItem extends CompletionItem {
             insertSnippet.appendText(fieldLine);
         }
 
+        insertSnippet.appendText(`\t`);
         insertSnippet.appendTabstop(1);
         typeExtensionCodeBlock += '}';
         insertSnippet.appendText(`\n}`);
 
         let mkdDocs = new MarkdownString();
         mkdDocs.appendCodeblock(typeExtensionCodeBlock, 'graphql');
+        mkdDocs.appendText(`Owning Service: ${owningServiceName}\n`);
         mkdDocs.appendMarkdown(`To learn more about extending entities, click [here](https://www.apollographql.com/docs/federation/entities/#extending).`);
 
         this.documentation = mkdDocs;
-        this.detail = `Extend ${typeToExtend} by keys ${keys}`;
+        this.detail = `Extend entity ${typeToExtend}`;
         this.insertText = insertSnippet;
     }
 }

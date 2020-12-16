@@ -6,6 +6,7 @@ import { AccountServiceVariants } from './types/AccountServiceVariants';
 import { GetGraphSchemas } from './types/GetGraphSchemas';
 import { GraphOperations } from './types/GraphOperations';
 import { CheckUserApiKey, CheckUserApiKey_me_User } from './types/CheckUserApiKey';
+import { StateManager } from '../workbench/stateManager';
 
 const keyCheck = gql`
     query CheckUserApiKey {
@@ -33,7 +34,7 @@ const accountServiceVariants = gql`
     query AccountServiceVariants($accountId: ID!) {
         account(id: $accountId) {
             name
-            services  {
+            services(includeDeleted: false)  {
                 id
                 title
                 devGraphOwner {
@@ -71,10 +72,11 @@ const getGraphSchemas = gql`
     }
   `;
 const getGraphOperations = gql`
-  query GraphOperations($id: ID! $from: Timestamp!) {
+  query GraphOperations($id: ID! $from: Timestamp! $variant: String) {
       service(id: $id) {
+          title
           stats(from: $from) {
-              queryStats {
+              queryStats (filter:{schemaTag: $variant}){
                   groupBy {
                       queryName
                       queryId  
@@ -108,12 +110,14 @@ export async function getAccountGraphs(apiKey: string, accountId: string) {
     return result.data as AccountServiceVariants
 }
 
-export async function getGraphOps(apiKey: string, graphId: string) {
+export async function getGraphOps(apiKey: string, graphId: string, graphVariant: string) {
+    let days = StateManager.settings_daysOfOperationsToFetch;
     let result = await toPromise(execute(createLink(apiKey), {
         query: getGraphOperations,
         variables: {
             "id": graphId,
-            "from": (-86400 * 30).toString()
+            "from": (-86400 * days).toString(),
+            "variant": graphVariant
         }
     }));
     return result.data as GraphOperations

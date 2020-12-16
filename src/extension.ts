@@ -13,7 +13,7 @@ import { PreloadedWorkbenchFile } from './workbench/studio-graphs/preLoadedTreeI
 import { enterApiKey, setAccountId } from './utils/vscodeHelpers';
 import { FileProvider, WorkbenchUri, WorkbenchUriType } from './utils/files/fileProvider';
 import { GettingStartedTreeItem } from './workbench/local-workbench-files/gettingStartedTreeItems';
-import { GettingStartedDocProvider } from './workbench/gettingStartedDocProvider';
+import { ApolloStudioOperationsProvider, GettingStartedDocProvider } from './workbench/docProviders';
 import { Kind, Source } from 'graphql';
 import { collectExecutableDefinitionDiagnositics } from 'apollo-language-server/lib/diagnostics';
 import { GraphQLDocument } from 'apollo-language-server/lib/document';
@@ -45,7 +45,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	vscode.commands.registerCommand('extension.ensureFolderIsOpen', async () => {
 		if (!vscode.workspace.rootPath) {
 			let openFolder = "Open Folder";
-			let response = await vscode.window.showErrorMessage("You must open a folder to use Apollo Workbench. We'll need a place to store a .workbench folder that holds schema/query files.", openFolder);
+			let response = await vscode.window.showErrorMessage("You must open a folder to create Apollo Workbench files", openFolder);
 			if (response == openFolder)
 				await vscode.commands.executeCommand('extension.openFolder');
 		}
@@ -64,7 +64,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	vscode.window.registerTreeDataProvider('studio-operations', StateManager.instance.apolloStudioGraphOpsProvider);
 
 	//Global Extension Commands
-	vscode.commands.registerCommand('extension.newWorkbench', FileProvider.instance.promptToCreateWorkbenchFile);
+	vscode.commands.registerCommand('extension.newWorkbench', async () => await FileProvider.instance.promptToCreateWorkbenchFile());
 	vscode.commands.registerCommand('extension.enterStudioApiKey', enterApiKey);
 	vscode.commands.registerCommand('extension.deleteStudioApiKey', () => StateManager.instance.globalState_userApiKey = "");
 	vscode.commands.registerCommand('extension.startMocks', () => ServerManager.instance.startMocks());
@@ -77,7 +77,8 @@ export async function activate(context: vscode.ExtensionContext) {
 			.then(() => vscode.commands.executeCommand('workbench.action.closeEditorsInOtherGroups'))
 			.then(() => { }, (e) => console.error(e));
 	});
-	vscode.workspace.registerTextDocumentContentProvider('getting-started', new GettingStartedDocProvider());
+	vscode.workspace.registerTextDocumentContentProvider(GettingStartedDocProvider.scheme, new GettingStartedDocProvider());
+	vscode.workspace.registerTextDocumentContentProvider(ApolloStudioOperationsProvider.scheme, new ApolloStudioOperationsProvider());
 
 	//Current Loaded Workbench Schemas Commands
 	vscode.commands.registerCommand('current-workbench-schemas.addSchema', async () => await FileProvider.instance.promptToAddSchema());
@@ -88,7 +89,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	vscode.commands.registerCommand('current-workbench-schemas.viewCsdl', async () => vscode.window.showTextDocument(WorkbenchUri.csdl()));
 
 	//Current Loaded Workbench Operations Commands
-	vscode.commands.registerCommand('current-workbench-operations.addOperation', FileProvider.instance.promptToAddOperation);
+	vscode.commands.registerCommand('current-workbench-operations.addOperation', async () => await FileProvider.instance.promptToAddOperation());
 	vscode.commands.registerCommand("current-workbench-operations.editOperation", async (operation: WorkbenchOperationTreeItem) => await FileProvider.instance.openOperation(operation.operationName));
 	vscode.commands.registerCommand("current-workbench-operations.deleteOperation", async (operation: WorkbenchOperationTreeItem) => FileProvider.instance.delete(WorkbenchUri.parse(operation.operationName, WorkbenchUriType.QUERIES), { recursive: true }));
 	vscode.commands.registerCommand('current-workbench-operations.refreshOperations', async () => StateManager.instance.currentWorkbenchOperationsProvider.refresh());
@@ -147,7 +148,8 @@ export async function activate(context: vscode.ExtensionContext) {
 	vscode.commands.registerCommand('studio-graphs.createWorkbenchFromGraph', async (graphTreeItem: StudioGraphTreeItem) => await FileProvider.instance.promptToCreateWorkbenchFileFromGraph(graphTreeItem.graphId, graphTreeItem.variants));
 	vscode.commands.registerCommand('studio-graphs.createWorkbenchFromPreloaded', async (preloadedItem: PreloadedWorkbenchFile) => await FileProvider.instance.copyPreloadedWorkbenchFile(preloadedItem.fileName));
 	vscode.commands.registerCommand('studio-graphs.createWorkbenchFromGraphWithVariant', async (graphVariantTreeItem: StudioGraphVariantTreeItem) => await FileProvider.instance.promptToCreateWorkbenchFileFromGraph(graphVariantTreeItem.graphId, [graphVariantTreeItem.graphVariant]));
-	vscode.commands.registerCommand('studio-graphs.loadOperations', async (graphTreeItem: StudioGraphTreeItem) => StateManager.instance.globalState_selectedGraph = graphTreeItem.graphId);
+	vscode.commands.registerCommand('studio-graphs.loadOperations', async (graphTreeItem: any, graphVariant?: string) => StateManager.instance.setSelectedGraph(graphTreeItem.graphId, graphVariant));
+	vscode.commands.registerCommand('studio-graphs.viewStudioOperation', async (operation: StudioOperationTreeItem) => await vscode.window.showTextDocument(ApolloStudioOperationsProvider.Uri(operation.operationName, operation.operationSignature)));
 	vscode.commands.registerCommand('studio-graphs.switchOrg', setAccountId);
 
 	//Apollo Studio Graph Operations Commands

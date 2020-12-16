@@ -19,16 +19,19 @@ export class ApolloStudioGraphOpsTreeDataProvider implements vscode.TreeDataProv
         if (element)
             return element.versions ?? element.operations;
 
+        let noOperationsFoundMessage = '';
         let items: { [operationName: string]: { operationId: string, operationSignature: string } } = {};
         let apiKey = StateManager.instance.globalState_userApiKey;
         if (!apiKey) return [new NotLoggedInTreeItem()];
 
         let selectedGraphId = StateManager.instance.globalState_selectedGraph;
+        let graphVariant = StateManager.instance.globalState_selectedGraphVariant;
         if (selectedGraphId) {
             //Create objects for next for loop
             //  Return A specific account with all graphs
-            let graphOps = await getGraphOps(apiKey, selectedGraphId);
+            let graphOps = await getGraphOps(apiKey, selectedGraphId, graphVariant);
 
+            noOperationsFoundMessage = graphVariant ? `No operations found for ${graphOps.service?.title}@${graphVariant}` : `No operations found for ${graphOps.service?.title}`;
             if (graphOps?.service?.stats?.queryStats) {
                 graphOps?.service?.stats?.queryStats.map(queryStat => {
                     if (queryStat.groupBy.queryName && queryStat.groupBy.queryId && queryStat.groupBy.querySignature) {
@@ -45,31 +48,13 @@ export class ApolloStudioGraphOpsTreeDataProvider implements vscode.TreeDataProv
             itemsToReturn.push(new StudioOperationTreeItem(op.operationId, operationName, op.operationSignature));
         }
 
-        return itemsToReturn;
+        if (itemsToReturn.length > 0)
+            return itemsToReturn;
+
+
+        return [new vscode.TreeItem(`${noOperationsFoundMessage} in last ${StateManager.settings_daysOfOperationsToFetch} days`, vscode.TreeItemCollapsibleState.None)];
     }
 
-}
-
-export class StudioOperationClientTreeItem extends vscode.TreeItem {
-    versions: StudioOperationClientVersionTreeItem[] = new Array<StudioOperationClientVersionTreeItem>();
-
-    constructor(
-        public readonly clientName: string
-    ) {
-        super(clientName, vscode.TreeItemCollapsibleState.Collapsed);
-        this.contextValue = 'studioOperationClientTreeItem';
-    }
-}
-
-export class StudioOperationClientVersionTreeItem extends vscode.TreeItem {
-    operations: StudioOperationTreeItem[] = new Array<StudioOperationTreeItem>();
-
-    constructor(
-        public readonly clientVersion: string
-    ) {
-        super(clientVersion, vscode.TreeItemCollapsibleState.Collapsed);
-        this.contextValue = 'studioOperationClientVersionTreeItem';
-    }
 }
 
 export class StudioOperationTreeItem extends vscode.TreeItem {
@@ -81,5 +66,10 @@ export class StudioOperationTreeItem extends vscode.TreeItem {
         super(operationName, vscode.TreeItemCollapsibleState.None);
         this.contextValue = 'studioOperationTreeItem';
         this.description = `id:${operationId.substring(0, 6)}`;
+        this.command = {
+            title: "View Operation",
+            command: "studio-graphs.viewStudioOperation",
+            arguments: [this]
+        }
     }
 }

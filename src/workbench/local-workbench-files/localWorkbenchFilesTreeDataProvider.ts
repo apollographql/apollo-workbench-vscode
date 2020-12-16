@@ -28,7 +28,7 @@ export class LocalWorkbenchFilesTreeDataProvider implements vscode.TreeDataProvi
             if (!this.workspaceRoot || this.workspaceRoot == '.') return Promise.resolve([new GettingStartedTopLevel(vscode.TreeItemCollapsibleState.Expanded)]);
 
             let items = new Array<vscode.TreeItem>();
-            let workbenchFiles = FileProvider.instance.workbenchFiles;
+            let workbenchFiles = FileProvider.instance.refreshLocalWorkbenchFiles();
 
             workbenchFiles.forEach((wbFile, wbFilePath) => {
                 items.push(new WorkbenchFileTreeItem(wbFile.graphName, wbFilePath));
