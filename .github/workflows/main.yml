@@ -22,6 +22,11 @@ jobs:
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
+      #Checkout Source Code
+      - name: 'Checkout source code'
+        uses: 'actions/checkout@v2'
+        with:
+          ref: ${{ github.ref }}
       #Bump version
       - name: 'Automated Version Bump'
         id: version-bump
@@ -32,6 +37,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
 
       #Setup project and package extension
+      - name: 'Extension Packaging'
       - uses: actions/checkout@v2
       - uses: actions/setup-node@v2
         with:
@@ -41,12 +47,14 @@ jobs:
       - run: npm vscode:package
 
       #Upload binary to release
-      - name: Upload binaries to release
+      - name: 'Upload binaries to release'
         uses: svenstaro/upload-release-action@v2
+        env:
+          NEW_TAG: ${{ steps.version-bump.outputs.newTag }}
         with:
           repo_token: ${{ secrets.RELEASE_TOKEN }}
-          file: apollo-workbench-vscode-${{ steps.version-bump.outputs.newTag }}.vsix
-          asset_name: apollo-workbench-vscode-${{ steps.version-bump.outputs.newTag }}.vsix
-          tag: ${{ steps.version-bump.outputs.newTag }}
+          file: apollo-workbench-vscode-$NEW_TAG.vsix
+          asset_name: apollo-workbench-vscode-$NEW_TAG.vsix
+          tag: $NEW_TAG
           overwrite: true
           body: ${{ github.event_name }}
