@@ -120,14 +120,16 @@ export class FileProvider implements FileSystemProvider {
 
                     const path = `${workspace.rootPath}/${graphName}.apollo-workbench`;
 
-                    let compositionResults = getComposedSchema(workbenchFile);
-                    if (compositionResults.composedSdl) workbenchFile.composedSchema = compositionResults.composedSdl;
-                    else await handleErrors(workbenchFile, compositionResults.errors);
+                    const compositionResults = getComposedSchema(workbenchFile).next().value;
+                    if (compositionResults) {
+                        if (compositionResults.composedSdl) workbenchFile.composedSchema = compositionResults.composedSdl;
+                        else await handleErrors(workbenchFile, compositionResults.errors);
 
-                    this.workbenchFiles.set(path, workbenchFile);
-                    writeFileSync(path, JSON.stringify(workbenchFile), { encoding: "utf8" });
+                        this.workbenchFiles.set(path, workbenchFile);
+                        writeFileSync(path, JSON.stringify(workbenchFile), { encoding: "utf8" });
 
-                    StateManager.instance.localWorkbenchFilesProvider.refresh();
+                        StateManager.instance.localWorkbenchFilesProvider.refresh();
+                    }
                 } else {
                     window.showInformationMessage("You must provide a name to create a new workbench file")
                 }

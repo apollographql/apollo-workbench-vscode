@@ -2,6 +2,14 @@
 
 - Better composition error pointing
 
+## Apollo Workbench VSCode 0.2.8
+
+- Upgrade Visual Indicator for loading workbench files
+
+### Bugs
+
+- Usage of `yield` to unblock vscode extension ui thread from `composeAndValidate` :tada:
+
 ## Apollo Workbench VSCode 0.2.7
 
 - Local development mocking toggle options implemented
