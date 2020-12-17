@@ -3,7 +3,7 @@ import { parse } from 'graphql';
 import { Headers } from "apollo-server-env";
 import { ServiceDefinition } from '@apollo/federation';
 import { ServerManager } from "./workbench/serverManager";
-import { FileProvider } from "./utils/files/fileProvider";
+import { FileProvider, WorkbenchUri, WorkbenchUriType } from "./utils/files/fileProvider";
 
 function log(message: string) { console.log(`GATEWAY-${message}`); }
 
@@ -17,19 +17,19 @@ export class OverrideApolloGateway extends ApolloGateway {
                 const service = wb.schemas[serviceName];
 
                 if (service.shouldMock) {
-                    try {
-                        let typeDefs = parse(service.sdl);
-                        let url = `http://localhost:${ServerManager.instance.portMapping[serviceName]}`;
-                        newDefinitions.push({ name: serviceName, url, typeDefs });
-                    } catch (err) {
-
-                    }
+                    let typeDefs = parse(service.sdl);
+                    let url = `http://localhost:${ServerManager.instance.portMapping[serviceName]}`;
+                    newDefinitions.push({ name: serviceName, url, typeDefs });
                 } else {
-                    let typeDefs = await this.getTypeDefs(service.url as string);
-                    if (typeDefs)
-                        newDefinitions.push({ name: serviceName, url: service.url, typeDefs });
+                    let typeDefs = await OverrideApolloGateway.getTypeDefs(service.url as string);
+                    if (typeDefs) {
+                        newDefinitions.push({ name: serviceName, url: service.url, typeDefs: parse(typeDefs) });
+                        FileProvider.instance.writeFile(WorkbenchUri.parse(serviceName, WorkbenchUriType.SCHEMAS), Buffer.from(typeDefs), { create: true, overwrite: true })
+                    } else {
+                        log("Falling back to schema defined in workbench");
+                        newDefinitions.push({ name: serviceName, url: service.url, typeDefs: parse(service.sdl) });
+                    }
                 }
-
             }
         }
 
@@ -39,7 +39,7 @@ export class OverrideApolloGateway extends ApolloGateway {
         };
     }
 
-    async getTypeDefs(serviceURLOverride: string) {
+    public static async getTypeDefs(serviceURLOverride: string) {
         try {
             const request = {
                 query: 'query __ApolloGetServiceDefinition__ { _service { sdl } }',
@@ -54,9 +54,7 @@ export class OverrideApolloGateway extends ApolloGateway {
 
             let { data, errors } = await source.process({ request, context: {} });
             if (data && !errors) {
-                const typeDefs = parse(data._service.sdl);
-
-                return typeDefs;
+                return data._service.sdl as string;
             } else if (errors) {
                 errors.map(error => log(error.message));
             }

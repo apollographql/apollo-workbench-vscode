@@ -1,4 +1,4 @@
-import { composeAndValidate, ComposedGraphQLSchema } from "@apollo/federation";
+import { composeAndValidate, ComposedGraphQLSchema, ServiceDefinition } from "@apollo/federation";
 import { existsSync } from "fs";
 import { GraphQLError, parse } from "graphql";
 import { Diagnostic, DiagnosticSeverity, Range, Uri } from "vscode";
@@ -9,7 +9,6 @@ import { FileProvider, WorkbenchUri } from "./files/fileProvider";
 import { ApolloWorkbenchFile } from "./files/fileTypes";
 import { getRangeForFieldNamedType, getRangeForTypeDef } from "./schemaParser";
 import { getLastLineOfText, getLineText } from "./vscodeHelpers";
-
 
 export async function getComposedSchemaLogCompositionErrors(workbenchFile?: ApolloWorkbenchFile): Promise<void> {
     if (!workbenchFile)
@@ -51,7 +50,7 @@ export async function getComposedSchemaLogCompositionErrors(workbenchFile?: Apol
 }
 
 export function getComposedSchema(workbenchFile: ApolloWorkbenchFile) {
-    let sdls: any = [];
+    let sdls: ServiceDefinition[] = [];
     let errors: GraphQLError[] = [];
     for (var key in workbenchFile.schemas) {
         let localSchemaString = workbenchFile.schemas[key].sdl;
@@ -106,7 +105,9 @@ export function getComposedSchema(workbenchFile: ApolloWorkbenchFile) {
             //Parser runs on an individual file, saves that state, run validation over state
             //composeValidate -> remove errors that we already found
 
+            //This blocks UI thread, why I have no clue but it is overworking VS Code
             compositionResults = composeAndValidate(sdls);
+            // Promise.resolve(composeAndValidate(sdls)) as any;
 
             if (Object.keys(workbenchFile.schemas).length == 0)
                 compositionResults.errors = [new GraphQLError("No schemas defined in workbench yet", undefined, undefined, undefined, undefined, undefined, { noServicesDefined: true })];

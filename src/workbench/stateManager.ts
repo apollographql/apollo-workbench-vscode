@@ -1,5 +1,5 @@
 import { GraphQLSchema } from "graphql";
-import { ExtensionContext, window, workspace } from "vscode";
+import { ExtensionContext, window, workspace, StatusBarItem } from "vscode";
 import { getUserMemberships } from "../studio-gql/graphClient";
 import { CurrentWorkbenchOpsTreeDataProvider } from "./current-workbench-queries/currentWorkbenchOpsTreeDataProvider";
 import { CurrentWorkbenchSchemasTreeDataProvider } from "./current-workbench-schemas/currentWorkbenchSchemasTreeDataProvider";
@@ -18,11 +18,12 @@ export class StateManager {
 
         return this._instance;
     }
+    constructor(context: ExtensionContext) {
+        this.context = context;
+    }
 
     static init(context: ExtensionContext) {
-        this._instance = new StateManager();
-        this._instance.context = context;
-        this._instance.localWorkbenchFilesProvider = new LocalWorkbenchFilesTreeDataProvider(workspace.rootPath ?? ".");
+        this._instance = new StateManager(context);
     }
 
     localWorkbenchFilesProvider: LocalWorkbenchFilesTreeDataProvider = new LocalWorkbenchFilesTreeDataProvider(workspace.rootPath ?? ".");;

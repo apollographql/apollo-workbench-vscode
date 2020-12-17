@@ -1,7 +1,18 @@
 ## Apollo Workbench VSCode 0.2.x (upcoming)
 
 - Better composition error pointing
+
+## Apollo Workbench VSCode 0.2.7
+
+- Local development mocking toggle options implemented
+  - Needs docs
+  - Can have portions of graph point at specific urls, others mocked
+    - Currently no auth/header options available
 - Provide visual indicators of what is going on during composition and loading of workbench file (large schemas can take a second to load)
+
+### Known bugs
+
+- `composeAndValidate` from `@apollo/federation` is blocking the vscode extension ui thread :bug:
 
 ## Apollo Workbench VSCode 0.2.6
 

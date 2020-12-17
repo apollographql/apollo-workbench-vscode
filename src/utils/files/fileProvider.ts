@@ -2,7 +2,7 @@ import { serializeQueryPlan } from '@apollo/gateway';
 import { getQueryPlan, getQueryPlanner } from '@apollo/query-planner-wasm';
 import { copyFileSync, existsSync, readdirSync, readFileSync, unlinkSync, writeFileSync } from 'fs';
 import path, { join } from 'path';
-import { commands, Disposable, EventEmitter, FileChangeEvent, FileStat, FileSystemProvider, FileType, Position, Uri, window, workspace } from 'vscode';
+import { commands, Disposable, EventEmitter, FileChangeEvent, FileStat, FileSystemProvider, FileType, Position, Uri, window, workspace, Range, ProgressLocation } from 'vscode';
 import { compositionDiagnostics, outputChannel } from '../../extension';
 import { getGraphSchemasByVariant } from '../../studio-gql/graphClient';
 import { GetGraphSchemas_service_implementingServices_FederatedImplementingServices, GetGraphSchemas_service_implementingServices_NonFederatedImplementingService } from '../../studio-gql/types/GetGraphSchemas';
@@ -11,6 +11,7 @@ import { StateManager } from '../../workbench/stateManager';
 import { getComposedSchema, getComposedSchemaLogCompositionErrors, handleErrors } from '../composition';
 import { ApolloWorkbenchFile } from './fileTypes';
 import { parse, print } from 'graphql';
+import { OverrideApolloGateway } from '../../gateway';
 
 export enum WorkbenchUriType {
     SCHEMAS,
@@ -44,7 +45,6 @@ export class FileProvider implements FileSystemProvider {
     }
 
     constructor(workspaceRoot?: string) {
-        this.refreshLocalWorkbenchFiles();
     }
 
     //All workbench files in opened VS Code folder
@@ -96,7 +96,7 @@ export class FileProvider implements FileSystemProvider {
             }
 
             if (selectedVariant == '') {
-                window.showInformationMessage("You must select a variant to load the graph from")
+                window.showInformationMessage("You must select a variant to load the graph from");
             } else {
                 let defaultGraphName = `${graphId}:${selectedVariant}-`;
                 let graphName = await window.showInputBox({
@@ -111,14 +111,11 @@ export class FileProvider implements FileSystemProvider {
                     let results = await getGraphSchemasByVariant(StateManager.instance.globalState_userApiKey, graphId, selectedVariant);
                     let monolithicService = results.service?.implementingServices as GetGraphSchemas_service_implementingServices_NonFederatedImplementingService;
                     if (monolithicService?.graphID) {
-                        workbenchFile.schemas['monolith'] = results.service?.schema?.document;
+                        workbenchFile.schemas['monolith'] = { sdl: results.service?.schema?.document, shouldMock: true };
+                        ;
                     } else {
                         let implementingServices = results.service?.implementingServices as GetGraphSchemas_service_implementingServices_FederatedImplementingServices;
-                        implementingServices?.services?.map(service => {
-                            let serviceName = service.name;
-                            let schema = service.activePartialSchema.sdl;
-                            workbenchFile.schemas[serviceName] = { sdl: schema, shouldMock: true };
-                        });
+                        implementingServices?.services?.map(service => workbenchFile.schemas[service.name] = { sdl: service.activePartialSchema.sdl, url: service.url ?? "", shouldMock: true });
                     }
 
                     const path = `${workspace.rootPath}/${graphName}.apollo-workbench`;
@@ -232,6 +229,7 @@ export class FileProvider implements FileSystemProvider {
         }
     }
     async loadWorkbenchFile(workbenchFileName: string, filePath: string) {
+        window.setStatusBarMessage("Loading Workbench File", 500);
         ServerManager.instance.stopMocks();
         let isCancelled = false;
         let lastEditor: any;
@@ -239,7 +237,7 @@ export class FileProvider implements FileSystemProvider {
             if (lastEditor == window.activeTextEditor) {
                 let cancelledMessage = `Cancelled Loading WB:${workbenchFileName}`;
                 console.log(cancelledMessage);
-                window.setStatusBarMessage(cancelledMessage, 500);
+                window.setStatusBarMessage(cancelledMessage, 3000);
                 return;
             } else {
                 lastEditor = window.activeTextEditor;
@@ -255,6 +253,10 @@ export class FileProvider implements FileSystemProvider {
         compositionDiagnostics.clear();
         if (this.workbenchFiles.get(filePath)) {
             StateManager.instance.workspaceState_selectedWorkbenchFile = { name: workbenchFileName, path: filePath };
+
+            //TODO: figure out blocking UI thread
+            //  Ruled out try/catch blocks further down the stack
+            //  Seems that composeAndValidate(sdls) is the culprit
             await getComposedSchemaLogCompositionErrors(this.currrentWorkbench);
         } else {
             window.showErrorMessage(`Worbench file ${workbenchFileName} does not exist at ${filePath}`);
@@ -263,8 +265,7 @@ export class FileProvider implements FileSystemProvider {
     }
     saveCurrentWorkbench() {
         writeFileSync(StateManager.instance.workspaceState_selectedWorkbenchFile.path, JSON.stringify(this.currrentWorkbench), { encoding: "utf8" });
-        StateManager.instance.currentWorkbenchSchemasProvider.refresh();
-        StateManager.instance.currentWorkbenchOperationsProvider.refresh();
+        window.setStatusBarMessage("Current Workbench Saved", 500);
     }
     //Schema File Implementations
     async openSchema(serviceName: string) {
@@ -273,7 +274,9 @@ export class FileProvider implements FileSystemProvider {
     async promptToAddSchema() {
         let serviceName = await window.showInputBox({ placeHolder: "Enter a unique name for the schema/service" }) ?? "";
         if (!serviceName) {
-            outputChannel.appendLine(`Create schema cancelled - No name entered.`);
+            const message = `Create schema cancelled - No name entered.`;
+            outputChannel.appendLine(message);
+            window.setStatusBarMessage(message, 3000);
         } else {
             await this.addSchema(serviceName);
         }
@@ -286,11 +289,68 @@ export class FileProvider implements FileSystemProvider {
     async renameSchema(serviceToRename: string) {
         let newServiceName = await window.showInputBox({ placeHolder: "Enter a unique name for the schema/service" }) ?? "";
         if (!newServiceName) {
-            outputChannel.appendLine(`Renaming schema cancelled - No new name entered.`);
+            const message = `Renaming schema cancelled ${serviceToRename} - No new name entered.`;
+            outputChannel.appendLine(message);
+            window.setStatusBarMessage(message, 3000);
         } else if (this.currrentWorkbenchSchemas[newServiceName]) {
             window.showErrorMessage(`Rename cancelled, there is already another service named ${newServiceName}`)
         } else {
             await this.rename(WorkbenchUri.parse(serviceToRename), WorkbenchUri.parse(newServiceName), { overwrite: true });
+        }
+    }
+    async promptServiceUrl(serviceToUpdateUrl: string) {
+        let serviceUrl = await window.showInputBox({ placeHolder: "Enter a the url for the schema/service" }) ?? "";
+        if (!serviceUrl) {
+            const message = `Set service URL cancelled for ${serviceToUpdateUrl} - No URL entered.`;
+            outputChannel.appendLine(message);
+            window.setStatusBarMessage(message, 3000);
+        } else {
+            if (this.currrentWorkbenchSchemas[serviceToUpdateUrl]) {
+                this.currrentWorkbenchSchemas[serviceToUpdateUrl].shouldMock = false;
+                this.currrentWorkbenchSchemas[serviceToUpdateUrl].url = serviceUrl;
+                this.saveCurrentWorkbench();
+            }
+        }
+    }
+    shouldMockSchema(serviceToMock: string) {
+        if (this.currrentWorkbenchSchemas[serviceToMock]) {
+            this.currrentWorkbenchSchemas[serviceToMock].shouldMock = true;
+            this.saveCurrentWorkbench();
+        }
+    }
+    async disableMockSchema(serviceToMock: string) {
+        if (this.currrentWorkbenchSchemas[serviceToMock]) {
+            if (!this.currrentWorkbenchSchemas[serviceToMock].url)
+                await this.promptServiceUrl(serviceToMock);
+
+            if (this.currrentWorkbenchSchemas[serviceToMock].url) {
+                this.currrentWorkbenchSchemas[serviceToMock].shouldMock = false;
+                this.saveCurrentWorkbench();
+            } else {
+                window.showErrorMessage("You must set a url for the service if you want to disable mocks. The URL will be used to direct traffic and update the schema in the workbench file.");
+            }
+        }
+    }
+    async updateSchemaFromUrl(serviceToUpdateUrl: string) {
+        if (!this.currrentWorkbenchSchemas[serviceToUpdateUrl].url) {
+            await this.promptServiceUrl(serviceToUpdateUrl);
+        }
+
+        if (this.currrentWorkbenchSchemas[serviceToUpdateUrl].url) {
+            const sdl = await OverrideApolloGateway.getTypeDefs(this.currrentWorkbenchSchemas[serviceToUpdateUrl].url ?? "");
+            if (sdl) {
+                this.currrentWorkbenchSchemas[serviceToUpdateUrl].sdl = sdl;
+                this.saveCurrentWorkbench();
+                let editor = await window.showTextDocument(WorkbenchUri.parse(serviceToUpdateUrl, WorkbenchUriType.SCHEMAS));
+                if (editor) {
+                    const document = editor.document;
+                    editor.edit((editor) => {
+                        editor.replace(new Range(0, 0, document.lineCount, 0), sdl);
+                    })
+                }
+            }
+        } else {//No URL entered for schema
+            window.showErrorMessage("You must set a url for the service if you want to update the schema from it.");
         }
     }
     //Operation File Implementations
@@ -300,7 +360,9 @@ export class FileProvider implements FileSystemProvider {
     async promptToAddOperation() {
         let operationName = await window.showInputBox({ placeHolder: "Enter a unique name for the operation" }) ?? "";
         if (!operationName) {
-            outputChannel.appendLine(`Create operation cancelled - No name entered.`);
+            const message = `Create operation cancelled - No name entered.`;
+            outputChannel.appendLine(message);
+            window.setStatusBarMessage(message, 3000);
         } else {
             await FileProvider.instance.addOperation(operationName);
         }
@@ -316,7 +378,9 @@ export class FileProvider implements FileSystemProvider {
     async renameOperation(operationToRename: string) {
         let newOperationName = await window.showInputBox({ placeHolder: "Enter a unique name for the schema/service" }) ?? "";
         if (!newOperationName) {
-            outputChannel.appendLine(`Renaming schema cancelled - No new name entered.`);
+            const message = `Renaming schema cancelled for ${operationToRename} - No new name entered.`;
+            outputChannel.appendLine(message);
+            window.setStatusBarMessage(message, 3000);
         } else if (this.currrentWorkbenchOperations[newOperationName]) {
             window.showErrorMessage(`Rename cancelled, there is already another operation named ${newOperationName}`)
         } else {
