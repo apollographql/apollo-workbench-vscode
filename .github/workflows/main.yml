@@ -19,7 +19,8 @@ jobs:
   build:
     # The type of runner that the job will run on
     runs-on: ubuntu-latest
-
+    outputs:
+      filename: ${{ steps.version-bump.outputs.newTag }}
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       - uses: actions/checkout@v2
@@ -44,6 +45,7 @@ jobs:
       - run: npm install
       - run: npm install vsce -g
       - run: npm run vscode:package
+      - run: echo "::set-output name=filename::# apollo-workbench-vscode-${version}.vsix"
 
       #Upload binary to release
       - name: 'Upload binaries to release'
@@ -52,8 +54,8 @@ jobs:
           NEW_TAG: ${{ steps.version-bump.outputs.newTag }}
         with:
           repo_token: ${{ secrets.RELEASE_TOKEN }}
-          file: ./apollo-workbench-vscode-${{ NEW_TAG }}.vsix"
-          asset_name: apollo-workbench-vscode-${{ NEW_TAG }}.vsix
+          file: env.filename
+          asset_name: env.filename
           tag: $NEW_TAG
           overwrite: true
           body: ${{ github.event_name }}
