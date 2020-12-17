@@ -10,9 +10,8 @@ import { ApolloWorkbenchFile } from "./files/fileTypes";
 import { getRangeForFieldNamedType, getRangeForTypeDef } from "./schemaParser";
 import { getLastLineOfText, getLineText } from "./vscodeHelpers";
 
-export async function* getComposedSchemaLogCompositionErrors(workbenchFile?: ApolloWorkbenchFile) {
-    if (!workbenchFile)
-        workbenchFile = FileProvider.instance.currrentWorkbench;
+export async function* getComposedSchemaLogCompositionErrors() {
+    let workbenchFile = FileProvider.instance.currrentWorkbench;
     try {
         const result = yield* getComposedSchema(workbenchFile) as any;
         if (result) {

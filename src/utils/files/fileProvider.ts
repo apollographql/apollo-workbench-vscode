@@ -259,7 +259,7 @@ export class FileProvider implements FileSystemProvider {
             //TODO: figure out blocking UI thread
             //  Ruled out try/catch blocks further down the stack
             //  Seems that composeAndValidate(sdls) is the culprit
-            await getComposedSchemaLogCompositionErrors(this.currrentWorkbench);
+            await getComposedSchemaLogCompositionErrors();
         } else {
             window.showErrorMessage(`Worbench file ${workbenchFileName} does not exist at ${filePath}`);
             StateManager.instance.localWorkbenchFilesProvider.refresh();
@@ -433,7 +433,7 @@ export class FileProvider implements FileSystemProvider {
                 //      3. mismastched value types/enums
                 //If Individual file is valid sdl, then try composition
                 //  Remove individual parse errors from composition errors
-                getComposedSchemaLogCompositionErrors(this.currrentWorkbench);
+                getComposedSchemaLogCompositionErrors();
             } else if (uri.path.includes('/queries')) {
                 const operationName = uri.query;
 
@@ -484,7 +484,7 @@ export class FileProvider implements FileSystemProvider {
                 this.currrentWorkbenchSchemas[newName] = this.currrentWorkbenchSchemas[oldName];
                 delete this.currrentWorkbenchSchemas[oldName];
 
-                getComposedSchemaLogCompositionErrors(this.currrentWorkbench);
+                getComposedSchemaLogCompositionErrors();
             } else if (oldUri.path.includes('/queries')) {
                 this.currrentWorkbenchOperations[newName] = this.currrentWorkbenchOperations[oldName];
                 delete this.currrentWorkbenchOperations[oldName];
