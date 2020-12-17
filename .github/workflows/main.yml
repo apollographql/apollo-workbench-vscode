@@ -22,26 +22,25 @@ jobs:
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v2
+        with:
+          node-version: '14'
+          check-latest: true
       #Checkout Source Code
       - name: 'Checkout source code'
-      - uses: 'actions/checkout@v2'
+        uses: 'actions/checkout@v2'
         with:
           ref: ${{ github.ref }}
       #Bump version
       - name: 'Automated Version Bump'
-      - uses: 'phips28/gh-action-bump-version@master'
+        uses: 'phips28/gh-action-bump-version@master'
         with:
           tag-prefix: ''
         env:
           GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
 
       #Setup project and package extension
-      - name: 'Extension Packaging'
-      - uses: actions/checkout@v2
-      - uses: actions/setup-node@v2
-        with:
-          node-version: '14'
-          check-latest: true
       - run: npm install
       - run: npm vscode:package
 
