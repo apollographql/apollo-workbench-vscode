@@ -54,7 +54,7 @@ jobs:
           NEW_TAG: ${{ steps.set-version-number.outputs.VERSION }}
         with:
           repo_token: ${{ secrets.RELEASE_TOKEN }}
-          file: 'apollo-workbench-vscode-${{ env.NEW_TAG }}.vsix'
+          file: './apollo-workbench-vscode-${{ env.NEW_TAG }}.vsix'
           asset_name: 'apollo-workbench-vscode-${{ env.NEW_TAG }}.vsix'
           tag: $NEW_TAG
           overwrite: true
