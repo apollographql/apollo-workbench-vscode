@@ -35,6 +35,7 @@ jobs:
           ref: ${{ github.ref }}
       #Bump version
       - name: 'Automated Version Bump'
+        id: version-bump
         uses: 'phips28/gh-action-bump-version@master'
         with:
           tag-prefix: ''
@@ -45,7 +46,6 @@ jobs:
       - run: npm install
       - run: npm install vsce -g
       - run: npm run vscode:package
-      - run: echo "::set-output name=filename::# apollo-workbench-vscode-${version}.vsix"
 
       #Upload binary to release
       - name: 'Upload binaries to release'
