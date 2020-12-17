@@ -56,6 +56,6 @@ jobs:
           repo_token: ${{ secrets.RELEASE_TOKEN }}
           file: './apollo-workbench-vscode-${{ env.NEW_TAG }}.vsix'
           asset_name: 'apollo-workbench-vscode-${{ env.NEW_TAG }}.vsix'
-          tag: $NEW_TAG
+          tag: ${{ env.NEW_TAG }}
           overwrite: true
           body: ${{ github.event_name }}
