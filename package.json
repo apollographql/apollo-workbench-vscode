@@ -188,6 +188,22 @@
         "icon": "$(trash)"
       },
       {
+        "command": "current-workbench-schemas.shouldMockSchema",
+        "title": "Set as Mock Service"
+      },
+      {
+        "command": "current-workbench-schemas.disableMockSchema",
+        "title": "Disable Mocks (use URL instead)"
+      },
+      {
+        "command": "current-workbench-schemas.setUrlForService",
+        "title": "Set URL for Service"
+      },
+      {
+        "command": "current-workbench-schemas.updateSchemaFromUrl",
+        "title": "Update Schema from URL"
+      },
+      {
         "command": "current-workbench-operations.editOperation",
         "title": "Edit Operation",
         "icon": "$(edit)"
@@ -346,9 +362,29 @@
           "group": "1"
         },
         {
+          "command": "current-workbench-schemas.shouldMockSchema",
+          "when": "view == current-workbench-schemas && viewItem == workbenchSchemaTreeItem",
+          "group": "2@1"
+        },
+        {
+          "command": "current-workbench-schemas.disableMockSchema",
+          "when": "view == current-workbench-schemas && viewItem == workbenchSchemaTreeItem",
+          "group": "2@2"
+        },
+        {
+          "command": "current-workbench-schemas.setUrlForService",
+          "when": "view == current-workbench-schemas && viewItem == workbenchSchemaTreeItem",
+          "group": "2@3"
+        },
+        {
+          "command": "current-workbench-schemas.updateSchemaFromUrl",
+          "when": "view == current-workbench-schemas && viewItem == workbenchSchemaTreeItem",
+          "group": "2@4"
+        },
+        {
           "command": "current-workbench-schemas.deleteSchema",
           "when": "view == current-workbench-schemas && viewItem == workbenchSchemaTreeItem",
-          "group": "2"
+          "group": "3"
         },
         {
           "command": "current-workbench-operations.deleteOperation",
@@ -425,7 +461,7 @@
   },
   "dependencies": {
     "@apollo/client": "^3.2.5",
-    "@apollo/federation": "https://1132-252760990-gh.circle-artifacts.com/0/packed/%40apollo/federation/federation-0.20.4.tgz",
+    "@apollo/federation": "^0.20.7",
     "@apollo/gateway": "^0.21.1",
     "@apollo/query-planner-wasm": "0.0.6",
     "@apollographql/graphql-language-service-interface": "^2.0.2",

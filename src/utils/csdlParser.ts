@@ -11,7 +11,6 @@ export async function extractDefinedEntitiesByService() {
         let lines = FileProvider.instance.currrentWorkbench.composedSchema.split('\n');
 
         runOnlineParser(FileProvider.instance.currrentWorkbench.composedSchema, (state, range, tokens) => {
-            console.log(state.kind);
             switch (state.kind) {
                 case "StringValue" as any:
                     let argument = state?.prevState?.prevState;

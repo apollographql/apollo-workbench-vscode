@@ -70,8 +70,6 @@ export async function activate(context: vscode.ExtensionContext) {
 	vscode.commands.registerCommand('extension.startMocks', () => ServerManager.instance.startMocks());
 	vscode.commands.registerCommand('extension.stopMocks', () => ServerManager.instance.stopMocks());
 	vscode.commands.registerCommand('extension.gettingStarted', async (item: GettingStartedTreeItem) => {
-		// vscode.commands.executeCommand('markdown.openPreview', item.uri);
-		// console.log('test');
 		vscode.window.showTextDocument(item.uri)
 			.then(() => vscode.commands.executeCommand('markdown.showPreviewToSide'))
 			.then(() => vscode.commands.executeCommand('workbench.action.closeEditorsInOtherGroups'))
@@ -87,6 +85,11 @@ export async function activate(context: vscode.ExtensionContext) {
 	vscode.commands.registerCommand("current-workbench-schemas.deleteSchema", async (serviceToDelete: WorkbenchSchemaTreeItem) => FileProvider.instance.delete(WorkbenchUri.parse(serviceToDelete.serviceName), { recursive: true }));
 	vscode.commands.registerCommand('current-workbench-schemas.refreshSchemas', async () => StateManager.instance.currentWorkbenchSchemasProvider.refresh());
 	vscode.commands.registerCommand('current-workbench-schemas.viewCsdl', async () => vscode.window.showTextDocument(WorkbenchUri.csdl()));
+	//Schema Mocking Commands
+	vscode.commands.registerCommand('current-workbench-schemas.shouldMockSchema', async (serviceToMock: WorkbenchSchemaTreeItem) => await FileProvider.instance.shouldMockSchema(serviceToMock.serviceName));
+	vscode.commands.registerCommand('current-workbench-schemas.disableMockSchema', (serviceToMock: WorkbenchSchemaTreeItem) => FileProvider.instance.disableMockSchema(serviceToMock.serviceName));
+	vscode.commands.registerCommand('current-workbench-schemas.setUrlForService', async (serviceToMock: WorkbenchSchemaTreeItem) => await FileProvider.instance.promptServiceUrl(serviceToMock.serviceName))
+	vscode.commands.registerCommand('current-workbench-schemas.updateSchemaFromUrl', async (serviceToMock: WorkbenchSchemaTreeItem) => await FileProvider.instance.updateSchemaFromUrl(serviceToMock.serviceName));
 
 	//Current Loaded Workbench Operations Commands
 	vscode.commands.registerCommand('current-workbench-operations.addOperation', async () => await FileProvider.instance.promptToAddOperation());
@@ -135,7 +138,17 @@ export async function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(vscode.workspace.registerFileSystemProvider('workbench', FileProvider.instance, { isCaseSensitive: true }));
 
 	//Local Workbench Files Commands
-	vscode.commands.registerCommand("local-workbench-files.loadFile", async (item: WorkbenchFileTreeItem) => await FileProvider.instance.loadWorkbenchFile(item.graphName, item.filePath));
+	vscode.commands.registerCommand("local-workbench-files.loadFile", async (item: WorkbenchFileTreeItem) => {
+		vscode.window.withProgress(
+			{
+				location: vscode.ProgressLocation.Notification,
+				title: 'Loading Workbench File',
+				cancellable: false
+			},
+			async progress => {
+				return await FileProvider.instance.loadWorkbenchFile(item.graphName, item.filePath)
+			})
+	});
 	vscode.commands.registerCommand("local-workbench-files.renameGraph", async (item: WorkbenchFileTreeItem) => await FileProvider.instance.promptToRenameWorkbenchFile(item.graphName, item.filePath));
 	vscode.commands.registerCommand("local-workbench-files.duplicateFile", async (item: WorkbenchFileTreeItem) => await FileProvider.instance.duplicateWorkbenchFile(item.graphName, item.filePath));
 	vscode.commands.registerCommand("local-workbench-files.deleteFile", async (item: WorkbenchFileTreeItem) => await FileProvider.instance.promptToDeleteWorkbenchFile(item.filePath));
