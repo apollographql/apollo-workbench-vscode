@@ -138,17 +138,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(vscode.workspace.registerFileSystemProvider('workbench', FileProvider.instance, { isCaseSensitive: true }));
 
 	//Local Workbench Files Commands
-	vscode.commands.registerCommand("local-workbench-files.loadFile", async (item: WorkbenchFileTreeItem) => {
-		vscode.window.withProgress(
-			{
-				location: vscode.ProgressLocation.Notification,
-				title: 'Loading Workbench File',
-				cancellable: false
-			},
-			async progress => {
-				return await FileProvider.instance.loadWorkbenchFile(item.graphName, item.filePath)
-			})
-	});
+	vscode.commands.registerCommand("local-workbench-files.loadFile", async (item: WorkbenchFileTreeItem) => vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: 'Loading Workbench File', cancellable: false }, () => FileProvider.instance.loadWorkbenchFile(item.graphName, item.filePath)));
 	vscode.commands.registerCommand("local-workbench-files.renameGraph", async (item: WorkbenchFileTreeItem) => await FileProvider.instance.promptToRenameWorkbenchFile(item.graphName, item.filePath));
 	vscode.commands.registerCommand("local-workbench-files.duplicateFile", async (item: WorkbenchFileTreeItem) => await FileProvider.instance.duplicateWorkbenchFile(item.graphName, item.filePath));
 	vscode.commands.registerCommand("local-workbench-files.deleteFile", async (item: WorkbenchFileTreeItem) => await FileProvider.instance.promptToDeleteWorkbenchFile(item.filePath));

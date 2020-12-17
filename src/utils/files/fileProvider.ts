@@ -120,14 +120,16 @@ export class FileProvider implements FileSystemProvider {
 
                     const path = `${workspace.rootPath}/${graphName}.apollo-workbench`;
 
-                    let compositionResults = getComposedSchema(workbenchFile);
-                    if (compositionResults.composedSdl) workbenchFile.composedSchema = compositionResults.composedSdl;
-                    else await handleErrors(workbenchFile, compositionResults.errors);
+                    const compositionResults = getComposedSchema(workbenchFile).next().value;
+                    if (compositionResults) {
+                        if (compositionResults.composedSdl) workbenchFile.composedSchema = compositionResults.composedSdl;
+                        else await handleErrors(workbenchFile, compositionResults.errors);
 
-                    this.workbenchFiles.set(path, workbenchFile);
-                    writeFileSync(path, JSON.stringify(workbenchFile), { encoding: "utf8" });
+                        this.workbenchFiles.set(path, workbenchFile);
+                        writeFileSync(path, JSON.stringify(workbenchFile), { encoding: "utf8" });
 
-                    StateManager.instance.localWorkbenchFilesProvider.refresh();
+                        StateManager.instance.localWorkbenchFilesProvider.refresh();
+                    }
                 } else {
                     window.showInformationMessage("You must provide a name to create a new workbench file")
                 }
@@ -257,7 +259,7 @@ export class FileProvider implements FileSystemProvider {
             //TODO: figure out blocking UI thread
             //  Ruled out try/catch blocks further down the stack
             //  Seems that composeAndValidate(sdls) is the culprit
-            await getComposedSchemaLogCompositionErrors(this.currrentWorkbench);
+            await getComposedSchemaLogCompositionErrors();
         } else {
             window.showErrorMessage(`Worbench file ${workbenchFileName} does not exist at ${filePath}`);
             StateManager.instance.localWorkbenchFilesProvider.refresh();
@@ -431,7 +433,7 @@ export class FileProvider implements FileSystemProvider {
                 //      3. mismastched value types/enums
                 //If Individual file is valid sdl, then try composition
                 //  Remove individual parse errors from composition errors
-                getComposedSchemaLogCompositionErrors(this.currrentWorkbench);
+                getComposedSchemaLogCompositionErrors();
             } else if (uri.path.includes('/queries')) {
                 const operationName = uri.query;
 
@@ -482,7 +484,7 @@ export class FileProvider implements FileSystemProvider {
                 this.currrentWorkbenchSchemas[newName] = this.currrentWorkbenchSchemas[oldName];
                 delete this.currrentWorkbenchSchemas[oldName];
 
-                getComposedSchemaLogCompositionErrors(this.currrentWorkbench);
+                getComposedSchemaLogCompositionErrors();
             } else if (oldUri.path.includes('/queries')) {
                 this.currrentWorkbenchOperations[newName] = this.currrentWorkbenchOperations[oldName];
                 delete this.currrentWorkbenchOperations[oldName];

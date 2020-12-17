@@ -2,13 +2,13 @@
 
 name: CI
 
-# Controls when the action will run. 
+# Controls when the action will run.
 on:
   # Triggers the workflow on push or pull request events but only for the main branch
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
@@ -22,10 +22,31 @@ jobs:
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-    - uses: actions/checkout@master
-    - name: Create a Release
-      uses: elgohr/Github-Release-Action@master
-      env:
-        GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
-      with:
-        args: ${{ github.ref }}
+      #Bump version
+      - name: 'Automated Version Bump'
+        id: version-bump
+        uses: 'phips28/gh-action-bump-version@master'
+        with:
+          tag-prefix: ''
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+
+      #Setup project and package extension
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v2
+        with:
+          node-version: '14'
+          check-latest: true
+      - run: npm install
+      - run: npm vscode:package
+
+      #Upload binary to release
+      - name: Upload binaries to release
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.RELEASE_TOKEN }}
+          file: apollo-workbench-vscode-${{ steps.version-bump.outputs.newTag }}.vsix
+          asset_name: apollo-workbench-vscode-${{ steps.version-bump.outputs.newTag }}.vsix
+          tag: ${{ steps.version-bump.outputs.newTag }}
+          overwrite: true
+          body: ${{ github.event_name }}

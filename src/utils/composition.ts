@@ -10,46 +10,48 @@ import { ApolloWorkbenchFile } from "./files/fileTypes";
 import { getRangeForFieldNamedType, getRangeForTypeDef } from "./schemaParser";
 import { getLastLineOfText, getLineText } from "./vscodeHelpers";
 
-export async function getComposedSchemaLogCompositionErrors(workbenchFile?: ApolloWorkbenchFile): Promise<void> {
-    if (!workbenchFile)
-        workbenchFile = FileProvider.instance.currrentWorkbench;
+export async function* getComposedSchemaLogCompositionErrors() {
+    let workbenchFile = FileProvider.instance.currrentWorkbench;
     try {
-        const { errors, composedSdl, schema } = getComposedSchema(workbenchFile);
-        if (errors.length > 0) {
-            console.log('Composition Errors Found:');
+        const result = yield* getComposedSchema(workbenchFile) as any;
+        if (result) {
+            const { errors, composedSdl, schema } = result;
+            if (errors.length > 0) {
+                console.log('Composition Errors Found:');
 
-            compositionDiagnostics.clear();
+                compositionDiagnostics.clear();
 
-            console.log(compositionDiagnostics.name);
-            let diagnosticsGroups = await handleErrors(workbenchFile, errors);
-            for (var sn in diagnosticsGroups) {
-                if (sn == 'workbench') {
-                    compositionDiagnostics.set(Uri.file(StateManager.instance.workspaceState_selectedWorkbenchFile.path), diagnosticsGroups[sn]);
-                } else
-                    compositionDiagnostics.set(WorkbenchUri.parse(sn), diagnosticsGroups[sn]);
+                console.log(compositionDiagnostics.name);
+                let diagnosticsGroups = await handleErrors(workbenchFile, errors);
+                for (var sn in diagnosticsGroups) {
+                    if (sn == 'workbench') {
+                        compositionDiagnostics.set(Uri.file(StateManager.instance.workspaceState_selectedWorkbenchFile.path), diagnosticsGroups[sn]);
+                    } else
+                        compositionDiagnostics.set(WorkbenchUri.parse(sn), diagnosticsGroups[sn]);
+                }
+            } else
+                compositionDiagnostics.clear();
+
+            FileProvider.instance.currrentWorkbench.composedSchema = composedSdl ?? "";
+            FileProvider.instance.saveCurrentWorkbench();
+
+            if (composedSdl) {
+                FileProvider.instance.writeFile(WorkbenchUri.csdl(), Buffer.from(composedSdl), { create: true, overwrite: true })
+                await extractDefinedEntitiesByService();
             }
-        } else
-            compositionDiagnostics.clear();
 
-        FileProvider.instance.currrentWorkbench.composedSchema = composedSdl ?? "";
-        FileProvider.instance.saveCurrentWorkbench();
-
-        if (composedSdl) {
-            FileProvider.instance.writeFile(WorkbenchUri.csdl(), Buffer.from(composedSdl), { create: true, overwrite: true })
-            await extractDefinedEntitiesByService();
+            if (schema)
+                StateManager.instance.workspaceState_schema = schema;
+            else
+                StateManager.instance.clearWorkspaceSchema();
         }
-
-        if (schema)
-            StateManager.instance.workspaceState_schema = schema;
-        else
-            StateManager.instance.clearWorkspaceSchema();
     }
     catch (err) {
         console.log(`${err}`);
     }
 }
 
-export function getComposedSchema(workbenchFile: ApolloWorkbenchFile) {
+export function* getComposedSchema(workbenchFile: ApolloWorkbenchFile) {
     let sdls: ServiceDefinition[] = [];
     let errors: GraphQLError[] = [];
     for (var key in workbenchFile.schemas) {
@@ -118,7 +120,7 @@ export function getComposedSchema(workbenchFile: ApolloWorkbenchFile) {
         compositionResults.errors = [new GraphQLError(err.message)];
     }
 
-    return { ...compositionResults };
+    yield { ...compositionResults };
 }
 
 export async function handleErrors(wb: ApolloWorkbenchFile, errors: GraphQLError[]) {
