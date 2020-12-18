@@ -54,9 +54,8 @@ jobs:
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
-          NEW_TAG: ${{ steps.set-version-number.outputs.VERSION }}
         with:
-          tag_name: ${{ env.NEW_TAG }}
+          tag_name: ${{ steps.set-version-number.outputs.VERSION }}
           release_name: Release ${{ github.ref }}
           draft: false
           prerelease: false
@@ -67,11 +66,10 @@ jobs:
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
-          NEW_TAG: ${{ steps.set-version-number.outputs.VERSION }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps
-          asset_path: ./apollo-workbench-vscode-${{ env.NEW_TAG }}.vsix
-          asset_name: apollo-workbench-vscode-${{ env.NEW_TAG }}.vsix
+          asset_path: ./apollo-workbench-vscode-${{ steps.set-version-number.outputs.VERSION }}.vsix
+          asset_name: apollo-workbench-vscode-${{ steps.set-version-number.outputs.VERSION }}.vsix
           asset_content_type: application/vsix
 
       #Upload binary to release
