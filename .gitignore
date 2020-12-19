@@ -108,3 +108,5 @@ dist
 # VS Code Extension files
 out
 package-lock.json
+
+.vscode-test/
