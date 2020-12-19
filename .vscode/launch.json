@@ -13,6 +13,18 @@
       "args": ["--extensionDevelopmentPath=${workspaceFolder}"],
       "outFiles": ["${workspaceFolder}/out/**/*.js"],
       "preLaunchTask": "npm: watch"
+    },
+    {
+      "name": "Run Extension Tests",
+      "type": "extensionHost",
+      "request": "launch",
+      "runtimeExecutable": "${execPath}",
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}",
+        "--extensionTestsPath=${workspaceFolder}/out/__tests__/suite/index"
+      ],
+      "outFiles": ["${workspaceFolder}/out/__tests__/**/*.js"],
+      "preLaunchTask": "npm: watch"
     }
   ]
 }
