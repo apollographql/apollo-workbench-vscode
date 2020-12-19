@@ -38,8 +38,8 @@ jobs:
 
       - run: npm install
       - name: Start xvfb
-	      if: startsWith(matrix.os, 'ubuntu')
-	      run: /usr/bin/Xvfb :99 -screen 0 1024x768x24 > /dev/null 2>&1 &
+      - if: startsWith(${{ matrix.os }}, 'ubuntu')
+      - run: /usr/bin/Xvfb :99 -screen 0 1024x768x24 > /dev/null 2>&1 &
 
       #Setup project and package extension
       - name: Run tests
