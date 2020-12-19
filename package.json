@@ -448,7 +448,7 @@
     "lint": "eslint . --ext .ts,.tsx",
     "watch": "tsc -watch -p ./",
     "postinstall": "npm run compile",
-    "test": "node ./out/__tests__/runTest.js"
+    "test": "node ./out/__tests__/runTest.js ./out/__tests__/test-workbench/"
   },
   "devDependencies": {
     "@types/glob": "^7.1.3",
