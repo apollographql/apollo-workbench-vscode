@@ -1,3 +1,4 @@
+import { notDeepEqual } from 'assert';
 import { existsSync } from 'fs';
 import * as path from 'path';
 
@@ -14,8 +15,13 @@ async function main() {
         const extensionTestsPath = path.resolve(__dirname, './suite/index');
         const testWorkbenchFolder = path.resolve(__dirname, './test-workbench');
 
-        // Download VS Code, unzip it and run the integration test
-        await runTests({ extensionDevelopmentPath, extensionTestsPath, launchArgs: [testWorkbenchFolder] });
+        let shouldLoadWorkbenchFolder = process.argv[2];
+        console.log('******' + shouldLoadWorkbenchFolder);
+
+        if (shouldLoadWorkbenchFolder)
+            await runTests({ extensionDevelopmentPath, extensionTestsPath, launchArgs: [testWorkbenchFolder] });
+        else
+            await runTests({ extensionDevelopmentPath, extensionTestsPath });
     } catch (err) {
         console.error('Failed to run tests');
         process.exit(1);

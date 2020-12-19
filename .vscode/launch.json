@@ -15,7 +15,7 @@
       "preLaunchTask": "npm: watch"
     },
     {
-      "name": "Run Extension Tests",
+      "name": "Test - Load Folder",
       "type": "extensionHost",
       "request": "launch",
       "runtimeExecutable": "${execPath}",
@@ -24,8 +24,23 @@
         "--extensionDevelopmentPath=${workspaceFolder}",
         "--extensionTestsPath=${workspaceFolder}/out/__tests__/suite/index"
       ],
+      "env": {
+        "loadWorkbench": "loadWorkbench"
+      },
       "outFiles": ["${workspaceFolder}/out/__tests__/**/*.js"],
-      "preLaunchTask": "npm: watch"
+      "preLaunchTask": "npm: compile"
+    },
+    {
+      "name": "Test - No Folder",
+      "type": "extensionHost",
+      "request": "launch",
+      "runtimeExecutable": "${execPath}",
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}",
+        "--extensionTestsPath=${workspaceFolder}/out/__tests__/suite/index"
+      ],
+      "outFiles": ["${workspaceFolder}/out/__tests__/**/*.js"],
+      "preLaunchTask": "npm: compile"
     }
   ]
 }

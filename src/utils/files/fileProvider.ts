@@ -39,7 +39,7 @@ export class FileProvider implements FileSystemProvider {
     private static _instance: FileProvider;
     static get instance(): FileProvider {
         if (!this._instance)
-            this._instance = new FileProvider(StateManager.workspaceRoot());
+            this._instance = new FileProvider(StateManager.workspaceRoot);
 
         return this._instance;
     }
@@ -51,7 +51,7 @@ export class FileProvider implements FileSystemProvider {
     workbenchFiles: Map<string, ApolloWorkbenchFile> = new Map();
     refreshLocalWorkbenchFiles() {
         this.workbenchFiles.clear();
-        const workspaceRoot = StateManager.workspaceRoot();
+        const workspaceRoot = StateManager.workspaceRoot;
         if (workspaceRoot) {
             let workbenchFiles = this.getWorkbenchFilesInDirectory(workspaceRoot);
             workbenchFiles.forEach(workbenchFile => {
@@ -82,7 +82,7 @@ export class FileProvider implements FileSystemProvider {
 
     //Workbench File Implementations
     async promptToCreateWorkbenchFileFromGraph(graphId: string, graphVariants: string[]) {
-        if (!StateManager.workspaceRoot()) {
+        if (!StateManager.workspaceRoot) {
             await this.promptOpenFolder();
         } else {
             let selectedVariant = '';
@@ -137,7 +137,7 @@ export class FileProvider implements FileSystemProvider {
         }
     }
     async promptToCreateWorkbenchFile() {
-        if (!StateManager.workspaceRoot()) {
+        if (!StateManager.workspaceRoot) {
             await this.promptOpenFolder();
         } else {
             let workbenchName = await window.showInputBox({ placeHolder: "Enter name for workbench file" });
@@ -149,7 +149,7 @@ export class FileProvider implements FileSystemProvider {
                 FileProvider.instance.createNewWorkbenchFile(workbenchName);
                 let shouldLoad = await window.showInformationMessage("Would you like to load the new workbench file?", "Yes");
                 if (shouldLoad?.toLowerCase() == "yes") {
-                    await this.loadWorkbenchFile(workbenchName, `${StateManager.workspaceRoot()}/${workbenchName}.apollo-workbench`)
+                    await this.loadWorkbenchFile(workbenchName, `${StateManager.workspaceRoot}/${workbenchName}.apollo-workbench`)
                 }
             }
         }
@@ -189,35 +189,39 @@ export class FileProvider implements FileSystemProvider {
         } else
             window.showErrorMessage(`Workbench file was not found in  virtual documents: ${wbFilePath}`);
     }
-    private createNewWorkbenchFile(workbenchFileName: string, graphName?: string) {
-        const path = `${workspace.rootPath}/${workbenchFileName}.apollo-workbench`;
-        const uri = Uri.parse(path);
-        const wbFile = new ApolloWorkbenchFile();
-        wbFile.graphName = graphName ?? workbenchFileName;
+    createNewWorkbenchFile(workbenchFileName: string, graphName?: string) {
+        if (StateManager.workspaceRoot) {
+            const path = `${StateManager.workspaceRoot}/${workbenchFileName}.apollo-workbench`;
+            const uri = Uri.parse(path);
+            const wbFile = new ApolloWorkbenchFile();
+            wbFile.graphName = graphName ?? workbenchFileName;
 
-        this.workbenchFiles.set(uri.fsPath, wbFile);
-        writeFileSync(path, JSON.stringify(wbFile));
-        StateManager.instance.localWorkbenchFilesProvider?.refresh();
+            this.workbenchFiles.set(uri.fsPath, wbFile);
+            writeFileSync(path, JSON.stringify(wbFile));
+            StateManager.instance.localWorkbenchFilesProvider?.refresh();
+        }
     }
     async duplicateWorkbenchFile(workbenchFileName: string, filePathToDuplicate: string) {
-        let newWorkbenchFileName = await window.showInputBox({ prompt: "Enter the name for new workbench file", value: `${workbenchFileName}-copy` });
-        if (newWorkbenchFileName) {
-            const newUri = Uri.parse(`${workspace.rootPath}/${newWorkbenchFileName}.apollo-workbench`);
-            const workbenchFileToDuplicate = this.workbenchFiles.get(filePathToDuplicate);
-            if (workbenchFileToDuplicate) {
-                workbenchFileToDuplicate.graphName = newWorkbenchFileName;
-                this.workbenchFiles.set(newUri.fsPath, workbenchFileToDuplicate);
+        if (StateManager.workspaceRoot) {
+            let newWorkbenchFileName = await window.showInputBox({ prompt: "Enter the name for new workbench file", value: `${workbenchFileName}-copy` });
+            if (newWorkbenchFileName) {
+                const newUri = Uri.parse(`${StateManager.workspaceRoot}/${newWorkbenchFileName}.apollo-workbench`);
+                const workbenchFileToDuplicate = this.workbenchFiles.get(filePathToDuplicate);
+                if (workbenchFileToDuplicate) {
+                    workbenchFileToDuplicate.graphName = newWorkbenchFileName;
+                    this.workbenchFiles.set(newUri.fsPath, workbenchFileToDuplicate);
 
-                writeFileSync(newUri.fsPath, JSON.stringify(workbenchFileToDuplicate), { encoding: 'utf-8' });
-            } else {
-                window.showInformationMessage(`Original workspace file not found: ${workbenchFileName}`);
+                    writeFileSync(newUri.fsPath, JSON.stringify(workbenchFileToDuplicate), { encoding: 'utf-8' });
+                } else {
+                    window.showInformationMessage(`Original workspace file not found: ${workbenchFileName}`);
+                }
             }
         } else {
             window.showInformationMessage("No name entered, cancelling copy");
         }
     }
     async copyPreloadedWorkbenchFile(fileName: string) {
-        if (!StateManager.workspaceRoot()) {
+        if (!StateManager.workspaceRoot) {
             await this.promptOpenFolder();
         } else {
             let file = `${fileName}.apollo-workbench`;
