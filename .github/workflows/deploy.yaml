@@ -38,14 +38,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
 
-      #Run project tests
-      - run: npm install
-      - run: xvfb-run -a npm test
-        if: runner.os == 'Linux'
-      - run: npm test
-        if: runner.os != 'Linux'
-
       #Setup project and package extension
+      - run: npm install
       - run: npm install vsce -g
       - run: npm run vscode:package
       - id: set-version-number
