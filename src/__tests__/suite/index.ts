@@ -3,6 +3,7 @@ import Mocha from 'mocha';
 import glob from 'glob';
 import * as vscode from 'vscode';
 import { readdirSync, unlinkSync } from 'fs';
+import { StateManager } from '../../workbench/stateManager';
 
 export const activateExtension = async () => {
     return new Promise<void>(async (resolve) => {
@@ -28,11 +29,7 @@ export function run(): Promise<void> {
     });
 
     const testsRoot = path.resolve(__dirname, '..');
-    let isWorkbenchFolderLoaded = process.argv[2] == 'loadWorkbench';
-
-    //This is for local debugging of tests 
-    if (process.env.loadWorkbench == 'loadWorkbench')
-        isWorkbenchFolderLoaded = true;
+    let isWorkbenchFolderLoaded = StateManager.workspaceRoot ? true : false;
 
     return new Promise((c, e) => {
         glob('**/**.test.js', { cwd: testsRoot }, (err, files) => {
