@@ -18,7 +18,7 @@ export async function testRunner(loadFolder: boolean = false) {
         else
             testResults = await runTests({ extensionDevelopmentPath, extensionTestsPath, launchArgs: ['--disable-extensions'] });
 
-        process.exit(testResults);
+        return testResults;
     } catch (err) {
         console.error('Failed to run tests');
         process.exit(1);

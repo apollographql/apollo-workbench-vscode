@@ -18,15 +18,17 @@ async function setStatus(state, description) {
 
 async function githubActionTests() {
   try {
-    await setStatus('pending', 'Running check..'),
+    await setStatus('pending', 'Running check..');
 
-      await testRunner();
-    await testRunner(true);
+    let result = 1;
+    result = await testRunner();
+    result = await testRunner(true);
 
     await setStatus('success', 'Tests for workbench folder open passed');
-
+    process.exit(result);
   } catch (err) {
     await setStatus('error', err?.message ? err.message : 'Failed to run tests');
+    process.exit(1);
   }
 }
 

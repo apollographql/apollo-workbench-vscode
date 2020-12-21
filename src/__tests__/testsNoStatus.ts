@@ -1,6 +1,9 @@
 import { testRunner } from "./testRunner";
 
 (async () => {
-    await testRunner();
-    await testRunner(true);
+    let result = 1;
+    result = await testRunner();
+    result = await testRunner(true);
+
+    process.exit(result);
 })()
