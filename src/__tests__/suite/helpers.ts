@@ -38,3 +38,13 @@ export async function createAndLoadEmptyWorkbenchFile() {
 
     await FileProvider.instance.loadWorkbenchFile(workbenchFileName, workbenchFilePath);
 }
+
+export const simpleSchema =
+    `
+type A @key(fields:"id"){
+    id: ID!
+}
+extend type Query {
+    a: A
+}
+`;
