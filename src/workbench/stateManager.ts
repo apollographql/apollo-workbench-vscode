@@ -9,7 +9,7 @@ import { ApolloStudioGraphsTreeDataProvider } from "./studio-graphs/apolloStudio
 import { ApolloStudioGraphOpsTreeDataProvider } from "./studio-operations/apolloStudioGraphOpsTreeDataProvider";
 
 export class StateManager {
-    private context?: ExtensionContext;
+    context?: ExtensionContext;
 
     private static _instance: StateManager;
     static get instance(): StateManager {
@@ -33,7 +33,7 @@ export class StateManager {
     apolloStudioGraphOpsProvider: ApolloStudioGraphOpsTreeDataProvider = new ApolloStudioGraphOpsTreeDataProvider();
 
     static get workspaceRoot(): string | undefined {
-        return workspace.workspaceFolders ? workspace.workspaceFolders[0].uri.fsPath : undefined;
+        return workspace.workspaceFolders ? workspace.workspaceFolders[0]?.uri?.fsPath : undefined;
     }
 
     static get settings_startingServerPort(): number {

@@ -1,25 +1,7 @@
 import * as path from 'path';
 import Mocha from 'mocha';
 import glob from 'glob';
-import * as vscode from 'vscode';
-import { readdirSync, unlinkSync } from 'fs';
-
-export const activateExtension = async () => {
-    return new Promise<void>(async (resolve) => {
-        await vscode.extensions.getExtension('ApolloGraphQL.apollo-workbench-vscode')?.activate();
-        resolve();
-    });
-}
-
-export function cleanupWorkbenchFiles(done) {
-    const directory = path.resolve(__dirname, '..', './test-workbench');
-    const dirents = readdirSync(directory, { withFileTypes: true });
-    for (const dirent of dirents) {
-        if (dirent.isFile() && dirent.name.includes('.apollo-workbench'))
-            unlinkSync(path.resolve(directory, dirent.name));
-    }
-    done();
-}
+import { StateManager } from '../../workbench/stateManager';
 
 export function run(): Promise<void> {
     // Create the mocha test
@@ -28,11 +10,7 @@ export function run(): Promise<void> {
     });
 
     const testsRoot = path.resolve(__dirname, '..');
-    let isWorkbenchFolderLoaded = process.argv[2] == 'loadWorkbench';
-
-    //This is for local debugging of tests 
-    if (process.env.loadWorkbench == 'loadWorkbench')
-        isWorkbenchFolderLoaded = true;
+    let isWorkbenchFolderLoaded = StateManager.workspaceRoot ? true : false;
 
     return new Promise((c, e) => {
         glob('**/**.test.js', { cwd: testsRoot }, (err, files) => {

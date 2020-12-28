@@ -26,11 +26,6 @@ jobs:
         with:
           node-version: '14'
           check-latest: true
-      #Checkout Source Code
-      - name: 'Checkout source code'
-        uses: 'actions/checkout@v2'
-        with:
-          ref: ${{ github.ref }}
       #Bump version
       - name: 'Automated Version Bump'
         id: version-bump

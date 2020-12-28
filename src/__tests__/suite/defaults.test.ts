@@ -1,7 +1,6 @@
 import * as assert from 'assert';
-import * as vscode from 'vscode';
 
-import { activateExtension } from '.';
+import { activateExtension, cleanupWorkbenchFiles } from './helpers';
 import { GettingStartedTopLevel } from '../../workbench/local-workbench-files/gettingStartedTreeItems';
 import { StateManager } from '../../workbench/stateManager';
 import { NotLoggedInTreeItem } from '../../workbench/studio-graphs/apolloStudioGraphsTreeDataProvider';
@@ -9,52 +8,56 @@ import { NotLoggedInTreeItem } from '../../workbench/studio-graphs/apolloStudioG
 suite('Default Workbench Tests', () => {
     before(activateExtension);
 
-    it('Defaults:LocalWorkbenchFiles - Getting Started is displayed', async () => {
-        return new Promise(async (resolve) => {
-            const localWorkbenchTreeItems = await StateManager.instance.localWorkbenchFilesProvider.getChildren();
+    it('Defaults:LocalWorkbenchFiles - Getting Started is displayed', async function () {
+        //Setup
+        cleanupWorkbenchFiles();
 
-            //Ensure only 1 item is in the tree by default
-            assert.ok(localWorkbenchTreeItems.length == 1);
+        //Get TreeView children
+        const localWorkbenchTreeItems = await StateManager.instance.localWorkbenchFilesProvider.getChildren();
 
-            //Ensure the 1 tree item is the GettingStartedTopLevel
-            const gettingStart = localWorkbenchTreeItems[0] as GettingStartedTopLevel;
-            assert.ok(gettingStart);
-
-            resolve();
-        });
+        //Assert
+        assert.strictEqual(localWorkbenchTreeItems.length, 1);
+        assert.notStrictEqual(localWorkbenchTreeItems[0] as GettingStartedTopLevel, undefined);
     });
-    it('Defaults:WorkbenchSchemaFiles - Should display no workbench file selected', async () => {
-        return new Promise(async (resolve) => {
-            const currentWorkbenchSchemasTreeItems = await StateManager.instance.currentWorkbenchSchemasProvider.getChildren();
+    it('Defaults:WorkbenchSchemaFiles - Should display no workbench file selected', async function () {
+        //Setup
+        cleanupWorkbenchFiles();
 
-            assert.ok(currentWorkbenchSchemasTreeItems.length == 1);
-            assert.ok(currentWorkbenchSchemasTreeItems[0]?.label == 'No workbench file selected');
+        //Get TreeView children
+        const currentWorkbenchSchemasTreeItems = await StateManager.instance.currentWorkbenchSchemasProvider.getChildren();
 
-            resolve();
-        });
+        assert.strictEqual(currentWorkbenchSchemasTreeItems.length, 1);
+        assert.strictEqual(currentWorkbenchSchemasTreeItems[0]?.label, 'No workbench file selected');
     });
-    it('Defaults:WorkbenchQueryFiles - Should display no workbench file selected', async () => {
-        return new Promise(async (resolve) => {
-            const currentWorkbenchOperationsTreeItems = await StateManager.instance.currentWorkbenchOperationsProvider.getChildren();
+    it('Defaults:WorkbenchQueryFiles - Should display no workbench file selected', async function () {
+        //Setup
+        cleanupWorkbenchFiles();
 
-            assert.ok(currentWorkbenchOperationsTreeItems.length == 1);
-            assert.ok(currentWorkbenchOperationsTreeItems[0]?.label == 'No workbench file selected');
+        //Get TreeView children
+        const currentWorkbenchOperationsTreeItems = await StateManager.instance.currentWorkbenchOperationsProvider.getChildren();
 
-            resolve();
-        });
+        assert.strictEqual(currentWorkbenchOperationsTreeItems.length, 1);
+        assert.strictEqual(currentWorkbenchOperationsTreeItems[0]?.label, 'No workbench file selected');
     });
-    it('Defaults:StudioGraphs - Should display login item', async () => {
-        return new Promise(async (resolve) => {
-            const studioGraphTreeItems = await StateManager.instance.apolloStudioGraphsProvider.getChildren();
-            studioGraphTreeItems.forEach(studioGraphTreeItem => assert.ok(studioGraphTreeItem as NotLoggedInTreeItem));
-            resolve();
-        });
+
+    it('Defaults:StudioGraphs - Should display login item', async function () {
+        //Setup
+        StateManager.instance.globalState_userApiKey = "";
+
+        //Get TreeView children
+        const studioGraphTreeItems = await StateManager.instance.apolloStudioGraphsProvider.getChildren();
+
+        //Assert
+        studioGraphTreeItems.forEach(studioGraphTreeItem => assert.notStrictEqual(studioGraphTreeItem as NotLoggedInTreeItem, undefined));
     });
-    it('Defaults:StudioOperations - Should display login item', async () => {
-        return new Promise(async (resolve) => {
-            const studioGraphTreeItems = await StateManager.instance.apolloStudioGraphsProvider.getChildren();
-            studioGraphTreeItems.forEach(studioGraphTreeItem => assert.ok(studioGraphTreeItem as NotLoggedInTreeItem));
-            resolve();
-        });
+    it('Defaults:StudioOperations - Should display login item', async function () {
+        //Setup
+        StateManager.instance.globalState_userApiKey = "";
+
+        //Get TreeView children
+        const studioGraphTreeItems = await StateManager.instance.apolloStudioGraphsProvider.getChildren();
+
+        //Assert
+        studioGraphTreeItems.forEach(studioGraphTreeItem => assert.notStrictEqual(studioGraphTreeItem as NotLoggedInTreeItem, undefined));
     });
 });

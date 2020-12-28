@@ -22,7 +22,7 @@ export class CurrentWorkbenchOpsTreeDataProvider implements vscode.TreeDataProvi
         } else {
             let items = this.getOperationsFromWorkbenchFile();
             if (items.length == 0)
-                items.push(new vscode.TreeItem("No queries in workbench file yet", vscode.TreeItemCollapsibleState.None));
+                items.push(new WorkbenchOperationTreeItem("No operations in selected workbench file", ""));
 
             return Promise.resolve(items);
         }
@@ -33,7 +33,7 @@ export class CurrentWorkbenchOpsTreeDataProvider implements vscode.TreeDataProvi
         if (operations == undefined) {
             return [new vscode.TreeItem("No workbench file selected", vscode.TreeItemCollapsibleState.None)];
         } else if (operations == {}) {
-            return [new vscode.TreeItem("No operations in selected workbench file", vscode.TreeItemCollapsibleState.None)];
+            return [new WorkbenchOperationTreeItem("No operations in selected workbench file", "")];
         } else {
             const toDep = (operationName: string, operation: string): WorkbenchOperationTreeItem => {
                 return new WorkbenchOperationTreeItem(
