@@ -199,6 +199,8 @@ export class FileProvider implements FileSystemProvider {
             this.workbenchFiles.set(uri.fsPath, wbFile);
             writeFileSync(path, JSON.stringify(wbFile));
             StateManager.instance.localWorkbenchFilesProvider?.refresh();
+
+            return path;
         }
     }
     async duplicateWorkbenchFile(workbenchFileName: string, filePathToDuplicate: string) {
@@ -263,7 +265,7 @@ export class FileProvider implements FileSystemProvider {
             //TODO: figure out blocking UI thread
             //  Ruled out try/catch blocks further down the stack
             //  Seems that composeAndValidate(sdls) is the culprit
-            await getComposedSchemaLogCompositionErrors();
+            getComposedSchemaLogCompositionErrors().next();
         } else {
             window.showErrorMessage(`Worbench file ${workbenchFileName} does not exist at ${filePath}`);
             StateManager.instance.localWorkbenchFilesProvider.refresh();
@@ -271,6 +273,8 @@ export class FileProvider implements FileSystemProvider {
     }
     saveCurrentWorkbench() {
         writeFileSync(StateManager.instance.workspaceState_selectedWorkbenchFile.path, JSON.stringify(this.currrentWorkbench), { encoding: "utf8" });
+        StateManager.instance.currentWorkbenchSchemasProvider.refresh();
+        StateManager.instance.currentWorkbenchOperationsProvider.refresh();
         window.setStatusBarMessage("Current Workbench Saved", 500);
     }
     //Schema File Implementations
@@ -397,12 +401,24 @@ export class FileProvider implements FileSystemProvider {
     async openOperationQueryPlan(operationName: string) {
         await window.showTextDocument(WorkbenchUri.parse(operationName, WorkbenchUriType.QUERY_PLANS));
     }
+    generateQueryPlan(operationName: string) {
+        try {
+            const operation = this.currrentWorkbenchOperations[operationName];
+            const queryPlanPointer = getQueryPlanner(this.currrentWorkbench.composedSchema);
+            const queryPlan = getQueryPlan(queryPlanPointer, operation, { autoFragmentization: false });
+
+            this.currrentWorkbench.queryPlans[operationName] = serializeQueryPlan(queryPlan);
+        } catch (err) {
+            console.log(err);
+        }
+    }
     //FileSystemProvider Implementations
     //File chagnes are watched at the `vscode.workspace.onDidChangeTextDocument` level
     readFile(uri: Uri): Uint8Array | Thenable<Uint8Array> {
         if (this.currrentWorkbench) {
             if (uri.path.includes('/schemas')) {
                 const serviceName = uri.query;
+                if (!this.currrentWorkbenchSchemas[serviceName]) throw new Error(`Trying to read schema file for ${serviceName}, but it isn't in the current workbench file`);
                 const schema = this.currrentWorkbenchSchemas[serviceName].sdl;
                 return Buffer.from(schema);
             } else if (uri.path.includes('/queries')) {
@@ -411,9 +427,18 @@ export class FileProvider implements FileSystemProvider {
                 return Buffer.from(operation);
             } else if (uri.path.includes('/queryplans')) {
                 const operationName = uri.query;
-                const queryPlan = this.currrentWorkbenchOperationQueryPlans[operationName];
+                let queryPlan = this.currrentWorkbenchOperationQueryPlans[operationName];
                 if (queryPlan)
                     return Buffer.from(queryPlan);
+                else {
+                    this.generateQueryPlan(operationName);
+                    queryPlan = this.currrentWorkbenchOperationQueryPlans[operationName];
+                    if (queryPlan) {
+                        this.saveCurrentWorkbench();
+                        return Buffer.from(queryPlan);
+                    }
+                }
+
                 return Buffer.from('Either there is no valid composed schema or the query is not valid\nUnable to generate query plan');
             } else if (uri.path == '/csdl.graphql') {
                 return Buffer.from(this.currrentWorkbench.composedSchema);
@@ -437,21 +462,10 @@ export class FileProvider implements FileSystemProvider {
                 //      3. mismastched value types/enums
                 //If Individual file is valid sdl, then try composition
                 //  Remove individual parse errors from composition errors
-                getComposedSchemaLogCompositionErrors();
+                getComposedSchemaLogCompositionErrors().next();
             } else if (uri.path.includes('/queries')) {
                 const operationName = uri.query;
-
-                try {
-                    const csdl = this.readFile(WorkbenchUri.csdl());
-                    const queryPlanPointer = getQueryPlanner(csdl.toString());
-                    let queryPlan = getQueryPlan(queryPlanPointer, stringContent, { autoFragmentization: false });
-                    this.currrentWorkbench.queryPlans[operationName] = serializeQueryPlan(queryPlan);
-                } catch (err) {
-                    //TODO: Wasn't a valid query - to handle errors better
-                    console.log(err);
-                }
-
-                this.currrentWorkbenchOperations[operationName] = stringContent;
+                this.generateQueryPlan(operationName);
             } else if (uri.path == '/csdl.graphql') {
                 this.currrentWorkbench.composedSchema = stringContent;
             } else {
@@ -488,7 +502,7 @@ export class FileProvider implements FileSystemProvider {
                 this.currrentWorkbenchSchemas[newName] = this.currrentWorkbenchSchemas[oldName];
                 delete this.currrentWorkbenchSchemas[oldName];
 
-                getComposedSchemaLogCompositionErrors();
+                getComposedSchemaLogCompositionErrors().next();
             } else if (oldUri.path.includes('/queries')) {
                 this.currrentWorkbenchOperations[newName] = this.currrentWorkbenchOperations[oldName];
                 delete this.currrentWorkbenchOperations[oldName];

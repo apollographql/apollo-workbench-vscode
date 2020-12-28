@@ -13,9 +13,9 @@ import { getLastLineOfText, getLineText } from "./vscodeHelpers";
 export async function* getComposedSchemaLogCompositionErrors() {
     let workbenchFile = FileProvider.instance.currrentWorkbench;
     try {
-        const result = yield* getComposedSchema(workbenchFile) as any;
+        const result = getComposedSchema(workbenchFile).next() as any;
         if (result) {
-            const { errors, composedSdl, schema } = result;
+            const { errors, composedSdl, schema } = result.value;
             if (errors.length > 0) {
                 console.log('Composition Errors Found:');
 
