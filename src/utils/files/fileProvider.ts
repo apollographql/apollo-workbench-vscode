@@ -402,6 +402,8 @@ export class FileProvider implements FileSystemProvider {
         await window.showTextDocument(WorkbenchUri.parse(operationName, WorkbenchUriType.QUERY_PLANS));
     }
     generateQueryPlan(operationName: string) {
+        if (!this.currrentWorkbench.composedSchema) return;
+
         try {
             const operation = this.currrentWorkbenchOperations[operationName];
             const queryPlanPointer = getQueryPlanner(this.currrentWorkbench.composedSchema);
@@ -465,6 +467,7 @@ export class FileProvider implements FileSystemProvider {
                 getComposedSchemaLogCompositionErrors().next();
             } else if (uri.path.includes('/queries')) {
                 const operationName = uri.query;
+                this.currrentWorkbenchOperations[operationName] = stringContent;
                 this.generateQueryPlan(operationName);
             } else if (uri.path == '/csdl.graphql') {
                 this.currrentWorkbench.composedSchema = stringContent;
