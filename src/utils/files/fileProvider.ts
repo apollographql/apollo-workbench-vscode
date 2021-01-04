@@ -15,6 +15,7 @@ import { OverrideApolloGateway } from '../../gateway';
 
 export enum WorkbenchUriType {
     SCHEMAS,
+    SCHEMAS_SETTINGS,
     QUERIES,
     QUERY_PLANS
 }
@@ -26,6 +27,8 @@ export class WorkbenchUri {
         switch (type) {
             case WorkbenchUriType.SCHEMAS:
                 return Uri.parse(`workbench:/schemas/${name}.graphql?${name}`);
+            case WorkbenchUriType.SCHEMAS_SETTINGS:
+                return Uri.parse(`workbench:/settings-schemas/${name}-settings.json?${name}`);
             case WorkbenchUriType.QUERIES:
                 return Uri.parse(`workbench:/queries/${name}.graphql?${name}`);
             case WorkbenchUriType.QUERY_PLANS:
@@ -111,11 +114,11 @@ export class FileProvider implements FileSystemProvider {
                     let results = await getGraphSchemasByVariant(StateManager.instance.globalState_userApiKey, graphId, selectedVariant);
                     let monolithicService = results.service?.implementingServices as GetGraphSchemas_service_implementingServices_NonFederatedImplementingService;
                     if (monolithicService?.graphID) {
-                        workbenchFile.schemas['monolith'] = { sdl: results.service?.schema?.document, shouldMock: true };
+                        workbenchFile.schemas['monolith'] = { sdl: results.service?.schema?.document, shouldMock: true, autoUpdateSchemaFromUrl: false };
                         ;
                     } else {
                         let implementingServices = results.service?.implementingServices as GetGraphSchemas_service_implementingServices_FederatedImplementingServices;
-                        implementingServices?.services?.map(service => workbenchFile.schemas[service.name] = { sdl: service.activePartialSchema.sdl, url: service.url ?? "", shouldMock: true });
+                        implementingServices?.services?.map(service => workbenchFile.schemas[service.name] = { sdl: service.activePartialSchema.sdl, url: service.url ?? "", shouldMock: true, autoUpdateSchemaFromUrl: false });
                     }
 
                     const path = `${workspace.rootPath}/${graphName}.apollo-workbench`;
@@ -276,6 +279,7 @@ export class FileProvider implements FileSystemProvider {
         StateManager.instance.currentWorkbenchSchemasProvider.refresh();
         StateManager.instance.currentWorkbenchOperationsProvider.refresh();
         window.setStatusBarMessage("Current Workbench Saved", 500);
+        commands.executeCommand('workbench.action.files.revert');
     }
     //Schema File Implementations
     async openSchema(serviceName: string) {
@@ -292,7 +296,7 @@ export class FileProvider implements FileSystemProvider {
         }
     }
     async addSchema(serviceName: string) {
-        this.currrentWorkbenchSchemas[serviceName] = { shouldMock: true, sdl: "" };
+        this.currrentWorkbenchSchemas[serviceName] = { shouldMock: true, sdl: "", autoUpdateSchemaFromUrl: false };
         this.saveCurrentWorkbench();
         await this.openSchema(serviceName);
     }
@@ -316,7 +320,6 @@ export class FileProvider implements FileSystemProvider {
             window.setStatusBarMessage(message, 3000);
         } else {
             if (this.currrentWorkbenchSchemas[serviceToUpdateUrl]) {
-                this.currrentWorkbenchSchemas[serviceToUpdateUrl].shouldMock = false;
                 this.currrentWorkbenchSchemas[serviceToUpdateUrl].url = serviceUrl;
                 this.saveCurrentWorkbench();
             }
@@ -425,8 +428,23 @@ export class FileProvider implements FileSystemProvider {
             if (uri.path.includes('/schemas')) {
                 const serviceName = uri.query;
                 if (!this.currrentWorkbenchSchemas[serviceName]) throw new Error(`Trying to read schema file for ${serviceName}, but it isn't in the current workbench file`);
+
                 const schema = this.currrentWorkbenchSchemas[serviceName].sdl;
                 return Buffer.from(schema);
+            } else if (uri.path.includes('/settings-schemas')) {
+                const serviceName = uri.query;
+                if (!this.currrentWorkbenchSchemas[serviceName]) throw new Error(`Trying to read schema file for ${serviceName}, but it isn't in the current workbench file`);
+
+                const service = this.currrentWorkbenchSchemas[serviceName];
+                let settings = {
+                    url: service.url ?? '',
+                    mocks: {
+                        shouldMock: service.shouldMock ?? true,
+                        autoUpdateSchemaFromUrl: service.autoUpdateSchemaFromUrl ?? false
+                    }
+                };
+
+                return Buffer.from(JSON.stringify(settings, null, 2));
             } else if (uri.path.includes('/queries')) {
                 const operationName = uri.query;
                 const operation = this.currrentWorkbenchOperations[operationName];
@@ -469,6 +487,13 @@ export class FileProvider implements FileSystemProvider {
                 //If Individual file is valid sdl, then try composition
                 //  Remove individual parse errors from composition errors
                 getComposedSchemaLogCompositionErrors().next();
+            } else if (uri.path.includes('/settings-schemas')) {
+                const serviceName = uri.query;
+                const savedSettings = JSON.parse(stringContent);
+
+                this.currrentWorkbenchSchemas[serviceName].url = savedSettings.url;
+                this.currrentWorkbenchSchemas[serviceName].shouldMock = savedSettings.mocks.shouldMock;
+                this.currrentWorkbenchSchemas[serviceName].autoUpdateSchemaFromUrl = savedSettings.mocks.autoUpdateSchemaFromUrl;
             } else if (uri.path.includes('/queries')) {
                 const operationName = uri.query;
                 this.currrentWorkbenchOperations[operationName] = stringContent;

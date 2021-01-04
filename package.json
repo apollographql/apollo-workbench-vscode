@@ -255,6 +255,11 @@
         "title": "Update Schema from URL"
       },
       {
+        "command": "current-workbench-schemas.viewSettings",
+        "title": "View Settings for Service",
+        "icon": "$(gear)"
+      },
+      {
         "command": "current-workbench-operations.editOperation",
         "title": "Edit Operation",
         "icon": "$(edit)"
@@ -352,7 +357,7 @@
         },
         {
           "id": "current-workbench-schemas",
-          "name": "Current Workbench Schemas"
+          "name": "Current Workbench Services"
         },
         {
           "id": "current-workbench-operations",
@@ -410,7 +415,22 @@
         {
           "command": "current-workbench-schemas.renameSchema",
           "when": "view == current-workbench-schemas && viewItem == workbenchSchemaTreeItem",
-          "group": "1"
+          "group": "1@1"
+        },
+        {
+          "command": "current-workbench-schemas.setUrlForService",
+          "when": "view == current-workbench-schemas && viewItem == workbenchSchemaTreeItem",
+          "group": "1@2"
+        },
+        {
+          "command": "current-workbench-schemas.updateSchemaFromUrl",
+          "when": "view == current-workbench-schemas && viewItem == workbenchSchemaTreeItem",
+          "group": "1@3"
+        },
+        {
+          "command": "current-workbench-schemas.viewSettings",
+          "when": "view == current-workbench-schemas && viewItem == workbenchSchemaTreeItem",
+          "group": "1@4"
         },
         {
           "command": "current-workbench-schemas.shouldMockSchema",
@@ -423,14 +443,9 @@
           "group": "2@2"
         },
         {
-          "command": "current-workbench-schemas.setUrlForService",
+          "command": "current-workbench-schemas.viewSettings",
           "when": "view == current-workbench-schemas && viewItem == workbenchSchemaTreeItem",
-          "group": "2@3"
-        },
-        {
-          "command": "current-workbench-schemas.updateSchemaFromUrl",
-          "when": "view == current-workbench-schemas && viewItem == workbenchSchemaTreeItem",
-          "group": "2@4"
+          "group": "inline"
         },
         {
           "command": "current-workbench-schemas.deleteSchema",

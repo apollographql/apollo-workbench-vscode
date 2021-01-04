@@ -29,7 +29,9 @@ export class OverrideApolloGateway extends ApolloGateway {
                     let typeDefs = await OverrideApolloGateway.getTypeDefs(service.url as string);
                     if (typeDefs) {
                         newDefinitions.push({ name: serviceName, url: service.url, typeDefs: parse(typeDefs) });
-                        FileProvider.instance.writeFile(WorkbenchUri.parse(serviceName, WorkbenchUriType.SCHEMAS), Buffer.from(typeDefs), { create: true, overwrite: true })
+
+                        if (service.autoUpdateSchemaFromUrl)
+                            FileProvider.instance.writeFile(WorkbenchUri.parse(serviceName, WorkbenchUriType.SCHEMAS), Buffer.from(typeDefs), { create: true, overwrite: true })
                     } else {
                         log("Falling back to schema defined in workbench");
                         newDefinitions.push({ name: serviceName, url: service.url, typeDefs: parse(service.sdl) });

@@ -2,6 +2,7 @@ export interface WorkbenchSchema {
     url?: string;
     sdl: string;
     shouldMock: boolean;
+    autoUpdateSchemaFromUrl: boolean;
 }
 
 export class ApolloWorkbenchFile {
