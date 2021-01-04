@@ -63,6 +63,9 @@ export class StateManager {
     static get settings_displayExampleGraphs() {
         return workspace.getConfiguration("apollo-workbench").get('displayExampleGraphs') as boolean;
     }
+    static get settings_tlsRejectUnauthorized() {
+        return workspace.getConfiguration("apollo-workbench").get('tlsRejectUnauthorized') as boolean;
+    }
     private get settings_apolloOrg() {
         return workspace.getConfiguration("apollo-workbench").get('apolloOrg') as string;
     }

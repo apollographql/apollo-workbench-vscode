@@ -342,6 +342,9 @@ export class FileProvider implements FileSystemProvider {
         }
     }
     async updateSchemaFromUrl(serviceToUpdateUrl: string) {
+        if (StateManager.settings_tlsRejectUnauthorized) process.env.NODE_TLS_REJECT_UNAUTHORIZED = '';
+        else process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+
         if (!this.currrentWorkbenchSchemas[serviceToUpdateUrl].url) {
             await this.promptServiceUrl(serviceToUpdateUrl);
         }
@@ -354,9 +357,10 @@ export class FileProvider implements FileSystemProvider {
                 let editor = await window.showTextDocument(WorkbenchUri.parse(serviceToUpdateUrl, WorkbenchUriType.SCHEMAS));
                 if (editor) {
                     const document = editor.document;
-                    editor.edit((editor) => {
+                    await editor.edit((editor) => {
                         editor.replace(new Range(0, 0, document.lineCount, 0), sdl);
-                    })
+                    });
+                    await document.save();
                 }
             }
         } else {//No URL entered for schema

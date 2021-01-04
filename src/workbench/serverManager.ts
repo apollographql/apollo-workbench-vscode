@@ -23,6 +23,9 @@ export class ServerManager {
     private serversState: { [port: string]: any } = {};
 
     startMocks() {
+        if (StateManager.settings_tlsRejectUnauthorized) process.env.NODE_TLS_REJECT_UNAUTHORIZED = '';
+        else process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+
         console.log(`${name}:Setting up mocks`);
         let workbenchFile = FileProvider.instance.currrentWorkbench;
         if (workbenchFile) {
