@@ -3,7 +3,7 @@
   "displayName": "Apollo Workbench",
   "description": "Tooling to help you develop and mock federated schemas using Apollo Federation",
   "icon": "media/workbench.png",
-  "version": "0.2.31",
+  "version": "0.2.34",
   "publisher": "ApolloGraphQL",
   "engines": {
     "vscode": "^1.34.0"
@@ -38,6 +38,7 @@
     "eslint": "^7.1.0",
     "mocha": "^8.2.1",
     "typescript": "^4.0.2",
+    "vsce": "^1.83.0",
     "vscode-test": "^1.4.1"
   },
   "dependencies": {
@@ -138,6 +139,13 @@
           ],
           "default": true,
           "description": "Specifies whether to display the 'Example Graphs' section is shown in the 'Apollo Studio Graphs' TreeView"
+        },
+        "apollo-workbench.tlsRejectUnauthorized": {
+          "type": [
+            "boolean"
+          ],
+          "default": false,
+          "description": "Specifies whether to set `NODE_TLS_REJECT_UNAUTHORIZED=0` or not. `NODE_TLS_REJECT_UNAUTHORIZED=0` is the default to avoid enterprise cert issues in development - Note this should never be done in production"
         }
       }
     },
