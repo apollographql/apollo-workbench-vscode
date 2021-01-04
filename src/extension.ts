@@ -88,8 +88,9 @@ export async function activate(context: vscode.ExtensionContext) {
 	//Schema Mocking Commands
 	vscode.commands.registerCommand('current-workbench-schemas.shouldMockSchema', async (serviceToMock: WorkbenchSchemaTreeItem) => await FileProvider.instance.shouldMockSchema(serviceToMock.serviceName));
 	vscode.commands.registerCommand('current-workbench-schemas.disableMockSchema', (serviceToMock: WorkbenchSchemaTreeItem) => FileProvider.instance.disableMockSchema(serviceToMock.serviceName));
-	vscode.commands.registerCommand('current-workbench-schemas.setUrlForService', async (serviceToMock: WorkbenchSchemaTreeItem) => await FileProvider.instance.promptServiceUrl(serviceToMock.serviceName))
+	vscode.commands.registerCommand('current-workbench-schemas.setUrlForService', async (serviceToMock: WorkbenchSchemaTreeItem) => await FileProvider.instance.promptServiceUrl(serviceToMock.serviceName));
 	vscode.commands.registerCommand('current-workbench-schemas.updateSchemaFromUrl', async (serviceToMock: WorkbenchSchemaTreeItem) => await FileProvider.instance.updateSchemaFromUrl(serviceToMock.serviceName));
+	vscode.commands.registerCommand('current-workbench-schemas.viewSettings', async (serviceToMock: WorkbenchSchemaTreeItem) => await vscode.window.showTextDocument(WorkbenchUri.parse(serviceToMock.serviceName, WorkbenchUriType.SCHEMAS_SETTINGS)));
 
 	//Current Loaded Workbench Operations Commands
 	vscode.commands.registerCommand('current-workbench-operations.addOperation', async () => await FileProvider.instance.promptToAddOperation());

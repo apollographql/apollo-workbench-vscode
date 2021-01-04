@@ -2,6 +2,23 @@
 
 - Better composition error pointing
 
+## Apollo Workbench VSCode 0.2.36
+
+- Introduced Service/Schema settings
+  - Can view settings as a json file and save
+    - Setting visualized from the workbench file
+    - Introduced `autoUpdateSchemaFromUrl` to `WorkbenchSchema`
+  - Context menu (right click) functionality points at workbench file directly
+- New mocking capabilities along with remote development options
+  - Update schema from a given url
+    - If Apollo Federation Spec is not supported (meaning `query { _service { sdl } }` fails), an introspection query will be used
+  - Conditionally mock any service/schema defined in workbench
+  - Ability to auto-update a given service/schema with mocks running
+    - You may want to use this if are developing a service that must be started to provide it's schema (like Ruby or Kotlin). This would allow you to see changes as you develop that service in your mocked gateway running locally along with any composition errors in the problems panel
+  - Added `apollo-workbench.tlsRejectUnauthorized` to the available settings to support gateway sending requests to remote urls where an cert is used that can't be verified. This allows you to specifically toggle `process.env.NODE_TLS_REJECT_UNAUTHORIZED` as needed; by default `NODE_TLS_REJECT_UNAUTHORIZED=0`
+- Changed menu options and ordering for Current Workbench Services
+- Changed name of TreeView from "Current Workbench Schemas" to "Current Workbench Services"
+
 ## Apollo Workbench VSCode 0.2.8
 
 - Upgrade Visual Indicator for loading workbench files
