@@ -146,6 +146,11 @@
           ],
           "default": false,
           "description": "Specifies whether to set `NODE_TLS_REJECT_UNAUTHORIZED=0` or not. `NODE_TLS_REJECT_UNAUTHORIZED=0` is the default to avoid enterprise cert issues in development - Note this should never be done in production"
+        },
+        "apollo-workbench.headersToForwardFromGateway": {
+          "type": "array",
+          "default": [],
+          "description": "Specifies what headers should be forwarded from the gateway to downstream mocked services"
         }
       }
     },

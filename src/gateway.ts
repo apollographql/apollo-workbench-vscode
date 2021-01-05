@@ -9,6 +9,17 @@ import { window } from "vscode";
 
 function log(message: string) { console.log(`GATEWAY-${message}`); }
 
+export class GatewayForwardHeadersDataSource extends RemoteGraphQLDataSource {
+    willSendRequest({ request, context }) {
+        StateManager.settings_headersToForwardFromGateway.forEach(key => {
+            if (context.incomingHeaders[key])
+                request.http.headers.set(key, context.incomingHeaders[key]);
+            else
+                log(`Header ${key} was not found on incoming request, did you forget to set it in your client application?`);
+        });
+    }
+}
+
 export class OverrideApolloGateway extends ApolloGateway {
     protected async loadServiceDefinitions(config: GatewayConfig): ReturnType<Experimental_UpdateServiceDefinitions> {
         if (StateManager.settings_tlsRejectUnauthorized) process.env.NODE_TLS_REJECT_UNAUTHORIZED = '';

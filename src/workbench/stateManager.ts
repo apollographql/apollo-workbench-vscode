@@ -66,6 +66,9 @@ export class StateManager {
     static get settings_tlsRejectUnauthorized() {
         return workspace.getConfiguration("apollo-workbench").get('tlsRejectUnauthorized') as boolean;
     }
+    static get settings_headersToForwardFromGateway() {
+        return workspace.getConfiguration("apollo-workbench").get('headersToForwardFromGateway') as Array<string>;
+    }
     private get settings_apolloOrg() {
         return workspace.getConfiguration("apollo-workbench").get('apolloOrg') as string;
     }

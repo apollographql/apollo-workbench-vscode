@@ -4,7 +4,7 @@ import { buildFederatedSchema } from "@apollo/federation";
 import { ApolloServerPluginUsageReportingDisabled } from 'apollo-server-core';
 
 import { StateManager } from "./stateManager";
-import { OverrideApolloGateway } from "../gateway";
+import { OverrideApolloGateway, GatewayForwardHeadersDataSource } from "../gateway";
 import { FileProvider } from "../utils/files/fileProvider";
 
 const { name } = require('../../package.json');
@@ -128,7 +128,10 @@ export class ServerManager {
         //This is a workaround because `server.stop()` doesn't stop that polling and becomes a memory leak if releasing the serer
         if (!this.serversState['gateway']) {
             console.log(`${name}:No gateway instance stored, creating instance`)
-            this.serversState['gateway'] = new OverrideApolloGateway({ debug: true });
+            this.serversState['gateway'] = new OverrideApolloGateway({
+                debug: true,
+                buildService({ url }) { return new GatewayForwardHeadersDataSource({ url }); }
+            });
         } else {
             console.log(`${name}:Changing gateway instance polling interval to 10s`);
             this.serversState['gateway'].experimental_pollInterval = StateManager.settings_gatewayReCompositionInterval ?? 10000;
@@ -150,7 +153,10 @@ export class ServerManager {
                 key: graphApiKey,
                 graphVariant
             },
-            plugins
+            plugins,
+            context: ({ req }) => {
+                return { incomingHeaders: req.headers };
+            }
         });
 
         server.listen({ port: gatewayPort }).then(({ url }) => {
