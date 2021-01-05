@@ -353,7 +353,7 @@ export class FileProvider implements FileSystemProvider {
         }
 
         if (this.currrentWorkbenchSchemas[serviceToUpdateUrl].url) {
-            const sdl = await OverrideApolloGateway.getTypeDefs(this.currrentWorkbenchSchemas[serviceToUpdateUrl].url ?? "");
+            const sdl = await OverrideApolloGateway.getTypeDefs(this.currrentWorkbenchSchemas[serviceToUpdateUrl].url ?? "", serviceToUpdateUrl);
             if (sdl) {
                 this.currrentWorkbenchSchemas[serviceToUpdateUrl].sdl = sdl;
                 this.saveCurrentWorkbench();

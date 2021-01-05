@@ -26,7 +26,7 @@ export class OverrideApolloGateway extends ApolloGateway {
                     let url = `http://localhost:${ServerManager.instance.portMapping[serviceName]}`;
                     newDefinitions.push({ name: serviceName, url, typeDefs });
                 } else {
-                    let typeDefs = await OverrideApolloGateway.getTypeDefs(service.url as string);
+                    let typeDefs = await OverrideApolloGateway.getTypeDefs(service.url as string, serviceName);
                     if (typeDefs) {
                         newDefinitions.push({ name: serviceName, url: service.url, typeDefs: parse(typeDefs) });
 
@@ -46,7 +46,7 @@ export class OverrideApolloGateway extends ApolloGateway {
         };
     }
 
-    public static async getTypeDefs(serviceURLOverride: string) {
+    public static async getTypeDefs(serviceURLOverride: string, serviceName: string) {
         let source = new RemoteGraphQLDataSource({ url: serviceURLOverride, });
 
         try {
@@ -69,8 +69,12 @@ export class OverrideApolloGateway extends ApolloGateway {
                 return await this.getSchemaByIntrospection(serviceURLOverride);
             }
         } catch (err) {
-            log(`Do you have your service running? \n\t${err.message}`);
-            return await this.getSchemaByIntrospection(serviceURLOverride);
+            if (err.code == 'ECONNREFUSED')
+                log(`Do you have service ${serviceName} running? \n\t${err.message}`);
+            else if (err.message == 'Only absolute URLs are supported')
+                log(`${serviceName}-${err.message}`);
+            else
+                return await this.getSchemaByIntrospection(serviceURLOverride);
         }
 
         return;
