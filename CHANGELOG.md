@@ -2,6 +2,16 @@
 
 - Better composition error pointing
 
+## Apollo Workbench VSCode 0.2.39
+
+- Added support for fowarding headers from Gateway to downstream services while mocked
+  - Introduced `apollo-workbench.headersToForwardFromGateway` which takes an array of string values which will be used to copy header values from the Gateway's context to the requests sent to downstream services
+  - This is meant to support various scenarios where downstream services require certain header values to be present
+
+### Bug Fixes
+
+- When starting up mocks and using a remote URL that can't be found, display the output results in VSCode Output Panel
+
 ## Apollo Workbench VSCode 0.2.36
 
 - Introduced Service/Schema settings

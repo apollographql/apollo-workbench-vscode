@@ -82,6 +82,8 @@ export class OverrideApolloGateway extends ApolloGateway {
         } catch (err) {
             if (err.code == 'ECONNREFUSED')
                 log(`Do you have service ${serviceName} running? \n\t${err.message}`);
+            else if (err.code == 'ENOTFOUND')
+                log(`Do you have service ${serviceName} running? \n\t${err.message}`);
             else if (err.message == 'Only absolute URLs are supported')
                 log(`${serviceName}-${err.message}`);
             else
