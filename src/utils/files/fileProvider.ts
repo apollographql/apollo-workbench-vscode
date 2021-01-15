@@ -1,7 +1,7 @@
 import { serializeQueryPlan } from '@apollo/gateway';
 import { getQueryPlan, getQueryPlanner } from '@apollo/query-planner-wasm';
 import { copyFileSync, existsSync, readdirSync, readFileSync, unlinkSync, writeFileSync } from 'fs';
-import path, { join } from 'path';
+import path, { join, resolve } from 'path';
 import { commands, Disposable, EventEmitter, FileChangeEvent, FileStat, FileSystemProvider, FileType, Position, Uri, window, workspace, Range, ProgressLocation } from 'vscode';
 import { compositionDiagnostics, outputChannel } from '../../extension';
 import { getGraphSchemasByVariant } from '../../studio-gql/graphClient';
@@ -101,7 +101,7 @@ export class FileProvider implements FileSystemProvider {
             if (selectedVariant == '') {
                 window.showInformationMessage("You must select a variant to load the graph from");
             } else {
-                let defaultGraphName = `${graphId}:${selectedVariant}-`;
+                let defaultGraphName = `${graphId}-${selectedVariant}-`;
                 let graphName = await window.showInputBox({
                     prompt: "Enter a name for your new workbench file",
                     placeHolder: defaultGraphName,
@@ -121,7 +121,7 @@ export class FileProvider implements FileSystemProvider {
                         implementingServices?.services?.map(service => workbenchFile.schemas[service.name] = { sdl: service.activePartialSchema.sdl, url: service.url ?? "", shouldMock: true, autoUpdateSchemaFromUrl: false });
                     }
 
-                    const path = `${workspace.rootPath}/${graphName}.apollo-workbench`;
+                    const path = resolve(StateManager.workspaceRoot, `${graphName}.apollo-workbench`);
 
                     const compositionResults = getComposedSchema(workbenchFile).next().value;
                     if (compositionResults) {
@@ -149,10 +149,12 @@ export class FileProvider implements FileSystemProvider {
                 outputChannel.appendLine(msg);
                 window.showErrorMessage(msg);
             } else {
-                FileProvider.instance.createNewWorkbenchFile(workbenchName);
-                let shouldLoad = await window.showInformationMessage("Would you like to load the new workbench file?", "Yes");
-                if (shouldLoad?.toLowerCase() == "yes") {
-                    await this.loadWorkbenchFile(workbenchName, `${StateManager.workspaceRoot}/${workbenchName}.apollo-workbench`)
+                const filePath = FileProvider.instance.createNewWorkbenchFile(workbenchName);
+                if (filePath) {
+                    let shouldLoad = await window.showInformationMessage("Would you like to load the new workbench file?", "Yes");
+                    if (shouldLoad?.toLowerCase() == "yes") {
+                        await this.loadWorkbenchFile(workbenchName, filePath);
+                    }
                 }
             }
         }
@@ -200,10 +202,10 @@ export class FileProvider implements FileSystemProvider {
             wbFile.graphName = graphName ?? workbenchFileName;
 
             this.workbenchFiles.set(uri.fsPath, wbFile);
-            writeFileSync(path, JSON.stringify(wbFile));
+            writeFileSync(uri.fsPath, JSON.stringify(wbFile));
             StateManager.instance.localWorkbenchFilesProvider?.refresh();
 
-            return path;
+            return uri.fsPath;
         }
     }
     async duplicateWorkbenchFile(workbenchFileName: string, filePathToDuplicate: string) {
@@ -274,12 +276,14 @@ export class FileProvider implements FileSystemProvider {
             StateManager.instance.localWorkbenchFilesProvider.refresh();
         }
     }
-    saveCurrentWorkbench() {
+    saveCurrentWorkbench(shouldRevertFile = true) {
         writeFileSync(StateManager.instance.workspaceState_selectedWorkbenchFile.path, JSON.stringify(this.currrentWorkbench), { encoding: "utf8" });
         StateManager.instance.currentWorkbenchSchemasProvider.refresh();
         StateManager.instance.currentWorkbenchOperationsProvider.refresh();
         window.setStatusBarMessage("Current Workbench Saved", 500);
-        commands.executeCommand('workbench.action.files.revert');
+
+        if(shouldRevertFile)
+            commands.executeCommand('workbench.action.files.revert');
     }
     //Schema File Implementations
     async openSchema(serviceName: string) {
@@ -522,7 +526,7 @@ export class FileProvider implements FileSystemProvider {
             window.showTextDocument(uri, { preview: true, preserveFocus: false })
                 .then(() => commands.executeCommand('workbench.action.closeActiveEditor'));
 
-            this.saveCurrentWorkbench();
+            this.saveCurrentWorkbench(false);
         }
     }
     rename(oldUri: Uri, newUri: Uri, options: { overwrite: boolean; }): void | Thenable<void> {
