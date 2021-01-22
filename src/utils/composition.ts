@@ -60,7 +60,7 @@ export function* getComposedSchema(workbenchFile: ApolloWorkbenchFile) {
             try {
                 let doc = parse(localSchemaString);
                 //TODO: use onlineParser to find validation 
-                sdls.push({ name: key, typeDefs: doc });
+                sdls.push({ name: key, typeDefs: doc, url: workbenchFile.schemas[key].url });
             } catch (err) {
                 //Need to include any errors for invalid schema
                 //TODO: consider using online parser when there is a gql error to get a better placement of the error

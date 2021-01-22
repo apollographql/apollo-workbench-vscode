@@ -37,10 +37,10 @@ export class StateManager {
     }
 
     static get settings_startingServerPort(): number {
-        return workspace.getConfiguration("apollo-workbench").get('startingServerPort') as number;;
+        return workspace?.getConfiguration("apollo-workbench")?.get('startingServerPort') ?? 4000 as number;
     }
     static get settings_gatewayServerPort(): number {
-        return workspace.getConfiguration("apollo-workbench").get('gatewayPort') as number;;
+        return workspace?.getConfiguration("apollo-workbench")?.get('gatewayPort') ?? 4001 as number;
     }
     static get settings_apiKey() {
         return workspace.getConfiguration("apollo-workbench").get('graphApiKey') as string ?? process.env.APOLLO_KEY ?? "";

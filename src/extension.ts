@@ -10,7 +10,7 @@ import { StateManager } from './workbench/stateManager';
 import { ServerManager } from './workbench/serverManager';
 import { federationCompletionProvider } from './workbench/federationCompletionProvider';
 import { PreloadedWorkbenchFile } from './workbench/studio-graphs/preLoadedTreeItems';
-import { enterApiKey, setAccountId } from './utils/vscodeHelpers';
+import { enterApiKey, setAccountId, exportWorkbenchProject } from './utils/vscodeHelpers';
 import { FileProvider, WorkbenchUri, WorkbenchUriType } from './utils/files/fileProvider';
 import { GettingStartedTreeItem } from './workbench/local-workbench-files/gettingStartedTreeItems';
 import { ApolloStudioOperationsProvider, GettingStartedDocProvider } from './workbench/docProviders';
@@ -144,6 +144,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	vscode.commands.registerCommand("local-workbench-files.duplicateFile", async (item: WorkbenchFileTreeItem) => await FileProvider.instance.duplicateWorkbenchFile(item.graphName, item.filePath));
 	vscode.commands.registerCommand("local-workbench-files.deleteFile", async (item: WorkbenchFileTreeItem) => await FileProvider.instance.promptToDeleteWorkbenchFile(item.filePath));
 	vscode.commands.registerCommand('local-workbench-files.refresh', async () => StateManager.instance.localWorkbenchFilesProvider.refresh());
+	vscode.commands.registerCommand('local-workbench-files.exportProject', async (item: WorkbenchFileTreeItem) => exportWorkbenchProject(item.filePath));
 	//TODO: released once propery tested
 	// vscode.commands.registerCommand('local-workbench-files.dockerize', async (item: WorkbenchFileTreeItem) => DockerImageManager.create(item.filePath));
 
