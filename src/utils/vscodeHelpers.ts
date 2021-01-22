@@ -1,7 +1,22 @@
 import { Uri, window, workspace } from "vscode";
 import { getUserMemberships, isValidKey } from "../studio-gql/graphClient";
 import { StateManager } from "../workbench/stateManager";
-import { WorkbenchUri } from "./files/fileProvider";
+import { WorkbenchUri, FileProvider } from "./files/fileProvider";
+import { createTypescriptTemplate } from "./export-project/createTypescriptTemplate";
+import { createJavascriptTemplate } from "./export-project/createJavascriptTemplate";
+
+export async function exportWorkbenchProject(pathToWorkbench: string) {
+    let workbenchFile = FileProvider.instance.workbenchFiles.get(pathToWorkbench);
+    if (workbenchFile) {
+
+        let exportLanguage = await window.showQuickPick(["Javascript", "Typescript"], { canPickMany: false, placeHolder: "Would you like to use Javascript or Typescript for the exported project?" });
+        if (exportLanguage == "Typescript") {
+            createTypescriptTemplate(workbenchFile);
+        } else {
+            createJavascriptTemplate(workbenchFile);
+        }
+    }
+}
 
 export async function getLineText(serviceName: string, lineAt: number = 0): Promise<string> {
     // let doc = await workspace.openTextDocument(WorkbenchUri.parse(serviceName));
