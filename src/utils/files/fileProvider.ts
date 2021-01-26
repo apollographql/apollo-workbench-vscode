@@ -9,7 +9,7 @@ import { GetGraphSchemas_service_implementingServices_FederatedImplementingServi
 import { ServerManager } from '../../workbench/serverManager';
 import { StateManager } from '../../workbench/stateManager';
 import { getComposedSchema, getComposedSchemaLogCompositionErrors, handleErrors } from '../composition';
-import { ApolloWorkbenchFile } from './fileTypes';
+import { ApolloWorkbenchFile, WorkbenchSettings } from './fileTypes';
 import { parse, print } from 'graphql';
 import { OverrideApolloGateway } from '../../gateway';
 
@@ -282,7 +282,7 @@ export class FileProvider implements FileSystemProvider {
         StateManager.instance.currentWorkbenchOperationsProvider.refresh();
         window.setStatusBarMessage("Current Workbench Saved", 500);
 
-        if(shouldRevertFile)
+        if (shouldRevertFile)
             commands.executeCommand('workbench.action.files.revert');
     }
     //Schema File Implementations
@@ -440,8 +440,9 @@ export class FileProvider implements FileSystemProvider {
                 if (!this.currrentWorkbenchSchemas[serviceName]) throw new Error(`Trying to read schema file for ${serviceName}, but it isn't in the current workbench file`);
 
                 const service = this.currrentWorkbenchSchemas[serviceName];
-                let settings = {
+                let settings: WorkbenchSettings = {
                     url: service.url ?? '',
+                    requiredHeaders: service.requiredHeaders ?? [],
                     mocks: {
                         shouldMock: service.shouldMock ?? true,
                         autoUpdateSchemaFromUrl: service.autoUpdateSchemaFromUrl ?? false
@@ -493,11 +494,12 @@ export class FileProvider implements FileSystemProvider {
                 getComposedSchemaLogCompositionErrors().next();
             } else if (uri.path.includes('/settings-schemas')) {
                 const serviceName = uri.query;
-                const savedSettings = JSON.parse(stringContent);
+                const savedSettings: WorkbenchSettings = JSON.parse(stringContent);
 
                 this.currrentWorkbenchSchemas[serviceName].url = savedSettings.url;
                 this.currrentWorkbenchSchemas[serviceName].shouldMock = savedSettings.mocks.shouldMock;
                 this.currrentWorkbenchSchemas[serviceName].autoUpdateSchemaFromUrl = savedSettings.mocks.autoUpdateSchemaFromUrl;
+                this.currrentWorkbenchSchemas[serviceName].requiredHeaders = savedSettings.requiredHeaders;
             } else if (uri.path.includes('/queries')) {
                 const operationName = uri.query;
                 this.currrentWorkbenchOperations[operationName] = stringContent;
