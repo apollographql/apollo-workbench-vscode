@@ -22,8 +22,8 @@ export class GatewayForwardHeadersDataSource extends RemoteGraphQLDataSource {
         let service = FileProvider.instance.currrentWorkbench.schemas[this.serviceName];
         if (service) {
             service.requiredHeaders?.forEach(requiredHeader => {
-                if (requiredHeader && requiredHeader.value)
-                    request.http.headers.set(requiredHeader.key, requiredHeader.value);
+                if (requiredHeader)
+                    request.http.headers.set(requiredHeader.key, context.incomingHeaders[requiredHeader.key] ?? requiredHeader.value ?? "");
             })
         }
     }
