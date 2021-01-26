@@ -130,7 +130,11 @@ export class ServerManager {
             console.log(`${name}:No gateway instance stored, creating instance`)
             this.serversState['gateway'] = new OverrideApolloGateway({
                 debug: true,
-                buildService({ url }) { return new GatewayForwardHeadersDataSource({ url }); }
+                buildService({ url, name }) {
+                    let source = new GatewayForwardHeadersDataSource({ url });
+                    source.serviceName = name;
+                    return source;
+                }
             });
         } else {
             console.log(`${name}:Changing gateway instance polling interval to 10s`);
