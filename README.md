@@ -53,21 +53,25 @@ The Apollo Workbench extension for VS Code brings an all-in-one tooling experien
 ### Designing a new federated graph with no existing GraphQL
 
 1. Create a new workbench file
-   ![](https://storage.googleapis.com/apollo-workbench-vscode/workbench-new-graph.png)
 2. Click on the newly created workbench file to load it
 3. Start creating services
 
+![](https://storage.googleapis.com/apollo-workbench-vscode/workbench-new-graph.gif)
+
 ### Designing a new federated graph from an existing GraphQL monolith
 
-1. Create a new workbench file (see screenshot above)
+1. Create a new workbench file (see gif above)
 2. Create a new service to represent the "monolith"
-   ![](https://storage.googleapis.com/apollo-workbench-vscode/workbench-migration-new-monolith.png)
-   3a. If your monolith has introspection enabled and available on the network you're connected to, you can right click on the monolith and select **Update Schema from URL**. You will be prompted to enter the url for your service and the schema will be fetched and populate the monolith.graphql schema file.
-   ![](https://storage.googleapis.com/apollo-workbench-vscode/workbench-migration-monolith-schemaFromUrl.png)
-   3b. If you encounter an issue in 3a, you can just copy the schema into the monolith.graphql file that you created.
-3.
+   2a. If your monolith has introspection enabled and available on the network you're connected to, you can right click on the monolith and select **Update Schema from URL**. You will be prompted to enter the url for your service and the schema will be fetched and populate the monolith.graphql schema file. (you can also set required headers like an auth header for the GitHub API)
+   ![](https://storage.googleapis.com/apollo-workbench-vscode/workbench-monolith-migration.gif)
+   2b. If you encounter an issue in 2a, you can just copy the schema into the monolith.graphql file that you created.
+3. Create a second service and choose the first entity to define; cut the type from the old service to the new service. You'll most likely have some composition errors that need to be resolved. You can view these in the problems panel of VS Codeand start deciding where types should live.
+
+![](https://storage.googleapis.com/apollo-workbench-vscode/workbench-monolith-comp-errors.png)
 
 ### Designing a change to an existing graph in Apollo Studio
+
+While logged into Apollo Studio, you have the ability to create a workbench from an existing graph. Just right click on the graph you want and Workbench will create a local copy of all the services in that graph (if it's a monolith, a monolith service will be added into the workbench with your schema).
 
 ![](https://storage.googleapis.com/apollo-workbench-vscode/workbench-new-from-studio-graph.png)
 
@@ -78,6 +82,8 @@ The Apollo Workbench extension for VS Code brings an all-in-one tooling experien
 Apollo Workbench VS Code contains all the internals needed to mock the schemas you design out. After selecting a file in the **Local Workbench Files** tree view, each schema file in the `apollo-workbench` file can be mocked.
 
 ![Starting Mocks](https://storage.googleapis.com/apollo-workbench-vscode/workbench-start-mocks.png)
+
+You may need to z
 
 The gateway will recompose every 10 seconds (you can change this in the VS Code settings under `apollo-workbench.gatewayReCompositionInterval` - note this setting is in milliseconds). You can also stop the mocks at anytime:
 
@@ -123,7 +129,7 @@ This extension works by using a `.workbench` folder behind the scenes to manage 
 
 ### Extension Settings
 
-**To be outlined**
+**Important Settings**
 
 - `apollo-workbench.gatewayPort`_(**Default**: 4000)_: Specifies the url endpoint to be used for the Apollo Gateway instance when running mocks
 - `apollo-workbench.startingServerPort`_(**Default**: 4001)_: Specifies the starting port to be used in the url endpoint for the mocked federated services
