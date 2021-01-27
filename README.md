@@ -83,7 +83,8 @@ Apollo Workbench VS Code contains all the internals needed to mock the schemas y
 
 ![Starting Mocks](https://storage.googleapis.com/apollo-workbench-vscode/workbench-start-mocks.png)
 
-You may need to z
+You may need to set specific headers that should be sent to the downstream services and you can set those by clicking on the settings "gear" icon for a service:
+![Set Required Headers](https://storage.googleapis.com/apollo-workbench-vscode/workbench-set-required-headers.png)
 
 The gateway will recompose every 10 seconds (you can change this in the VS Code settings under `apollo-workbench.gatewayReCompositionInterval` - note this setting is in milliseconds). You can also stop the mocks at anytime:
 
@@ -125,6 +126,16 @@ This is an early beta release that was designed and written by the Apollo Soluti
 
 This extension works by using a `.workbench` folder behind the scenes to manage everything. You can find `queries` and `schemas` folders that contain the files of the loaded workbench file. The `schemas` folder will contain all of the schema files (which should be identical to what is in the workbench file) and the `queries` folder should contain a query and queryplan (if graph composed successfully) for each operation defined in the workbench.
 
+## Potential Future Additions (no timelines)
+
+- Change history for a given workbench file compared to a graph/variant defined in Apollo Studio
+  - _Workflow: Implementation plan for a given schema design_
+- (Experimental) Export capabilities
+  - Build docker image locally and output run command
+  - Export zip project that can provide examples
+    - Add default resolvers
+- Enable capability to provide custom mocks for mocked servers
+
 ## Reference
 
 ### Extension Settings
@@ -133,99 +144,6 @@ This extension works by using a `.workbench` folder behind the scenes to manage 
 
 - `apollo-workbench.gatewayPort`_(**Default**: 4000)_: Specifies the url endpoint to be used for the Apollo Gateway instance when running mocks
 - `apollo-workbench.startingServerPort`_(**Default**: 4001)_: Specifies the starting port to be used in the url endpoint for the mocked federated services
--       "apollo-workbench.gatewayPort": {
-          "type": [
-            "number"
-          ],
-          "default": 4000,
-          "description": "Specifies the url endpoint to be used for the Apollo Studio Graph"
-        },
-        "apollo-workbench.startingServerPort": {
-          "type": [
-            "number"
-          ],
-          "default": 4001,
-          "description": "Specifies the url endpoint to be used for the Apollo Studio Graph"
-        },
-        "apollo-workbench.gatewayReCompositionInterval": {
-          "type": [
-            "number"
-          ],
-          "default": 10000,
-          "description": "Specifies the interval the Apollo Gateway will try re-composing it's schema in ms"
-        },
-        "apollo-workbench.graphApiKey": {
-          "type": [
-            "string"
-          ],
-          "default": "",
-          "description": "Specifies the gateway apikey to be used for the Apollo Studio Graph. This will enable operation registry if `apollo-workbench.runOperationRegistry` is set to `true`"
-        },
-        "apollo-workbench.graphVariant": {
-          "type": [
-            "string"
-          ],
-          "default": "current",
-          "description": "Specifies the gateway graph variant to be used for the Apollo Studio Graph. This will change operation registry if `apollo-workbench.runOperationRegistry` is set to `true`"
-        },
-        "apollo-workbench.daysOfOperationsToFetch": {
-          "type": [
-            "number"
-          ],
-          "default": 30,
-          "description": "Specifies the number of days to select operations from Apollo Studio (to current day)"
-        },
-        "apollo-workbench.runOperationRegistry": {
-          "type": [
-            "boolean"
-          ],
-          "default": false,
-          "description": "Specifies the url endpoint to be used for the Apollo Studio Graph"
-        },
-        "apollo-workbench.displayGettingStarted": {
-          "type": [
-            "boolean"
-          ],
-          "default": true,
-          "description": "Specifies whether to display the 'Getting Started' section is shown in the 'Local Schema Files' TreeView"
-        },
-        "apollo-workbench.displayExampleGraphs": {
-          "type": [
-            "boolean"
-          ],
-          "default": true,
-          "description": "Specifies whether to display the 'Example Graphs' section is shown in the 'Apollo Studio Graphs' TreeView"
-        },
-        "apollo-workbench.tlsRejectUnauthorized": {
-          "type": [
-            "boolean"
-          ],
-          "default": false,
-          "description": "Specifies whether to set `NODE_TLS_REJECT_UNAUTHORIZED=0` or not. `NODE_TLS_REJECT_UNAUTHORIZED=0` is the default to avoid enterprise cert issues in development - Note this should never be done in production"
-        },
-        "apollo-workbench.headersToForwardFromGateway": {
-          "type": "array",
-          "default": [],
-          "description": "Specifies what headers should be forwarded from the gateway to downstream mocked services"
-        }
-
-### What is a .apollo-workbench file?
-
-The `.apollo-workbench` file format contains all of the information needed for workbench to function and is structured as follows:
-
-```
-export class ApolloWorkbench {
-	graphName: string = "";
-	operations: { [key: string]: string } = {};
-	queryPlans: { [key: string]: string } = {};
-	schemas: { [serviceName: string]: WorkbenchSchema } = {};
-	composedSchema: string = "";
-}
-export class WorkbenchSchema {
-	url?: string = "";
-	sdl: string = "";
-	shouldMock: boolean = true;
-}
-```
-
-The `.apollo-workbench` file was designed to be easily shared so that you can design out a graph and send the file to a colleague for collaboration.
+- `apollo-workbench.gatewayReCompositionInterval`_(**Default**: 10000)_: Specifies the interval the Apollo Gateway will try re-composing it's schema in ms
+- `apollo-workbench.headersToForwardFromGateway`_(**Default**: [])_: Specifies what headers should be forwarded from the gateway to downstream mocked services
+  - Example `apollo-workbench.headersToForwardFromGateway: ["authentication"]`
