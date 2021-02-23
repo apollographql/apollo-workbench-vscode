@@ -115,7 +115,6 @@ export class FileProvider implements FileSystemProvider {
                     let monolithicService = results.service?.implementingServices as GetGraphSchemas_service_implementingServices_NonFederatedImplementingService;
                     if (monolithicService?.graphID) {
                         workbenchFile.schemas['monolith'] = { sdl: results.service?.schema?.document, shouldMock: true, autoUpdateSchemaFromUrl: false };
-                        ;
                     } else {
                         let implementingServices = results.service?.implementingServices as GetGraphSchemas_service_implementingServices_FederatedImplementingServices;
                         implementingServices?.services?.map(service => workbenchFile.schemas[service.name] = { sdl: service.activePartialSchema.sdl, url: service.url ?? "", shouldMock: true, autoUpdateSchemaFromUrl: false });
@@ -123,16 +122,22 @@ export class FileProvider implements FileSystemProvider {
 
                     const path = resolve(StateManager.workspaceRoot, `${graphName}.apollo-workbench`);
 
-                    const compositionResults = getComposedSchema(workbenchFile).next().value;
-                    if (compositionResults) {
-                        if (compositionResults.composedSdl) workbenchFile.composedSchema = compositionResults.composedSdl;
-                        else await handleErrors(workbenchFile, compositionResults.errors);
-
-                        this.workbenchFiles.set(path, workbenchFile);
-                        writeFileSync(path, JSON.stringify(workbenchFile), { encoding: "utf8" });
-
-                        StateManager.instance.localWorkbenchFilesProvider.refresh();
+                    try {
+                        const compositionResults = getComposedSchema(workbenchFile).next().value;
+                        if (compositionResults) {
+                            if (compositionResults.composedSdl) workbenchFile.composedSchema = compositionResults.composedSdl;
+                            else await handleErrors(workbenchFile, compositionResults.errors);
+                        }
+                    } catch (err) {
+                        //Some issue happened in composition
+                        console.log(err);
+                        window.showErrorMessage(err);
                     }
+
+                    this.workbenchFiles.set(path, workbenchFile);
+                    writeFileSync(path, JSON.stringify(workbenchFile), { encoding: "utf8" });
+
+                    StateManager.instance.localWorkbenchFilesProvider.refresh();
                 } else {
                     window.showInformationMessage("You must provide a name to create a new workbench file")
                 }
