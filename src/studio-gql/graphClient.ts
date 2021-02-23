@@ -88,7 +88,7 @@ const getGraphOperations = gql`
   }`
 
 export async function isValidKey(apiKey: string) {
-    let result = await toPromise(execute(createLink(apiKey), { query: keyCheck }));
+    let result = await toPromise(execute(createLink({ apiKey }), { query: keyCheck }));
     let data = result.data as CheckUserApiKey;
     if ((data.me as CheckUserApiKey_me_User)?.id) return true;
     return false;
@@ -96,12 +96,12 @@ export async function isValidKey(apiKey: string) {
 }
 
 export async function getUserMemberships(apiKey: string) {
-    let result = await toPromise(execute(createLink(apiKey), { query: userMemberships }));
+    let result = await toPromise(execute(createLink({ apiKey }), { query: userMemberships }));
     return result.data as UserMemberships
 }
 
 export async function getAccountGraphs(apiKey: string, accountId: string) {
-    let result = await toPromise(execute(createLink(apiKey), {
+    let result = await toPromise(execute(createLink({ apiKey, accountId }), {
         query: accountServiceVariants,
         variables: {
             "accountId": accountId
@@ -112,7 +112,7 @@ export async function getAccountGraphs(apiKey: string, accountId: string) {
 
 export async function getGraphOps(apiKey: string, graphId: string, graphVariant: string) {
     let days = StateManager.settings_daysOfOperationsToFetch;
-    let result = await toPromise(execute(createLink(apiKey), {
+    let result = await toPromise(execute(createLink({ apiKey, graphId, graphVariant }), {
         query: getGraphOperations,
         variables: {
             "id": graphId,
@@ -123,11 +123,11 @@ export async function getGraphOps(apiKey: string, graphId: string, graphVariant:
     return result.data as GraphOperations
 }
 
-export async function getGraphSchemasByVariant(apiKey: string, serviceId: string, graphVariant: string) {
-    let result = await toPromise(execute(createLink(apiKey), {
+export async function getGraphSchemasByVariant(apiKey: string, graphId: string, graphVariant: string) {
+    let result = await toPromise(execute(createLink({ apiKey, graphId, graphVariant }), {
         query: getGraphSchemas,
         variables: {
-            "id": serviceId,
+            "id": graphId,
             "graphVariant": graphVariant
         }
     }));
@@ -135,14 +135,30 @@ export async function getGraphSchemasByVariant(apiKey: string, serviceId: string
 }
 
 const { version } = require('../../package.json');
-function createLink(apiKey: string) {
+interface CreateLinkOptions {
+    apiKey: string;
+    accountId?: string;
+    graphId?: string;
+    graphVariant?: string;
+}
+function createLink(options: CreateLinkOptions) {
+    let userId = options.apiKey.split(':')[1];
+    let headers = {
+        'x-api-key': options.apiKey,
+        'studio-user-id': userId,
+        'apollographql-client-name': 'Apollo Workbench',
+        'apollographql-client-version': version
+    };
+
+    if (options.accountId) headers["studio-account-id"] = options.accountId;
+    if (options.graphId) headers["studio-graph-id"] = options.graphId;
+    if (options.graphVariant) headers["studio-graph-graphVariant"] = options.graphVariant;
+
+    if (StateManager.settings_apolloOrg) headers["apollo-sudo"] = "true";
+
     return createHttpLink({
         fetch,
-        uri: vscode.workspace.getConfiguration("apollo-workbench").get('apolloApiUrl') as string,
-        headers: {
-            'x-api-key': apiKey,
-            'apollographql-client-name': 'Apollo Workbench',
-            'apollographql-client-version': version
-        }
+        headers,
+        uri: vscode.workspace.getConfiguration("apollo-workbench").get('apolloApiUrl') as string
     });
 }

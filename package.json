@@ -3,7 +3,7 @@
   "displayName": "Apollo Workbench",
   "description": "Tooling to help you develop and mock federated schemas using Apollo Federation",
   "icon": "media/workbench.png",
-  "version": "0.2.41",
+  "version": "0.2.43",
   "publisher": "ApolloGraphQL",
   "engines": {
     "vscode": "^1.34.0"
@@ -69,7 +69,7 @@
           "type": [
             "string"
           ],
-          "default": "https://engine-graphql.apollographql.com/api/graphql",
+          "default": "https://graphql.api.apollographql.com/api/graphql",
           "description": "Specifies the url endpoint to be used for the Apollo Studio Graph"
         },
         "apollo-workbench.apolloOrg": {
