@@ -69,7 +69,7 @@ export class StateManager {
     static get settings_headersToForwardFromGateway() {
         return workspace.getConfiguration("apollo-workbench").get('headersToForwardFromGateway') as Array<string>;
     }
-    private get settings_apolloOrg() {
+    static get settings_apolloOrg() {
         return workspace.getConfiguration("apollo-workbench").get('apolloOrg') as string;
     }
     get globalState_userApiKey() {
@@ -85,7 +85,7 @@ export class StateManager {
         this.localWorkbenchFilesProvider.refresh();
     }
     get globalState_selectedApolloAccount() {
-        if (this.settings_apolloOrg) return this.settings_apolloOrg;
+        if (StateManager.settings_apolloOrg) return StateManager.settings_apolloOrg;
         return this.context?.globalState.get('APOLLO_SELCTED_ACCOUNT') as string;
     }
     set globalState_selectedApolloAccount(accountId: string) {

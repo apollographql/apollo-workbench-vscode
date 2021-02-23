@@ -69,7 +69,7 @@
           "type": [
             "string"
           ],
-          "default": "https://engine-graphql.apollographql.com/api/graphql",
+          "default": "https://graphql.api.apollographql.com/api/graphql",
           "description": "Specifies the url endpoint to be used for the Apollo Studio Graph"
         },
         "apollo-workbench.apolloOrg": {
