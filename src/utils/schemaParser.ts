@@ -133,3 +133,34 @@ export function getRangeForFieldNamedType(typeToLoc: string, schema: string) {
         endColumn
     };
 }
+
+export function extractEntityNames(schema: string): string[] {
+    let entityName: string[] = [];
+    try {
+        runOnlineParser(schema, (state, range, tokens) => {
+            console.log(state.kind)
+            switch (state.kind) {
+                case "StringValue" as any:
+                    let argument = state?.prevState?.prevState;
+                    let directive = argument?.prevState?.prevState;
+                    let objectType = directive?.prevState;
+                    let definitionType = objectType?.prevState;
+
+                    if (objectType?.name
+                        && definitionType?.kind == "Definition" as any
+                        && objectType?.kind == 'ObjectTypeDef'
+                        && directive?.kind == "Directive"
+                        && argument?.kind == "Argument"
+                        && argument.name == 'fields'
+                        && directive.name == 'key') {
+                        if (!entityName.includes(objectType.name)) entityName.push(objectType.name);
+                    }
+                    break;
+            }
+        });
+    } catch (err) {
+        console.log(err);
+    }
+
+    return entityName;
+}

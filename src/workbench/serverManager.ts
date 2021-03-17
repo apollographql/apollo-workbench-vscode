@@ -1,4 +1,4 @@
-import { ApolloServer, gql } from "apollo-server";
+import { addMockFunctionsToSchema, ApolloServer, gql, IMocks } from "apollo-server";
 import plugin from 'apollo-server-plugin-operation-registry';
 import { buildFederatedSchema } from "@apollo/federation";
 import { ApolloServerPluginUsageReportingDisabled } from 'apollo-server-core';
@@ -6,6 +6,7 @@ import { ApolloServerPluginUsageReportingDisabled } from 'apollo-server-core';
 import { StateManager } from "./stateManager";
 import { OverrideApolloGateway, GatewayForwardHeadersDataSource } from "../gateway";
 import { FileProvider } from "../utils/files/fileProvider";
+import { extractEntityNames } from "../utils/schemaParser";
 
 const { name } = require('../../package.json');
 
@@ -31,8 +32,26 @@ export class ServerManager {
         if (workbenchFile) {
             console.log(`${name}:Mocking workbench file: ${workbenchFile.graphName}`);
             for (var serviceName in workbenchFile.schemas) {
-                if (workbenchFile.schemas[serviceName].shouldMock)
-                    this.startServer(serviceName, workbenchFile.schemas[serviceName].sdl);
+                //Check if we should be mocking this service
+                if (workbenchFile.schemas[serviceName].shouldMock) {
+                    //Check if Custom Mocks are defined in workbench
+                    let customMocks = workbenchFile.schemas[serviceName].customMocks;
+                    if (customMocks) {
+                        //By default we add the export shown to the user, but they may delete it
+                        if (!customMocks.includes('module.exports'))
+                            customMocks = customMocks.concat('\nmodule.exports = mocks');
+
+                        try {
+                            let mocks = eval(customMocks);
+                            this.startServer(serviceName, workbenchFile.schemas[serviceName].sdl, mocks);
+                        } catch (err) {
+                            //Most likely  wasn't valid javascript
+                            console.log(err);
+                            this.startServer(serviceName, workbenchFile.schemas[serviceName].sdl);
+                        }
+                    } else
+                        this.startServer(serviceName, workbenchFile.schemas[serviceName].sdl);
+                }
             }
 
             this.startGateway();
@@ -52,7 +71,7 @@ export class ServerManager {
         this.portMapping = {};
         this.stopGateway();
     }
-    startServer(serviceName: string, schemaString: string) {
+    startServer(serviceName: string, schemaString: string, mocks?: IMocks) {
         const port = this.portMapping[serviceName] ?? this.getNextAvailablePort();
         console.log(`${name}:Starting ${serviceName} on port ${port}`);
         if (this.serversState[port]) {
@@ -68,10 +87,23 @@ export class ServerManager {
 
         try {
             const typeDefs = gql(schemaString);
+            if (mocks) {
+                mocks._Service = () => { return { sdl: schemaString } }
+            } else {
+                mocks = { _Service: () => { return { sdl: schemaString } } };
+            }
+
+            let resolvers = {};
+            let entities = extractEntityNames(schemaString);
+            entities.forEach(entity => {
+                resolvers[entity] = { __resolveReference(parent, args) { return { ...parent } } }
+            });
+
+            const schema = buildFederatedSchema({ typeDefs, resolvers });
+            addMockFunctionsToSchema({ schema, mocks, preserveResolvers: true });
+
             const server = new ApolloServer({
-                schema: buildFederatedSchema(typeDefs),
-                mocks: true,
-                mockEntireSchema: false,
+                schema,
                 engine: false,
                 subscriptions: false
             });

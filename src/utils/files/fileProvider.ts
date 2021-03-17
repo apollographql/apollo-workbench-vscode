@@ -17,7 +17,8 @@ export enum WorkbenchUriType {
     SCHEMAS,
     SCHEMAS_SETTINGS,
     QUERIES,
-    QUERY_PLANS
+    QUERY_PLANS,
+    MOCKS
 }
 export class WorkbenchUri {
     static csdl(): Uri {
@@ -33,6 +34,8 @@ export class WorkbenchUri {
                 return Uri.parse(`workbench:/queries/${name}.graphql?${name}`);
             case WorkbenchUriType.QUERY_PLANS:
                 return Uri.parse(`workbench:/queryplans/${name}.queryplan?${name}`);
+            case WorkbenchUriType.MOCKS:
+                return Uri.parse(resolve(StateManager.instance.extensionGlobalStoragePath ?? '', 'mocks', `${name}-mocks.js`));
         }
     }
 }
@@ -476,6 +479,13 @@ export class FileProvider implements FileSystemProvider {
                 return Buffer.from('Either there is no valid composed schema or the query is not valid\nUnable to generate query plan');
             } else if (uri.path == '/csdl.graphql') {
                 return Buffer.from(this.currrentWorkbench.composedSchema);
+            } else if (uri.path.includes('mocks.js')) {
+                const serviceName = uri.query;
+                if (!this.currrentWorkbenchSchemas[serviceName]) throw new Error(`Trying to read schema file for ${serviceName}, but it isn't in the current workbench file`);
+
+                const customMocks = this.currrentWorkbenchSchemas[serviceName].customMocks ?? "const faker = require('faker')\n\nconst mocks = {\n\n}\nmodule.exports = mocks;";
+
+                return Buffer.from(customMocks);
             }
         }
         throw new Error('No workbench currently selected');
@@ -511,6 +521,9 @@ export class FileProvider implements FileSystemProvider {
                 this.generateQueryPlan(operationName);
             } else if (uri.path == '/csdl.graphql') {
                 this.currrentWorkbench.composedSchema = stringContent;
+            } else if (uri.path.includes('mocks.js')) {
+                const serviceName = uri.query;
+                this.currrentWorkbenchSchemas[serviceName].customMocks = stringContent;
             } else {
                 throw new Error('Unknown uri format')
             }

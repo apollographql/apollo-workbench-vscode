@@ -14,11 +14,15 @@ import { enterApiKey, setAccountId, exportWorkbenchProject } from './utils/vscod
 import { FileProvider, WorkbenchUri, WorkbenchUriType } from './utils/files/fileProvider';
 import { GettingStartedTreeItem } from './workbench/local-workbench-files/gettingStartedTreeItems';
 import { ApolloStudioOperationsProvider, GettingStartedDocProvider } from './workbench/docProviders';
-import { Kind, Source } from 'graphql';
+import { buildSchema, Kind, parse, Source, TypeInfo, visit, visitWithTypeInfo } from 'graphql';
 import { collectExecutableDefinitionDiagnositics } from 'apollo-language-server/lib/diagnostics';
 import { GraphQLDocument } from 'apollo-language-server/lib/document';
 import { defaultValidationRules } from 'apollo-language-server/lib/errors/validation';
 import { DiagnosticSeverity } from 'vscode-languageclient';
+import { execSync } from 'child_process';
+import { mkdir, mkdirSync, writeFileSync } from 'fs';
+import { resolve } from 'path';
+import { IMocks, addMockFunctionsToSchema } from 'graphql-tools';
 
 export const compositionDiagnostics: vscode.DiagnosticCollection = vscode.languages.createDiagnosticCollection("composition-errors");
 export const operationDiagnostics: vscode.DiagnosticCollection = vscode.languages.createDiagnosticCollection("operation-errors");
@@ -39,6 +43,13 @@ export async function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(compositionDiagnostics);
 
 	StateManager.init(context);
+
+	//Setting up the mocks project folder - need to isolate to mocks running
+	const mocksPath = resolve(context.globalStorageUri.fsPath, `mocks`);
+	const packageJsonPath = resolve(mocksPath, `package.json`);
+	mkdirSync(mocksPath, { recursive: true });
+	vscode.workspace.fs.writeFile(vscode.Uri.parse(packageJsonPath), Buffer.from('{"name":"mocks", "version":"1.0"}'));
+	execSync(`npm i faker`, { cwd: mocksPath });
 
 	//Register commands to ensure a folder is open in the window to store workbench files
 	vscode.commands.executeCommand('extension.ensureFolderIsOpen');
@@ -86,11 +97,41 @@ export async function activate(context: vscode.ExtensionContext) {
 	vscode.commands.registerCommand('current-workbench-schemas.refreshSchemas', async () => StateManager.instance.currentWorkbenchSchemasProvider.refresh());
 	vscode.commands.registerCommand('current-workbench-schemas.viewCsdl', async () => vscode.window.showTextDocument(WorkbenchUri.csdl()));
 	//Schema Mocking Commands
-	vscode.commands.registerCommand('current-workbench-schemas.shouldMockSchema', async (serviceToMock: WorkbenchSchemaTreeItem) => await FileProvider.instance.shouldMockSchema(serviceToMock.serviceName));
-	vscode.commands.registerCommand('current-workbench-schemas.disableMockSchema', (serviceToMock: WorkbenchSchemaTreeItem) => FileProvider.instance.disableMockSchema(serviceToMock.serviceName));
-	vscode.commands.registerCommand('current-workbench-schemas.setUrlForService', async (serviceToMock: WorkbenchSchemaTreeItem) => await FileProvider.instance.promptServiceUrl(serviceToMock.serviceName));
-	vscode.commands.registerCommand('current-workbench-schemas.updateSchemaFromUrl', async (serviceToMock: WorkbenchSchemaTreeItem) => await FileProvider.instance.updateSchemaFromUrl(serviceToMock.serviceName));
-	vscode.commands.registerCommand('current-workbench-schemas.viewSettings', async (serviceToMock: WorkbenchSchemaTreeItem) => await vscode.window.showTextDocument(WorkbenchUri.parse(serviceToMock.serviceName, WorkbenchUriType.SCHEMAS_SETTINGS)));
+	vscode.commands.registerCommand('current-workbench-schemas.shouldMockSchema', async (service: WorkbenchSchemaTreeItem) => await FileProvider.instance.shouldMockSchema(service.serviceName));
+	vscode.commands.registerCommand('current-workbench-schemas.disableMockSchema', (service: WorkbenchSchemaTreeItem) => FileProvider.instance.disableMockSchema(service.serviceName));
+	vscode.commands.registerCommand('current-workbench-schemas.setUrlForService', async (service: WorkbenchSchemaTreeItem) => await FileProvider.instance.promptServiceUrl(service.serviceName));
+	vscode.commands.registerCommand('current-workbench-schemas.updateSchemaFromUrl', async (service: WorkbenchSchemaTreeItem) => await FileProvider.instance.updateSchemaFromUrl(service.serviceName));
+	vscode.commands.registerCommand('current-workbench-schemas.viewSettings', async (service: WorkbenchSchemaTreeItem) => await vscode.window.showTextDocument(WorkbenchUri.parse(service.serviceName, WorkbenchUriType.SCHEMAS_SETTINGS)));
+	vscode.commands.registerCommand('current-workbench-schemas.viewCustomMocks', async (service: WorkbenchSchemaTreeItem) => {
+		//TODO: cycle through open editors to see if mocks are already open to switch to tab
+
+		//Get customMocks from workbench file
+		const defaultMocks = "const faker = require('faker')\n\nconst mocks = {\nString: () => faker.lorem.word,\n}\nmodule.exports = mocks;";
+		let serviceName = service.serviceName;
+		let serviceMocksUri = WorkbenchUri.parse(serviceName, WorkbenchUriType.MOCKS);
+		let customMocks = FileProvider.instance.currrentWorkbenchSchemas[serviceName].customMocks;
+		if (customMocks) {
+			//Sync it to local global storage file
+			await vscode.workspace.fs.writeFile(serviceMocksUri, new Uint8Array(Buffer.from(customMocks)));
+		} else {
+			FileProvider.instance.currrentWorkbenchSchemas[serviceName].customMocks = defaultMocks;
+			FileProvider.instance.saveCurrentWorkbench();
+			await vscode.workspace.fs.writeFile(serviceMocksUri, new Uint8Array(Buffer.from(defaultMocks)));
+		}
+
+		await vscode.window.showTextDocument(serviceMocksUri);
+	});
+
+	vscode.workspace.onDidSaveTextDocument(e => {
+		let uri = e.uri;
+		if (uri.fsPath.includes('mocks.js') && FileProvider.instance.currrentWorkbench) {
+			let mocksText = e.getText();
+			let serviceName = uri.fsPath.split('-mocks.js')[0].split('/mocks/')[1];
+
+			FileProvider.instance.currrentWorkbenchSchemas[serviceName].customMocks = mocksText;
+			FileProvider.instance.saveCurrentWorkbench();
+		}
+	})
 
 	//Current Loaded Workbench Operations Commands
 	vscode.commands.registerCommand('current-workbench-operations.addOperation', async () => await FileProvider.instance.promptToAddOperation());
