@@ -6,8 +6,6 @@ import { StateManager } from '../../workbench/stateManager';
 import { NotLoggedInTreeItem } from '../../workbench/studio-graphs/apolloStudioGraphsTreeDataProvider';
 
 suite('Default Workbench Tests', () => {
-    before(activateExtension);
-
     it('Defaults:LocalWorkbenchFiles - Getting Started is displayed', async function () {
         //Setup
         cleanupWorkbenchFiles();
