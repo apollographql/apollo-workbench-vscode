@@ -2,7 +2,7 @@ import { workspace, commands, languages, window, ExtensionContext, DiagnosticCol
 import { StateManager } from './workbench/stateManager';
 import { ServerManager } from './workbench/serverManager';
 import { federationCompletionProvider } from './workbench/federationCompletionProvider';
-import { FederationCodeActionProvider } from './workbench/federationCodeActionprovider';
+import { FederationCodeActionProvider } from './workbench/federationCodeActionProvider';
 import { FileProvider } from './utils/files/fileProvider';
 import { ApolloStudioOperationsProvider, GettingStartedDocProvider } from './workbench/docProviders';
 import { Kind, Source } from 'graphql';
