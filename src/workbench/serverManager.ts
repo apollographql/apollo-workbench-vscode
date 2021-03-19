@@ -1,4 +1,4 @@
-import { ApolloServer, gql } from "apollo-server";
+import { addMockFunctionsToSchema, ApolloServer, gql, IMocks } from "apollo-server";
 import plugin from 'apollo-server-plugin-operation-registry';
 import { buildFederatedSchema } from "@apollo/federation";
 import { ApolloServerPluginUsageReportingDisabled } from 'apollo-server-core';
@@ -6,6 +6,11 @@ import { ApolloServerPluginUsageReportingDisabled } from 'apollo-server-core';
 import { StateManager } from "./stateManager";
 import { OverrideApolloGateway, GatewayForwardHeadersDataSource } from "../gateway";
 import { FileProvider } from "../utils/files/fileProvider";
+import { extractEntityNames } from "../utils/schemaParser";
+import { resolve } from "path";
+import { mkdirSync } from "fs";
+import { workspace, Uri } from "vscode";
+import { execSync } from "child_process";
 
 const { name } = require('../../package.json');
 
@@ -23,6 +28,15 @@ export class ServerManager {
     private serversState: { [port: string]: any } = {};
 
     startMocks() {
+        //Setting up the mocks project folder - need to isolate to mocks running
+        if (StateManager.instance.extensionGlobalStoragePath) {
+            const mocksPath = resolve(StateManager.instance.extensionGlobalStoragePath, `mocks`);
+            const packageJsonPath = resolve(mocksPath, `package.json`);
+            mkdirSync(mocksPath, { recursive: true });
+            workspace.fs.writeFile(Uri.parse(packageJsonPath), Buffer.from('{"name":"mocks", "version":"1.0"}'));
+            execSync(`npm i faker`, { cwd: mocksPath });
+        }
+
         if (StateManager.settings_tlsRejectUnauthorized) process.env.NODE_TLS_REJECT_UNAUTHORIZED = '';
         else process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
@@ -31,8 +45,26 @@ export class ServerManager {
         if (workbenchFile) {
             console.log(`${name}:Mocking workbench file: ${workbenchFile.graphName}`);
             for (var serviceName in workbenchFile.schemas) {
-                if (workbenchFile.schemas[serviceName].shouldMock)
-                    this.startServer(serviceName, workbenchFile.schemas[serviceName].sdl);
+                //Check if we should be mocking this service
+                if (workbenchFile.schemas[serviceName].shouldMock) {
+                    //Check if Custom Mocks are defined in workbench
+                    let customMocks = workbenchFile.schemas[serviceName].customMocks;
+                    if (customMocks) {
+                        //By default we add the export shown to the user, but they may delete it
+                        if (!customMocks.includes('module.exports'))
+                            customMocks = customMocks.concat('\nmodule.exports = mocks');
+
+                        try {
+                            let mocks = eval(customMocks);
+                            this.startServer(serviceName, workbenchFile.schemas[serviceName].sdl, mocks);
+                        } catch (err) {
+                            //Most likely  wasn't valid javascript
+                            console.log(err);
+                            this.startServer(serviceName, workbenchFile.schemas[serviceName].sdl);
+                        }
+                    } else
+                        this.startServer(serviceName, workbenchFile.schemas[serviceName].sdl);
+                }
             }
 
             this.startGateway();
@@ -52,35 +84,55 @@ export class ServerManager {
         this.portMapping = {};
         this.stopGateway();
     }
-    startServer(serviceName: string, schemaString: string) {
+    private startServer(serviceName: string, schemaString: string, mocks?: IMocks) {
+        //Ensure we don't have an empty schema string - meaning a blank new service was created
+        if (schemaString == '') {
+            console.log(`${name}:No schema defined for ${serviceName} service.`)
+            return;
+        }
+
+        //Establish what port the server should be running on
         const port = this.portMapping[serviceName] ?? this.getNextAvailablePort();
         console.log(`${name}:Starting ${serviceName} on port ${port}`);
+
+        //Check local server state to stop server running at a specific port
         if (this.serversState[port]) {
             console.log(`${name}:Stopping previous running server at port ${port}`);
             this.serversState[port].stop();
             delete this.serversState[port];
         }
 
-        if (schemaString == '') {
-            console.log(`${name}:No schema defined for ${serviceName} service.`)
-            return;
-        }
-
+        //Surround server startup in try/catch to prevent UI errors from schema errors - most likey a blank schema file
         try {
             const typeDefs = gql(schemaString);
+
+            //Create mock for _Service type
+            if (mocks) {
+                mocks._Service = () => { return { sdl: schemaString } }
+            } else {
+                mocks = { _Service: () => { return { sdl: schemaString } } };
+            }
+
+            //Dynamically create __resolveReference resolvers based on defined entites in Graph
+            let resolvers = {};
+            let entities = extractEntityNames(schemaString);
+            entities.forEach(entity => resolvers[entity] = { __resolveReference(parent, args) { return { ...parent } } });
+
+            //Build federated schema with resolvers and then add custom mocks to that schema
+            const schema = buildFederatedSchema({ typeDefs, resolvers });
+            addMockFunctionsToSchema({ schema, mocks, preserveResolvers: true });
+
+            //Create and start up server locally
             const server = new ApolloServer({
-                schema: buildFederatedSchema(typeDefs),
-                mocks: true,
-                mockEntireSchema: false,
+                schema,
                 engine: false,
                 subscriptions: false
             });
             server.listen({ port }).then(({ url }) => console.log(`${name}:🚀 ${serviceName} mocked server ready at ${url}`));
 
-            //Set the mappings to the server that is starting up
+            //Set the port and server to local state
             this.serversState[port] = server;
             this.portMapping[serviceName] = port;
-
         } catch (err) {
             if (err.message.includes('EOF')) {
                 console.log(`${name}:${serviceName} has no contents, try defining a schema`);
@@ -89,16 +141,7 @@ export class ServerManager {
             }
         }
     }
-    stopServerByName(serviceName: string) {
-        let serverPort = this.portMapping[serviceName];
-        if (serverPort) {
-            this.serversState[serverPort].stop();
-            delete this.serversState[serverPort];
-        }
-        if (this.portMapping[serviceName])
-            delete this.portMapping[serviceName];
-    }
-    stopServerOnPort(port: string) {
+    private stopServerOnPort(port: string) {
         let serviceName = '';
         for (var sn in this.portMapping)
             if (this.portMapping[sn] == port)
@@ -109,7 +152,7 @@ export class ServerManager {
         if (this.portMapping[serviceName])
             delete this.portMapping[serviceName];
     }
-    stopGateway() {
+    private stopGateway() {
         let gatewayPort = StateManager.settings_gatewayServerPort;
         if (this.serversState[gatewayPort]) {
             console.log(`${name}:Stopping previous running gateway`);
@@ -117,7 +160,7 @@ export class ServerManager {
             delete this.serversState[gatewayPort];
         }
     }
-    startGateway() {
+    private startGateway() {
         let gatewayPort = StateManager.settings_gatewayServerPort;
         if (this.serversState[gatewayPort]) {
             console.log(`${name}:Stopping previous running gateway`);

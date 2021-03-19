@@ -1,3 +1,5 @@
+import { IMocks } from "apollo-server";
+
 export interface RequiredHeader {
     key: string;
     value?: string;
@@ -8,7 +10,9 @@ export interface WorkbenchSchema {
     sdl: string;
     shouldMock: boolean;
     autoUpdateSchemaFromUrl: boolean;
-    requiredHeaders?: [RequiredHeader?]
+    requiredHeaders?: [RequiredHeader?],
+    //this will be serialized into javascript using eval
+    customMocks?: string
 }
 
 export class ApolloWorkbenchFile {
