@@ -44,13 +44,6 @@ export async function activate(context: ExtensionContext) {
 
 	StateManager.init(context);
 
-	//Setting up the mocks project folder - need to isolate to mocks running
-	const mocksPath = resolve(context.globalStoragePath, `mocks`);
-	const packageJsonPath = resolve(mocksPath, `package.json`);
-	mkdirSync(mocksPath, { recursive: true });
-	workspace.fs.writeFile(Uri.parse(packageJsonPath), Buffer.from('{"name":"mocks", "version":"1.0"}'));
-	execSync(`npm i faker`, { cwd: mocksPath });
-
 	//Register commands to ensure a folder is open in the window to store workbench files
 	commands.executeCommand('extension.ensureFolderIsOpen');
 	commands.registerCommand('extension.ensureFolderIsOpen', async () => {

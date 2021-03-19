@@ -7,6 +7,10 @@ import { StateManager } from "./stateManager";
 import { OverrideApolloGateway, GatewayForwardHeadersDataSource } from "../gateway";
 import { FileProvider } from "../utils/files/fileProvider";
 import { extractEntityNames } from "../utils/schemaParser";
+import { resolve } from "path";
+import { mkdirSync } from "fs";
+import { workspace, Uri } from "vscode";
+import { execSync } from "child_process";
 
 const { name } = require('../../package.json');
 
@@ -24,6 +28,15 @@ export class ServerManager {
     private serversState: { [port: string]: any } = {};
 
     startMocks() {
+        //Setting up the mocks project folder - need to isolate to mocks running
+        if (StateManager.instance.extensionGlobalStoragePath) {
+            const mocksPath = resolve(StateManager.instance.extensionGlobalStoragePath, `mocks`);
+            const packageJsonPath = resolve(mocksPath, `package.json`);
+            mkdirSync(mocksPath, { recursive: true });
+            workspace.fs.writeFile(Uri.parse(packageJsonPath), Buffer.from('{"name":"mocks", "version":"1.0"}'));
+            execSync(`npm i faker`, { cwd: mocksPath });
+        }
+
         if (StateManager.settings_tlsRejectUnauthorized) process.env.NODE_TLS_REJECT_UNAUTHORIZED = '';
         else process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
