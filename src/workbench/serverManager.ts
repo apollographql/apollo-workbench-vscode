@@ -71,37 +71,45 @@ export class ServerManager {
         this.portMapping = {};
         this.stopGateway();
     }
-    startServer(serviceName: string, schemaString: string, mocks?: IMocks) {
+    private startServer(serviceName: string, schemaString: string, mocks?: IMocks) {
+        //Ensure we don't have an empty schema string - meaning a blank new service was created
+        if (schemaString == '') {
+            console.log(`${name}:No schema defined for ${serviceName} service.`)
+            return;
+        }
+
+        //Establish what port the server should be running on
         const port = this.portMapping[serviceName] ?? this.getNextAvailablePort();
         console.log(`${name}:Starting ${serviceName} on port ${port}`);
+
+        //Check local server state to stop server running at a specific port
         if (this.serversState[port]) {
             console.log(`${name}:Stopping previous running server at port ${port}`);
             this.serversState[port].stop();
             delete this.serversState[port];
         }
 
-        if (schemaString == '') {
-            console.log(`${name}:No schema defined for ${serviceName} service.`)
-            return;
-        }
-
+        //Surround server startup in try/catch to prevent UI errors from schema errors - most likey a blank schema file
         try {
             const typeDefs = gql(schemaString);
+
+            //Create mock for _Service type
             if (mocks) {
                 mocks._Service = () => { return { sdl: schemaString } }
             } else {
                 mocks = { _Service: () => { return { sdl: schemaString } } };
             }
 
+            //Dynamically create __resolveReference resolvers based on defined entites in Graph
             let resolvers = {};
             let entities = extractEntityNames(schemaString);
-            entities.forEach(entity => {
-                resolvers[entity] = { __resolveReference(parent, args) { return { ...parent } } }
-            });
+            entities.forEach(entity => resolvers[entity] = { __resolveReference(parent, args) { return { ...parent } } });
 
+            //Build federated schema with resolvers and then add custom mocks to that schema
             const schema = buildFederatedSchema({ typeDefs, resolvers });
             addMockFunctionsToSchema({ schema, mocks, preserveResolvers: true });
 
+            //Create and start up server locally
             const server = new ApolloServer({
                 schema,
                 engine: false,
@@ -109,10 +117,9 @@ export class ServerManager {
             });
             server.listen({ port }).then(({ url }) => console.log(`${name}:🚀 ${serviceName} mocked server ready at ${url}`));
 
-            //Set the mappings to the server that is starting up
+            //Set the port and server to local state
             this.serversState[port] = server;
             this.portMapping[serviceName] = port;
-
         } catch (err) {
             if (err.message.includes('EOF')) {
                 console.log(`${name}:${serviceName} has no contents, try defining a schema`);
@@ -121,16 +128,7 @@ export class ServerManager {
             }
         }
     }
-    stopServerByName(serviceName: string) {
-        let serverPort = this.portMapping[serviceName];
-        if (serverPort) {
-            this.serversState[serverPort].stop();
-            delete this.serversState[serverPort];
-        }
-        if (this.portMapping[serviceName])
-            delete this.portMapping[serviceName];
-    }
-    stopServerOnPort(port: string) {
+    private stopServerOnPort(port: string) {
         let serviceName = '';
         for (var sn in this.portMapping)
             if (this.portMapping[sn] == port)
@@ -141,7 +139,7 @@ export class ServerManager {
         if (this.portMapping[serviceName])
             delete this.portMapping[serviceName];
     }
-    stopGateway() {
+    private stopGateway() {
         let gatewayPort = StateManager.settings_gatewayServerPort;
         if (this.serversState[gatewayPort]) {
             console.log(`${name}:Stopping previous running gateway`);
@@ -149,7 +147,7 @@ export class ServerManager {
             delete this.serversState[gatewayPort];
         }
     }
-    startGateway() {
+    private startGateway() {
         let gatewayPort = StateManager.settings_gatewayServerPort;
         if (this.serversState[gatewayPort]) {
             console.log(`${name}:Stopping previous running gateway`);

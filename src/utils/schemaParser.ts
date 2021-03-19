@@ -138,7 +138,6 @@ export function extractEntityNames(schema: string): string[] {
     let entityName: string[] = [];
     try {
         runOnlineParser(schema, (state, range, tokens) => {
-            console.log(state.kind)
             switch (state.kind) {
                 case "StringValue" as any:
                     let argument = state?.prevState?.prevState;
