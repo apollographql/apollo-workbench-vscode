@@ -16,7 +16,7 @@
   ],
   "main": "./out/extension.js",
   "scripts": {
-    "codegen": "apollo client:codegen --target=typescript  src/studio-gql/types --outputFlat",
+    "codegen": "apollo client:codegen --target=typescript  src/graphql/types --outputFlat",
     "vscode:prepublish": "npm run compile",
     "vscode:package": "vsce package",
     "compile": "tsc -p ./",

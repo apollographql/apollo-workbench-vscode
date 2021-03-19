@@ -1,7 +1,7 @@
 import { runOnlineParser } from './runOnlineParser';
-import { FieldWithType } from "../workbench/federationCompletionProvider";
-import { FileProvider } from "../workbench/file-system/fileProvider";
-import { StateManager } from "../workbench/stateManager";
+import { FieldWithType } from "../../workbench/federationCompletionProvider";
+import { FileProvider } from "../../workbench/file-system/fileProvider";
+import { StateManager } from "../../workbench/stateManager";
 
 export async function extractDefinedEntitiesByService() {
     let extendables: { [serviceName: string]: { type: string, keys: { [key: string]: FieldWithType[] } }[] } = {};

@@ -8,10 +8,10 @@ import { getGraphSchemasByVariant } from '../../graphql/graphClient';
 import { GetGraphSchemas_service_implementingServices_FederatedImplementingServices, GetGraphSchemas_service_implementingServices_NonFederatedImplementingService } from '../../graphql/types/GetGraphSchemas';
 import { ServerManager } from '../serverManager';
 import { StateManager } from '../stateManager';
-import { getComposedSchema, getComposedSchemaLogCompositionErrors, handleErrors } from '../../utils/composition';
+import { getComposedSchema, getComposedSchemaLogCompositionErrors, handleErrors } from '../../graphql/composition';
 import { ApolloWorkbenchFile, WorkbenchSettings } from './fileTypes';
 import { parse, print } from 'graphql';
-import { OverrideApolloGateway } from '../../gateway';
+import { OverrideApolloGateway } from '../../graphql/graphRouter';
 import { WorkbenchUri, WorkbenchUriType } from './WorkbenchUri';
 
 export class FileProvider implements FileSystemProvider {
