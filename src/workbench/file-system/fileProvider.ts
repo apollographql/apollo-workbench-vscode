@@ -1,44 +1,18 @@
 import { serializeQueryPlan } from '@apollo/gateway';
 import { getQueryPlan, getQueryPlanner } from '@apollo/query-planner-wasm';
-import { copyFileSync, existsSync, readdirSync, readFileSync, unlinkSync, writeFileSync } from 'fs';
+import { existsSync, readdirSync, readFileSync, unlinkSync, writeFileSync } from 'fs';
 import path, { join, resolve } from 'path';
-import { commands, Disposable, EventEmitter, FileChangeEvent, FileStat, FileSystemProvider, FileType, Position, Uri, window, workspace, Range, ProgressLocation } from 'vscode';
+import { commands, Disposable, EventEmitter, FileChangeEvent, FileStat, FileSystemProvider, FileType, Uri, window, Range } from 'vscode';
 import { compositionDiagnostics, outputChannel } from '../../extension';
-import { getGraphSchemasByVariant } from '../../studio-gql/graphClient';
-import { GetGraphSchemas_service_implementingServices_FederatedImplementingServices, GetGraphSchemas_service_implementingServices_NonFederatedImplementingService } from '../../studio-gql/types/GetGraphSchemas';
-import { ServerManager } from '../../workbench/serverManager';
-import { StateManager } from '../../workbench/stateManager';
-import { getComposedSchema, getComposedSchemaLogCompositionErrors, handleErrors } from '../composition';
+import { getGraphSchemasByVariant } from '../../graphql/graphClient';
+import { GetGraphSchemas_service_implementingServices_FederatedImplementingServices, GetGraphSchemas_service_implementingServices_NonFederatedImplementingService } from '../../graphql/types/GetGraphSchemas';
+import { ServerManager } from '../serverManager';
+import { StateManager } from '../stateManager';
+import { getComposedSchema, getComposedSchemaLogCompositionErrors, handleErrors } from '../../utils/composition';
 import { ApolloWorkbenchFile, WorkbenchSettings } from './fileTypes';
 import { parse, print } from 'graphql';
 import { OverrideApolloGateway } from '../../gateway';
-
-export enum WorkbenchUriType {
-    SCHEMAS,
-    SCHEMAS_SETTINGS,
-    QUERIES,
-    QUERY_PLANS,
-    MOCKS
-}
-export class WorkbenchUri {
-    static csdl(): Uri {
-        return Uri.parse(`workbench:/csdl.graphql?${FileProvider.instance.currrentWorkbench.graphName}`);
-    }
-    static parse(name: string, type: WorkbenchUriType = WorkbenchUriType.SCHEMAS): Uri {
-        switch (type) {
-            case WorkbenchUriType.SCHEMAS:
-                return Uri.parse(`workbench:/schemas/${name}.graphql?${name}`);
-            case WorkbenchUriType.SCHEMAS_SETTINGS:
-                return Uri.parse(`workbench:/settings-schemas/${name}-settings.json?${name}`);
-            case WorkbenchUriType.QUERIES:
-                return Uri.parse(`workbench:/queries/${name}.graphql?${name}`);
-            case WorkbenchUriType.QUERY_PLANS:
-                return Uri.parse(`workbench:/queryplans/${name}.queryplan?${name}`);
-            case WorkbenchUriType.MOCKS:
-                return Uri.parse(resolve(StateManager.instance.extensionGlobalStoragePath ?? '', 'mocks', `${name}-mocks.js`));
-        }
-    }
-}
+import { WorkbenchUri, WorkbenchUriType } from './WorkbenchUri';
 
 export class FileProvider implements FileSystemProvider {
     //Singleton implementation

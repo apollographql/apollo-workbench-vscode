@@ -1,10 +1,9 @@
 import { resolve } from 'path';
 import { create } from "archiver";
 import { createWriteStream } from 'fs';
-import { ApolloWorkbenchFile } from '../files/fileTypes';
 import { StateManager } from '../../workbench/stateManager';
 import { generateJsVsCodeLaunch, generateJsgatewayPackageJson, generateJsGatewayTempalte, generateJsFederatedServerPackageJson, generateJsFederatedServerTemplate, generateCodeWorkspaceFile } from './exportFiles';
-
+import { ApolloWorkbenchFile } from '../../workbench/file-system/fileTypes';
 
 export function createJavascriptTemplate(workbenchFile: ApolloWorkbenchFile) {
     let port = StateManager.settings_startingServerPort;

@@ -3,9 +3,10 @@ import { buildClientSchema, getIntrospectionQuery, parse, IntrospectionQuery, pr
 import { Headers } from "apollo-server-env";
 import { ServiceDefinition } from '@apollo/federation';
 import { ServerManager } from "./workbench/serverManager";
-import { FileProvider, WorkbenchUri, WorkbenchUriType } from "./utils/files/fileProvider";
+import { FileProvider } from "./workbench/file-system/fileProvider";
 import { StateManager } from "./workbench/stateManager";
 import { window } from "vscode";
+import { WorkbenchUri, WorkbenchUriType } from "./workbench/file-system/WorkbenchUri";
 
 function log(message: string) { console.log(`GATEWAY-${message}`); }
 

@@ -1,7 +1,8 @@
-import { FileProvider, WorkbenchUri, WorkbenchUriType } from "../utils/files/fileProvider";
-import { WorkbenchSchemaTreeItem } from "../workbench/current-workbench-schemas/currentWorkbenchSchemasTreeDataProvider";
+import { FileProvider } from "../workbench/file-system/fileProvider";
+import { WorkbenchSchemaTreeItem } from "../workbench/tree-data-providers/currentWorkbenchSchemasTreeDataProvider";
 import { TextDocument, Range, window, workspace } from "vscode";
 import { StateManager } from "../workbench/stateManager";
+import { WorkbenchUri, WorkbenchUriType } from "../workbench/file-system/WorkbenchUri";
 
 export async function addSchema() {
     await FileProvider.instance.promptToAddSchema();

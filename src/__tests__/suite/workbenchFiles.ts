@@ -1,3 +1,3 @@
-import { ApolloWorkbenchFile } from "../../utils/files/fileTypes";
+import { ApolloWorkbenchFile } from "../../workbench/file-system/fileTypes";
 
 export const emptyWorkbench = new ApolloWorkbenchFile();

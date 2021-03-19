@@ -1,6 +1,5 @@
 import { BREAK, EnumTypeDefinitionNode, InterfaceTypeDefinitionNode, ObjectTypeDefinitionNode, parse, ScalarTypeDefinitionNode, visit } from "graphql";
-import { Uri } from "vscode";
-import { FileProvider } from "./files/fileProvider";
+import { FileProvider } from "../workbench/file-system/fileProvider";
 
 import { runOnlineParser } from "./runOnlineParser";
 

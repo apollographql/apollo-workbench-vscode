@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
-import { getGraphOps } from '../../studio-gql/graphClient';
+import { getGraphOps } from '../../graphql/graphClient';
 import { StateManager } from '../stateManager';
-import { NotLoggedInTreeItem } from '../studio-graphs/apolloStudioGraphsTreeDataProvider';
+import { NotLoggedInTreeItem } from './apolloStudioGraphsTreeDataProvider';
 
 export class ApolloStudioGraphOpsTreeDataProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
     private _onDidChangeTreeData: vscode.EventEmitter<vscode.TreeItem | undefined> = new vscode.EventEmitter<vscode.TreeItem | undefined>();

@@ -1,11 +1,11 @@
 import { StateManager } from "../workbench/stateManager";
-import { StudioGraphTreeItem, StudioGraphVariantTreeItem } from "../workbench/studio-graphs/apolloStudioGraphsTreeDataProvider";
-import { FileProvider } from "../utils/files/fileProvider";
-import { PreloadedWorkbenchFile } from "../workbench/studio-graphs/preLoadedTreeItems";
-import { StudioOperationTreeItem } from "../workbench/studio-operations/apolloStudioGraphOpsTreeDataProvider";
+import { StudioGraphTreeItem, StudioGraphVariantTreeItem } from "../workbench/tree-data-providers/apolloStudioGraphsTreeDataProvider";
+import { FileProvider } from "../workbench/file-system/fileProvider";
+import { PreloadedWorkbenchFile } from "../workbench/tree-data-providers/apolloStudioGraphsTreeDataProvider";
+import { StudioOperationTreeItem } from "../workbench/tree-data-providers/apolloStudioGraphOpsTreeDataProvider";
 import { window } from "vscode";
 import { ApolloStudioOperationsProvider } from "../workbench/docProviders";
-import { getUserMemberships } from "../studio-gql/graphClient";
+import { getUserMemberships } from "../graphql/graphClient";
 import { enterStudioApiKey } from "./extension";
 
 export function refreshStudioGraphs() {

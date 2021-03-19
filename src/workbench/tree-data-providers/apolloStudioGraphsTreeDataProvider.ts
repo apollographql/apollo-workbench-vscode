@@ -1,28 +1,27 @@
 import path from 'path';
-import * as vscode from 'vscode';
-import { getAccountGraphs, getGraphSchemasByVariant, getUserMemberships } from '../../studio-gql/graphClient';
-import { GetGraphSchemas_service_implementingServices_FederatedImplementingServices } from '../../studio-gql/types/GetGraphSchemas';
+import { getAccountGraphs, getUserMemberships } from '../../graphql/graphClient';
 import { StateManager } from '../stateManager';
-import { PreloadedWorkbenchTopLevel } from './preLoadedTreeItems';
+import { TreeItem, TreeDataProvider, EventEmitter, Event, window, commands, TreeItemCollapsibleState } from 'vscode';
+import { FileProvider } from '../file-system/fileProvider';
 
 
-export class ApolloStudioGraphsTreeDataProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
+export class ApolloStudioGraphsTreeDataProvider implements TreeDataProvider<TreeItem> {
     constructor(private workspaceRoot: string) { }
 
-    private _onDidChangeTreeData: vscode.EventEmitter<vscode.TreeItem | undefined> = new vscode.EventEmitter<vscode.TreeItem | undefined>();
-    readonly onDidChangeTreeData: vscode.Event<vscode.TreeItem | undefined> = this._onDidChangeTreeData.event;
+    private _onDidChangeTreeData: EventEmitter<TreeItem | undefined> = new EventEmitter<TreeItem | undefined>();
+    readonly onDidChangeTreeData: Event<TreeItem | undefined> = this._onDidChangeTreeData.event;
 
     refresh(): void {
         this._onDidChangeTreeData.fire(undefined);
     }
 
-    getTreeItem(element: vscode.TreeItem): vscode.TreeItem {
+    getTreeItem(element: TreeItem): TreeItem {
         return element;
     }
 
-    async getChildren(element?: StudioAccountTreeItem): Promise<vscode.TreeItem[]> {
+    async getChildren(element?: StudioAccountTreeItem): Promise<TreeItem[]> {
         if (element) return element.children;
-        let items: vscode.TreeItem[] = new Array<vscode.TreeItem>();
+        let items: TreeItem[] = new Array<TreeItem>();
 
         let apiKey = StateManager.instance.globalState_userApiKey;
         if (apiKey) {
@@ -34,7 +33,7 @@ export class ApolloStudioGraphsTreeDataProvider implements vscode.TreeDataProvid
                     let accountIds: string[] = new Array<string>();
                     memberships.map(membership => accountIds.push(membership.account.id));
 
-                    accountId = await vscode.window.showQuickPick(accountIds, { placeHolder: "Select an account to load graphs from" }) ?? "";
+                    accountId = await window.showQuickPick(accountIds, { placeHolder: "Select an account to load graphs from" }) ?? "";
                 } else {
                     accountId = memberships[0]?.account?.id ?? "";
                 }
@@ -89,9 +88,9 @@ export class ApolloStudioGraphsTreeDataProvider implements vscode.TreeDataProvid
         } else {
             items.push(new NotLoggedInTreeItem());
             items.push(new NotLoggedInTreeItem("Login to see Example Graphs"));
-            vscode.window.showInformationMessage('No user api key was found.', "Login").then(response => {
+            window.showInformationMessage('No user api key was found.', "Login").then(response => {
                 if (response === "Login")
-                    vscode.commands.executeCommand("extension.enterStudioApiKey");
+                    commands.executeCommand("extension.enterStudioApiKey");
             });
         }
 
@@ -99,9 +98,9 @@ export class ApolloStudioGraphsTreeDataProvider implements vscode.TreeDataProvid
     }
 }
 
-export class NotLoggedInTreeItem extends vscode.TreeItem {
+export class NotLoggedInTreeItem extends TreeItem {
     constructor(message: string = "Click here to login with your user api key") {
-        super(message, vscode.TreeItemCollapsibleState.None);
+        super(message, TreeItemCollapsibleState.None);
         this.command = {
             title: "Login to Apollo",
             command: "extension.enterStudioApiKey"
@@ -109,22 +108,22 @@ export class NotLoggedInTreeItem extends vscode.TreeItem {
     }
 }
 
-export class StudioAccountTreeItem extends vscode.TreeItem {
+export class StudioAccountTreeItem extends TreeItem {
     children: StudioGraphTreeItem[] = new Array<StudioGraphTreeItem>();
 
     constructor(
         public readonly accountId: string,
         public readonly accountName?: string
     ) {
-        super(accountName ?? accountId, vscode.TreeItemCollapsibleState.Expanded);
+        super(accountName ?? accountId, TreeItemCollapsibleState.Expanded);
         this.contextValue = 'studioAccountTreeItem';
     }
-    getChildren(element?: vscode.TreeItem): Thenable<vscode.TreeItem[]> {
+    getChildren(element?: TreeItem): Thenable<TreeItem[]> {
         return new Promise(() => this.children);
     }
 }
 
-export class StudioGraphTreeItem extends vscode.TreeItem {
+export class StudioGraphTreeItem extends TreeItem {
     children: StudioGraphVariantTreeItem[] = new Array<StudioGraphVariantTreeItem>();
     variants: string[] = [];
 
@@ -132,7 +131,7 @@ export class StudioGraphTreeItem extends vscode.TreeItem {
         public readonly graphId: string,
         public readonly graphName: string
     ) {
-        super(graphName, vscode.TreeItemCollapsibleState.Collapsed);
+        super(graphName, TreeItemCollapsibleState.Collapsed);
         this.contextValue = 'studioGraphTreeItem';
         this.command =
         {
@@ -141,18 +140,18 @@ export class StudioGraphTreeItem extends vscode.TreeItem {
             arguments: [this]
         }
     }
-    getChildren(element?: vscode.TreeItem): Thenable<vscode.TreeItem[]> {
+    getChildren(element?: TreeItem): Thenable<TreeItem[]> {
         return new Promise(() => this.children);
     }
 }
-export class StudioGraphVariantTreeItem extends vscode.TreeItem {
+export class StudioGraphVariantTreeItem extends TreeItem {
     children: StudioGraphVariantServiceTreeItem[] = new Array<StudioGraphVariantServiceTreeItem>();
 
     constructor(
         public readonly graphId: string,
         public readonly graphVariant: string
     ) {
-        super(graphVariant, vscode.TreeItemCollapsibleState.None);
+        super(graphVariant, TreeItemCollapsibleState.None);
         this.contextValue = 'studioGraphVariantTreeItem';
         this.command =
         {
@@ -161,23 +160,49 @@ export class StudioGraphVariantTreeItem extends vscode.TreeItem {
             arguments: [this, graphVariant]
         }
     }
-    getChildren(element?: vscode.TreeItem): Thenable<vscode.TreeItem[]> {
+    getChildren(element?: TreeItem): Thenable<TreeItem[]> {
         return new Promise(() => this.children);
     }
 }
 
-export class StudioGraphVariantServiceTreeItem extends vscode.TreeItem {
+export class StudioGraphVariantServiceTreeItem extends TreeItem {
     constructor(
         public readonly graphId: string,
         public readonly graphVariant: string,
         public readonly name,
         public readonly sdl: string
     ) {
-        super(name, vscode.TreeItemCollapsibleState.None);
+        super(name, TreeItemCollapsibleState.None);
         this.contextValue = 'studioGraphVariantServiceTreeItem';
         this.iconPath = {
             light: path.join(__filename, '..', '..', '..', '..', 'media', 'graphql-logo.png'),
             dark: path.join(__filename, '..', '..', '..', '..', 'media', 'graphql-logo.png')
         };
+    }
+}
+export class PreloadedWorkbenchTopLevel extends TreeItem {
+    children: PreloadedWorkbenchFile[] = new Array<PreloadedWorkbenchFile>();
+
+    constructor() {
+        super("Example Graphs", TreeItemCollapsibleState.Collapsed);
+
+        let preloadedFiles = FileProvider.instance?.getPreloadedWorkbenchFiles();
+        preloadedFiles.map(preloadedFile => {
+            this.children.push(new PreloadedWorkbenchFile(preloadedFile.fileName));
+        })
+    }
+
+    getChildren(element?: PreloadedWorkbenchTopLevel): Thenable<TreeItem[]> {
+        return new Promise(() => this.children);
+    }
+}
+export class PreloadedWorkbenchFile extends TreeItem {
+
+    constructor(
+        public readonly fileName: string
+    ) {
+        super(fileName, TreeItemCollapsibleState.None);
+
+        this.contextValue = 'preloadedWorkbenchFile';
     }
 }

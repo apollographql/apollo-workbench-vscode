@@ -3,7 +3,7 @@ import { StateManager } from './workbench/stateManager';
 import { ServerManager } from './workbench/serverManager';
 import { federationCompletionProvider } from './workbench/federationCompletionProvider';
 import { FederationCodeActionProvider } from './workbench/federationCodeActionProvider';
-import { FileProvider } from './utils/files/fileProvider';
+import { FileProvider } from './workbench/file-system/fileProvider';
 import { ApolloStudioOperationsProvider, GettingStartedDocProvider } from './workbench/docProviders';
 import { Kind, Source } from 'graphql';
 import { collectExecutableDefinitionDiagnositics } from 'apollo-language-server/lib/diagnostics';

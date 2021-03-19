@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { readdirSync, unlinkSync } from 'fs';
-import { FileProvider } from '../../utils/files/fileProvider';
+import { FileProvider } from '../../workbench/file-system/fileProvider';
 import { StateManager } from '../../workbench/stateManager';
 
 export const activateExtension = async () => {

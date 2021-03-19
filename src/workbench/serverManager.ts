@@ -5,7 +5,7 @@ import { ApolloServerPluginUsageReportingDisabled } from 'apollo-server-core';
 
 import { StateManager } from "./stateManager";
 import { OverrideApolloGateway, GatewayForwardHeadersDataSource } from "../gateway";
-import { FileProvider } from "../utils/files/fileProvider";
+import { FileProvider } from "./file-system/fileProvider";
 import { extractEntityNames } from "../utils/schemaParser";
 import { resolve } from "path";
 import { mkdirSync } from "fs";
