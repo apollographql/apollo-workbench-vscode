@@ -1,10 +1,11 @@
 import * as assert from 'assert';
 import { suite, it } from 'mocha'
 import { activateExtension, cleanupWorkbenchFiles, createAndLoadEmptyWorkbenchFile, simpleSchema } from './helpers';
-import { FileProvider, WorkbenchUri, WorkbenchUriType } from '../../utils/files/fileProvider';
+import { FileProvider } from '../../workbench/file-system/fileProvider';
 import { StateManager } from '../../workbench/stateManager';
-import { WorkbenchSchemaTreeItem } from '../../workbench/current-workbench-schemas/currentWorkbenchSchemasTreeDataProvider';
-import { WorkbenchOperationTreeItem } from '../../workbench/current-workbench-queries/currentWorkbenchOpsTreeDataProvider';
+import { WorkbenchSchemaTreeItem } from '../../workbench/tree-data-providers/currentWorkbenchSchemasTreeDataProvider';
+import { WorkbenchOperationTreeItem } from '../../workbench/tree-data-providers/currentWorkbenchOpsTreeDataProvider';
+import { WorkbenchUri, WorkbenchUriType } from '../../workbench/file-system/WorkbenchUri';
 
 const key = 'Loaded-Folder';
 

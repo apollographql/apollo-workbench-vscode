@@ -1,5 +1,5 @@
-import { StudioOperationTreeItem } from "../workbench/studio-operations/apolloStudioGraphOpsTreeDataProvider";
-import { FileProvider } from "../utils/files/fileProvider";
+import { StudioOperationTreeItem } from "../workbench/tree-data-providers/apolloStudioGraphOpsTreeDataProvider";
+import { FileProvider } from "../workbench/file-system/fileProvider";
 
 export async function addToWorkbench(op: StudioOperationTreeItem) {
     await FileProvider.instance.addOperation(op.operationName, op.operationSignature);

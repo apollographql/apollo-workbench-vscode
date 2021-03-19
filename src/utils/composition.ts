@@ -1,14 +1,13 @@
 import { composeAndValidate, ComposedGraphQLSchema, ServiceDefinition } from "@apollo/federation";
-import { existsSync } from "fs";
 import { GraphQLError, parse } from "graphql";
-import { Diagnostic, DiagnosticSeverity, Range, Uri } from "vscode";
+import { Diagnostic, DiagnosticSeverity, Range, Uri, workspace } from "vscode";
 import { compositionDiagnostics } from "../extension";
 import { StateManager } from "../workbench/stateManager";
 import { extractDefinedEntitiesByService } from "./csdlParser";
-import { FileProvider, WorkbenchUri } from "./files/fileProvider";
-import { ApolloWorkbenchFile } from "./files/fileTypes";
+import { FileProvider } from "../workbench/file-system/fileProvider";
 import { getRangeForFieldNamedType, getRangeForTypeDef } from "./schemaParser";
-import { getLastLineOfText, getLineText } from "./vscodeHelpers";
+import { WorkbenchUri } from "../workbench/file-system/WorkbenchUri";
+import { ApolloWorkbenchFile } from "../workbench/file-system/fileTypes";
 
 export async function* getComposedSchemaLogCompositionErrors() {
     let workbenchFile = FileProvider.instance.currrentWorkbench;
@@ -138,9 +137,9 @@ export async function handleErrors(wb: ApolloWorkbenchFile, errors: GraphQLError
         if (error.extensions) {
             if (error.extensions?.noServicesDefined) {
                 let emptySchemas = `"schemas":{}`;
-                let textAtLine = await getLineText(StateManager.instance.workspaceState_selectedWorkbenchFile.path);
-                let schemasIndex = textAtLine.indexOf(emptySchemas);
-
+                // let textAtLine = await getLineText(StateManager.instance.workspaceState_selectedWorkbenchFile.path);
+                // let schemasIndex = textAtLine.indexOf(emptySchemas);
+                let schemasIndex = 0;
                 range = new Range(0, schemasIndex, 0, schemasIndex + emptySchemas.length);
             } else if (error.extensions?.noSchemaDefined || error.extensions?.invalidSchema) {
                 // let schemaFilePath = `${WorkbenchFileManager.workbenchSchemasFolderPath()}/${serviceName}.graphql`;
@@ -163,7 +162,8 @@ export async function handleErrors(wb: ApolloWorkbenchFile, errors: GraphQLError
 
                     range = new Range(lineNumber - 1, 0, lineNumber, 0);
                 } else {
-                    let lastLine = await getLastLineOfText(serviceName);
+                    let doc = await workspace.openTextDocument(WorkbenchUri.parse(serviceName));
+                    let lastLine = doc.lineAt(doc.lineCount - 1);
 
                     range = new Range(0, 0, lastLine.lineNumber, lastLine.text.length);
                 }

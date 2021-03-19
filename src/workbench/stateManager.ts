@@ -1,12 +1,12 @@
 import { GraphQLSchema } from "graphql";
 import { ExtensionContext, window, workspace, StatusBarItem } from "vscode";
-import { getUserMemberships } from "../studio-gql/graphClient";
-import { CurrentWorkbenchOpsTreeDataProvider } from "./current-workbench-queries/currentWorkbenchOpsTreeDataProvider";
-import { CurrentWorkbenchSchemasTreeDataProvider } from "./current-workbench-schemas/currentWorkbenchSchemasTreeDataProvider";
+import { getUserMemberships } from "../graphql/graphClient";
+import { CurrentWorkbenchOpsTreeDataProvider } from "./tree-data-providers/currentWorkbenchOpsTreeDataProvider";
+import { CurrentWorkbenchSchemasTreeDataProvider } from "./tree-data-providers/currentWorkbenchSchemasTreeDataProvider";
 import { FieldWithType } from "./federationCompletionProvider";
-import { LocalWorkbenchFilesTreeDataProvider, WorkbenchFile } from "./local-workbench-files/localWorkbenchFilesTreeDataProvider";
-import { ApolloStudioGraphsTreeDataProvider } from "./studio-graphs/apolloStudioGraphsTreeDataProvider";
-import { ApolloStudioGraphOpsTreeDataProvider } from "./studio-operations/apolloStudioGraphOpsTreeDataProvider";
+import { LocalWorkbenchFilesTreeDataProvider, WorkbenchFile } from "./tree-data-providers/localWorkbenchFilesTreeDataProvider";
+import { ApolloStudioGraphsTreeDataProvider } from "./tree-data-providers/apolloStudioGraphsTreeDataProvider";
+import { ApolloStudioGraphOpsTreeDataProvider } from "./tree-data-providers/apolloStudioGraphOpsTreeDataProvider";
 
 export class StateManager {
     context?: ExtensionContext;

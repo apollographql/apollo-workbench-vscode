@@ -2,8 +2,8 @@ import * as assert from 'assert';
 import * as vscode from 'vscode';
 
 import { activateExtension } from './helpers';
-import { FileProvider } from '../../utils/files/fileProvider';
-import { GettingStartedTopLevel } from '../../workbench/local-workbench-files/gettingStartedTreeItems';
+import { FileProvider } from '../../workbench/file-system/fileProvider';
+import { GettingStartedTopLevel } from '../../workbench/tree-data-providers/localWorkbenchFilesTreeDataProvider';
 import { StateManager } from '../../workbench/stateManager';
 
 suite('No Folder Loaded in Workbnech', () => {

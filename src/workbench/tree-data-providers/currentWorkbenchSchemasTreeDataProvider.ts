@@ -1,6 +1,6 @@
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { FileProvider } from '../../utils/files/fileProvider';
+import { FileProvider } from '../file-system/fileProvider';
 
 export class CurrentWorkbenchSchemasTreeDataProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
     constructor(private workspaceRoot: string) { }

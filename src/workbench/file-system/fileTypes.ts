@@ -1,5 +1,3 @@
-import { IMocks } from "apollo-server";
-
 export interface RequiredHeader {
     key: string;
     value?: string;

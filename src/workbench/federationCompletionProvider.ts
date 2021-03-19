@@ -2,8 +2,6 @@ import { CancellationToken, CompletionItem, CompletionItemKind, MarkdownString, 
 import { getServiceAvailableTypes } from "../utils/schemaParser";
 import { StateManager } from "./stateManager";
 import { getAutocompleteSuggestions } from "@apollographql/graphql-language-service-interface";
-import { WorkbenchUri } from "../utils/files/fileProvider";
-import { extend } from "lodash";
 
 export interface FieldWithType {
     field: string;

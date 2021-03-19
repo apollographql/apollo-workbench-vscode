@@ -1,7 +1,8 @@
-import { FileProvider, WorkbenchUri, WorkbenchUriType } from "../utils/files/fileProvider";
-import { WorkbenchOperationTreeItem } from "../workbench/current-workbench-queries/currentWorkbenchOpsTreeDataProvider";
-import { StudioOperationTreeItem } from "../workbench/studio-operations/apolloStudioGraphOpsTreeDataProvider";
+import { FileProvider } from "../workbench/file-system/fileProvider";
+import { WorkbenchOperationTreeItem } from "../workbench/tree-data-providers/currentWorkbenchOpsTreeDataProvider";
+import { StudioOperationTreeItem } from "../workbench/tree-data-providers/apolloStudioGraphOpsTreeDataProvider";
 import { StateManager } from "../workbench/stateManager";
+import { WorkbenchUri, WorkbenchUriType } from "../workbench/file-system/WorkbenchUri";
 
 export async function addOperation() {
     await FileProvider.instance.promptToAddOperation()

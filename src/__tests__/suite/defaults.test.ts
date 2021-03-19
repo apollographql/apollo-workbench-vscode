@@ -1,9 +1,9 @@
 import * as assert from 'assert';
 
 import { activateExtension, cleanupWorkbenchFiles } from './helpers';
-import { GettingStartedTopLevel } from '../../workbench/local-workbench-files/gettingStartedTreeItems';
+import { GettingStartedTopLevel } from '../../workbench/tree-data-providers/localWorkbenchFilesTreeDataProvider';
 import { StateManager } from '../../workbench/stateManager';
-import { NotLoggedInTreeItem } from '../../workbench/studio-graphs/apolloStudioGraphsTreeDataProvider';
+import { NotLoggedInTreeItem } from '../../workbench/tree-data-providers/apolloStudioGraphsTreeDataProvider';
 
 suite('Default Workbench Tests', () => {
     before(activateExtension);

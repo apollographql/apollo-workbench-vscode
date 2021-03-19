@@ -1,6 +1,6 @@
 import { runOnlineParser } from './runOnlineParser';
 import { FieldWithType } from "../workbench/federationCompletionProvider";
-import { FileProvider } from "./files/fileProvider";
+import { FileProvider } from "../workbench/file-system/fileProvider";
 import { StateManager } from "../workbench/stateManager";
 
 export async function extractDefinedEntitiesByService() {

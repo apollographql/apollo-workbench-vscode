@@ -1,5 +1,5 @@
-import { FileProvider } from "../utils/files/fileProvider";
-import { WorkbenchFileTreeItem } from "../workbench/local-workbench-files/localWorkbenchFilesTreeDataProvider";
+import { FileProvider } from "../workbench/file-system/fileProvider";
+import { WorkbenchFileTreeItem } from "../workbench/tree-data-providers/localWorkbenchFilesTreeDataProvider";
 import { window, ProgressLocation } from "vscode";
 import { StateManager } from "../workbench/stateManager";
 import { createTypescriptTemplate } from "../utils/export-project/createTypescriptTemplate";

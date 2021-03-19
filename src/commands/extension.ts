@@ -1,8 +1,8 @@
 import { StateManager } from "../workbench/stateManager";
 import { workspace, window, commands, ProgressLocation } from "vscode";
-import { isValidKey } from "../studio-gql/graphClient";
-import { GettingStartedTreeItem } from "../workbench/local-workbench-files/gettingStartedTreeItems";
-import { FileProvider } from "../utils/files/fileProvider";
+import { isValidKey } from "../graphql/graphClient";
+import { GettingStartedTreeItem } from "../workbench/tree-data-providers/localWorkbenchFilesTreeDataProvider";
+import { FileProvider } from "../workbench/file-system/fileProvider";
 import { ServerManager } from "../workbench/serverManager";
 
 export function deleteStudioApiKey() {
