@@ -2,7 +2,7 @@ import { FileProvider } from "../workbench/file-system/fileProvider";
 import { WorkbenchFileTreeItem } from "../workbench/tree-data-providers/localWorkbenchFilesTreeDataProvider";
 import { window, ProgressLocation } from "vscode";
 import { StateManager } from "../workbench/stateManager";
-import { createTypescriptTemplate } from "../utils/export-project/createTypescriptTemplate";
+import { createTypescriptTemplate } from "../utils/createTypescriptTemplate";
 
 export async function deleteFile(item: WorkbenchFileTreeItem) {
     await FileProvider.instance.promptToDeleteWorkbenchFile(item.filePath);

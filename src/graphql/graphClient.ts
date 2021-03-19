@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import fetch from 'node-fetch';
-import { createHttpLink, execute, FetchResult, gql, toPromise } from '@apollo/client/core';
+import { createHttpLink, execute, gql, toPromise } from '@apollo/client/core';
 import { UserMemberships } from './types/UserMemberships';
 import { AccountServiceVariants } from './types/AccountServiceVariants';
 import { GetGraphSchemas } from './types/GetGraphSchemas';

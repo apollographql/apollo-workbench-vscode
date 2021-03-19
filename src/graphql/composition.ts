@@ -3,9 +3,9 @@ import { GraphQLError, parse } from "graphql";
 import { Diagnostic, DiagnosticSeverity, Range, Uri, workspace } from "vscode";
 import { compositionDiagnostics } from "../extension";
 import { StateManager } from "../workbench/stateManager";
-import { extractDefinedEntitiesByService } from "./csdlParser";
+import { extractDefinedEntitiesByService } from "./parsers/csdlParser";
 import { FileProvider } from "../workbench/file-system/fileProvider";
-import { getRangeForFieldNamedType, getRangeForTypeDef } from "./schemaParser";
+import { getRangeForFieldNamedType, getRangeForTypeDef } from "./parsers/schemaParser";
 import { WorkbenchUri } from "../workbench/file-system/WorkbenchUri";
 import { ApolloWorkbenchFile } from "../workbench/file-system/fileTypes";
 

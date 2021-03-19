@@ -1,5 +1,5 @@
 import { CancellationToken, CompletionItem, CompletionItemKind, MarkdownString, Position, SnippetString, TextDocument, window, workspace } from "vscode";
-import { getServiceAvailableTypes } from "../utils/schemaParser";
+import { getServiceAvailableTypes } from "../graphql/parsers/schemaParser";
 import { StateManager } from "./stateManager";
 import { getAutocompleteSuggestions } from "@apollographql/graphql-language-service-interface";
 

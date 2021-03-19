@@ -1,4 +1,4 @@
-import { StateManager } from "../../workbench/stateManager";
+import { StateManager } from "../workbench/stateManager";
 
 export function generateTsConfig() {
     return JSON.stringify({

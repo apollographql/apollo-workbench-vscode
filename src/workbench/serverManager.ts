@@ -4,9 +4,9 @@ import { buildFederatedSchema } from "@apollo/federation";
 import { ApolloServerPluginUsageReportingDisabled } from 'apollo-server-core';
 
 import { StateManager } from "./stateManager";
-import { OverrideApolloGateway, GatewayForwardHeadersDataSource } from "../gateway";
+import { OverrideApolloGateway, GatewayForwardHeadersDataSource } from "../graphql/graphRouter";
 import { FileProvider } from "./file-system/fileProvider";
-import { extractEntityNames } from "../utils/schemaParser";
+import { extractEntityNames } from "../graphql/parsers/schemaParser";
 import { resolve } from "path";
 import { mkdirSync } from "fs";
 import { workspace, Uri } from "vscode";

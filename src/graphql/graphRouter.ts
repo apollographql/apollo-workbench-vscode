@@ -2,11 +2,11 @@ import { ApolloGateway, RemoteGraphQLDataSource, GatewayConfig, Experimental_Upd
 import { buildClientSchema, getIntrospectionQuery, parse, IntrospectionQuery, printIntrospectionSchema, printSchema } from 'graphql';
 import { Headers } from "apollo-server-env";
 import { ServiceDefinition } from '@apollo/federation';
-import { ServerManager } from "./workbench/serverManager";
-import { FileProvider } from "./workbench/file-system/fileProvider";
-import { StateManager } from "./workbench/stateManager";
+import { ServerManager } from "../workbench/serverManager";
+import { FileProvider } from "../workbench/file-system/fileProvider";
+import { StateManager } from "../workbench/stateManager";
 import { window } from "vscode";
-import { WorkbenchUri, WorkbenchUriType } from "./workbench/file-system/WorkbenchUri";
+import { WorkbenchUri, WorkbenchUriType } from "../workbench/file-system/WorkbenchUri";
 
 function log(message: string) { console.log(`GATEWAY-${message}`); }
 
