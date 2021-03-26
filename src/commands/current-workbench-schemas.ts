@@ -1,6 +1,6 @@
 import { FileProvider } from "../workbench/file-system/fileProvider";
 import { WorkbenchSchemaTreeItem } from "../workbench/tree-data-providers/currentWorkbenchSchemasTreeDataProvider";
-import { TextDocument, Range, window, workspace } from "vscode";
+import { TextDocument, Range, window, workspace, Uri } from "vscode";
 import { StateManager } from "../workbench/stateManager";
 import { WorkbenchUri, WorkbenchUriType } from "../workbench/file-system/WorkbenchUri";
 
@@ -20,6 +20,15 @@ export function deleteSchemaDocTextRange(document: TextDocument, range: Range) {
             await window.showTextDocument(editor.document);
         }
     })
+}
+
+export function exportSchema(item: WorkbenchSchemaTreeItem) {
+    const serviceName = item.serviceName;
+    const exportPath = StateManager.workspaceRoot ? `${StateManager.workspaceRoot}/${serviceName}.graphql` : null;
+    if (exportPath) {
+        const schema = FileProvider.instance.currrentWorkbenchSchemas[serviceName].sdl;
+        workspace.fs.writeFile(Uri.parse(exportPath), schema);
+    }
 }
 
 export function disableMockSchema(service: WorkbenchSchemaTreeItem) {

@@ -33,7 +33,7 @@ export class StateManager {
     apolloStudioGraphOpsProvider: ApolloStudioGraphOpsTreeDataProvider = new ApolloStudioGraphOpsTreeDataProvider();
 
     get extensionGlobalStoragePath(): string | undefined {
-        return this.context?.globalStoragePath;
+        return this.context?.globalStorageUri.fsPath;
     }
 
     static get workspaceRoot(): string | undefined {
