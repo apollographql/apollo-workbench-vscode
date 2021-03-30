@@ -51,11 +51,12 @@ export class CurrentWorkbenchSchemasTreeDataProvider implements vscode.TreeDataP
 
 export class WorkbenchCsdlTreeItem extends vscode.TreeItem {
     constructor() {
-        super('Composed Schema (CSDL)', vscode.TreeItemCollapsibleState.None);
+        super('Core Schema (CSDL)', vscode.TreeItemCollapsibleState.None);
         this.command = {
             command: "current-workbench-schemas.viewCsdl",
-            title: "View Latest Composed Schema"
+            title: "View Latest Core Schema"
         };
+        this.contextValue = 'workbenchGraphSchemaTreeItem';
     }
 }
 

@@ -1,4 +1,7 @@
 import { StateManager } from "../workbench/stateManager";
+import { extractEntityNames, extractEntitiesWithKeys } from "../graphql/parsers/schemaParser";
+import { runOnlineParser } from "../graphql/parsers/runOnlineParser";
+import { FieldWithType } from "../workbench/federationCompletionProvider";
 
 export function generateTsConfig() {
     return JSON.stringify({
@@ -152,19 +155,57 @@ export function generateTsgatewayPackageJson() {
     return JSON.stringify(base);
 }
 
+export function generateJsFederatedResolvers(schema: string) {
+    let resolvers = 'module.exports = {\n';
+
+    //1. Get all defined Entities 
+    let entities = extractEntitiesWithKeys(schema);
+    //2. For each Entity, create a default __resolveReference 
+    //  AND create a resolver for all fields _without_ `@external`
+    const resolver = (entity: string) => `   ${entity}: {
+        __resolveReference(parent, args) {
+            return { ...parent }
+        }
+    }`;
+    // entities.forEach(entity => resolvers += resolver(entity));
+    //3. Generate resolver for each field defined in Query and Mutation
+    //4. (Optional) Support interface/unions
+
+
+
+
+
+
+    resolvers += '\n}';
+
+    return resolvers;
+}
+
+export function generateTsFederatedResolvers(schema: string) {
+    let resolvers = 'export const resolvers = {\n';
+    let entities = extractEntityNames(schema);
+    entities.forEach(entity => resolvers += `\t${entity}: {\n\t\t__resolveReference(parent, args) {\n\t\t\treturn { ...parent }\n\t\t}\n\t}\n`);
+    resolvers += '}';
+
+    return resolvers;
+}
+
 export function generateJsFederatedServerTemplate(port: number, serviceName: string) {
     return `const { resolve } = require('path');
 const { readFileSync } = require('fs');
-const { gql, ApolloServer } = require('apollo-server');
+const { gql, ApolloServer, addMockFunctionsToSchema } = require('apollo-server');
 const { buildFederatedSchema } = require('@apollo/federation');
 
+const mocks = require('./mocks.js');
+const resolvers = require('./resolvers.js');
 const typeDefs = gql(readFileSync(resolve(__dirname, "./schema.graphql"), { encoding: "utf8" }));
+const schema = buildFederatedSchema({ typeDefs, resolvers });
+addMockFunctionsToSchema({ schema, mocks, preserveResolvers: true });
+
 const server = new ApolloServer({
-    schema: buildFederatedSchema([{ typeDefs }]),
-    mocks: true,
-    mockEntireSchema: false,
-    engine: false,
-    });
+    schema,
+    subscriptions: false
+});
     
 const port = process.env.PORT || ${port};
 server.listen({ port }).then(({ url }) => {

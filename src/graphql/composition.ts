@@ -1,4 +1,4 @@
-import { composeAndValidate, ComposedGraphQLSchema, ServiceDefinition } from "@apollo/federation";
+import { composeAndValidate, ServiceDefinition } from "@apollo/federation";
 import { GraphQLError, parse } from "graphql";
 import { Diagnostic, DiagnosticSeverity, Range, Uri, workspace } from "vscode";
 import { compositionDiagnostics } from "../extension";
@@ -8,6 +8,7 @@ import { FileProvider } from "../workbench/file-system/fileProvider";
 import { getRangeForFieldNamedType, getRangeForTypeDef } from "./parsers/schemaParser";
 import { WorkbenchUri } from "../workbench/file-system/WorkbenchUri";
 import { ApolloWorkbenchFile } from "../workbench/file-system/fileTypes";
+// import { CompositionResult } from "@apollo/federation/dist/composition/utils";
 
 export async function* getComposedSchemaLogCompositionErrors() {
     let workbenchFile = FileProvider.instance.currrentWorkbench;
@@ -15,7 +16,7 @@ export async function* getComposedSchemaLogCompositionErrors() {
         const result = getComposedSchema(workbenchFile).next() as any;
         if (result) {
             const { errors, composedSdl, schema } = result.value;
-            if (errors.length > 0) {
+            if (errors && errors.length > 0) {
                 console.log('Composition Errors Found:');
 
                 compositionDiagnostics.clear();
@@ -92,34 +93,16 @@ export function* getComposedSchema(workbenchFile: ApolloWorkbenchFile) {
             errors.push(new GraphQLError(err, undefined, undefined, undefined, undefined, undefined, { noSchemaDefined: true, serviceName: key, message: err }));
         }
     }
+    if (errors.length > 0) {
+        yield { errors };
+    } else {
+        //This blocks UI thread, why I have no clue but it is overworking VS Code
+        let compositionResults = composeAndValidate(sdls);
 
-    let compositionResults: {
-        schema?: ComposedGraphQLSchema;
-        warnings?: never[];
-        errors: GraphQLError[];
-        composedSdl?: string | undefined;
-    } = { errors: [] };
-
-    try {
-        if (errors.length == 0) {
-            //Write validators for 80% composition errors
-            //Parser runs on an individual file, saves that state, run validation over state
-            //composeValidate -> remove errors that we already found
-
-            //This blocks UI thread, why I have no clue but it is overworking VS Code
-            compositionResults = composeAndValidate(sdls);
-            // Promise.resolve(composeAndValidate(sdls)) as any;
-
-            if (Object.keys(workbenchFile.schemas).length == 0)
-                compositionResults.errors = [new GraphQLError("No schemas defined in workbench yet", undefined, undefined, undefined, undefined, undefined, { noServicesDefined: true })];
-        } else {
-            errors.map(error => compositionResults.errors.push(error));
-        }
-    } catch (err) {
-        compositionResults.errors = [new GraphQLError(err.message)];
+        if (Object.keys(workbenchFile.schemas).length == 0)
+            compositionResults.errors = [new GraphQLError("No schemas defined in workbench yet", undefined, undefined, undefined, undefined, undefined, { noServicesDefined: true })];
+        yield { ...compositionResults };
     }
-
-    yield { ...compositionResults };
 }
 
 export async function handleErrors(wb: ApolloWorkbenchFile, errors: GraphQLError[]) {

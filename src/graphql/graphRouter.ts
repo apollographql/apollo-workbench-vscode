@@ -1,4 +1,4 @@
-import { ApolloGateway, RemoteGraphQLDataSource, GatewayConfig, Experimental_UpdateServiceDefinitions } from "@apollo/gateway";
+import { ApolloGateway, RemoteGraphQLDataSource, GatewayConfig, Experimental_UpdateComposition } from "@apollo/gateway";
 import { buildClientSchema, getIntrospectionQuery, parse, IntrospectionQuery, printIntrospectionSchema, printSchema } from 'graphql';
 import { Headers } from "apollo-server-env";
 import { ServiceDefinition } from '@apollo/federation';
@@ -31,7 +31,7 @@ export class GatewayForwardHeadersDataSource extends RemoteGraphQLDataSource {
 }
 
 export class OverrideApolloGateway extends ApolloGateway {
-    protected async loadServiceDefinitions(config: GatewayConfig): ReturnType<Experimental_UpdateServiceDefinitions> {
+    protected async loadServiceDefinitions(config: GatewayConfig): ReturnType<Experimental_UpdateComposition> {
         if (StateManager.settings_tlsRejectUnauthorized) process.env.NODE_TLS_REJECT_UNAUTHORIZED = '';
         else process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 

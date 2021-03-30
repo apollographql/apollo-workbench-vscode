@@ -1,5 +1,4 @@
-import { serializeQueryPlan } from '@apollo/gateway';
-import { getQueryPlan, getQueryPlanner } from '@apollo/query-planner-wasm';
+import { getQueryPlan, getQueryPlanner, prettyFormatQueryPlan } from '@apollo/query-planner';
 import { existsSync, readdirSync, readFileSync, unlinkSync, writeFileSync } from 'fs';
 import path, { join, resolve } from 'path';
 import { commands, Disposable, EventEmitter, FileChangeEvent, FileStat, FileSystemProvider, FileType, Uri, window, Range } from 'vscode';
@@ -100,7 +99,7 @@ export class FileProvider implements FileSystemProvider {
                     const path = resolve(StateManager.workspaceRoot, `${graphName}.apollo-workbench`);
 
                     try {
-                        const compositionResults = getComposedSchema(workbenchFile).next().value;
+                        const compositionResults = getComposedSchema(workbenchFile).next().value as any;
                         if (compositionResults) {
                             if (compositionResults.composedSdl) workbenchFile.composedSchema = compositionResults.composedSdl;
                             else await handleErrors(workbenchFile, compositionResults.errors);
@@ -402,7 +401,7 @@ export class FileProvider implements FileSystemProvider {
             const queryPlanPointer = getQueryPlanner(this.currrentWorkbench.composedSchema);
             const queryPlan = getQueryPlan(queryPlanPointer, operation, { autoFragmentization: false });
 
-            this.currrentWorkbench.queryPlans[operationName] = serializeQueryPlan(queryPlan);
+            this.currrentWorkbench.queryPlans[operationName] = prettyFormatQueryPlan(queryPlan);
         } catch (err) {
             console.log(err);
         }
