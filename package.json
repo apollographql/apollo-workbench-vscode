@@ -43,9 +43,9 @@
   },
   "dependencies": {
     "@apollo/client": "^3.2.5",
-    "@apollo/federation": "^0.20.7",
-    "@apollo/gateway": "^0.21.4",
-    "@apollo/query-planner-wasm": "0.0.9",
+    "@apollo/federation": "^0.22.0",
+    "@apollo/gateway": "^0.25.0",
+    "@apollo/query-planner": "0.0.13",
     "@apollographql/graphql-language-service-interface": "^2.0.2",
     "@types/archiver": "^5.1.0",
     "apollo-language-server": "^1.24.1",
@@ -281,6 +281,25 @@
         "icon": "$(database)"
       },
       {
+        "command": "current-workbench-schemas.exportSchema",
+        "title": "Export Schema for a Service",
+        "icon": "$(desktop-download)"
+      },
+      {
+        "command": "current-workbench-schemas.exportResolvers",
+        "title": "Export Example Federation Entity Resolvers for a Service"
+      },
+      {
+        "command": "current-workbench-schemas.exportGraphCoreSchema",
+        "title": "Export Core Schema for Graph",
+        "icon": "$(desktop-download)"
+      },
+      {
+        "command": "current-workbench-schemas.exportGraphSchema",
+        "title": "Export Schema for a Graph",
+        "icon": "$(desktop-download)"
+      },
+      {
         "command": "current-workbench-operations.editOperation",
         "title": "Edit Operation",
         "icon": "$(edit)"
@@ -420,12 +439,12 @@
         {
           "command": "current-workbench-schemas.addSchema",
           "when": "view == current-workbench-schemas",
-          "group": "navigation"
+          "group": "navigation@1"
         },
         {
           "command": "current-workbench-schemas.refreshSchemas",
           "when": "view == current-workbench-schemas",
-          "group": "navigation"
+          "group": "navigation@1"
         },
         {
           "command": "current-workbench-operations.addOperation",
@@ -485,9 +504,29 @@
           "group": "inline"
         },
         {
+          "command": "current-workbench-schemas.exportSchema",
+          "when": "view == current-workbench-schemas && viewItem == workbenchSchemaTreeItem",
+          "group": "3@1"
+        },
+        {
+          "command": "current-workbench-schemas.exportResolvers",
+          "when": "view == current-workbench-schemas && viewItem == workbenchSchemaTreeItem",
+          "group": "3@1"
+        },
+        {
+          "command": "current-workbench-schemas.exportGraphCoreSchema",
+          "when": "view == current-workbench-schemas && viewItem == workbenchGraphSchemaTreeItem",
+          "group": "4@1"
+        },
+        {
+          "command": "current-workbench-schemas.exportGraphSchema",
+          "when": "view == current-workbench-schemas && viewItem == workbenchGraphSchemaTreeItem",
+          "group": "4@2"
+        },
+        {
           "command": "current-workbench-schemas.deleteSchema",
           "when": "view == current-workbench-schemas && viewItem == workbenchSchemaTreeItem",
-          "group": "3"
+          "group": "4"
         },
         {
           "command": "current-workbench-operations.deleteOperation",

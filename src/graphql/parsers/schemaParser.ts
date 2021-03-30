@@ -2,6 +2,7 @@ import { BREAK, EnumTypeDefinitionNode, InterfaceTypeDefinitionNode, ObjectTypeD
 import { FileProvider } from "../../workbench/file-system/fileProvider";
 
 import { runOnlineParser } from "./runOnlineParser";
+import { FieldWithType } from "../../workbench/federationCompletionProvider";
 
 export function getServiceAvailableTypes(serviceName: string): string[] {
     let types: string[] = [];

@@ -13,7 +13,7 @@ import { DiagnosticSeverity } from 'vscode-languageclient';
 import { refreshStudioGraphs, createWorkbenchFromGraph, createWorkbenchFromPreloaded, createWorkbenchFromGraphWithVariant, loadOperations, viewStudioOperation, switchOrg } from './commands/studio-graphs';
 import { addToWorkbench } from './commands/studio-operations';
 import { ensureFolderIsOpen, openFolder, newWorkbench, enterStudioApiKey, startMocks, stopMocks, gettingStarted } from './commands/extension';
-import { addSchema, editSchema, renameSchema, deleteSchema, refreshSchemas, viewCsdl, shouldMockSchema, disableMockSchema, setUrlForService, updateSchemaFromUrl, viewSettings, viewCustomMocks, deleteSchemaDocTextRange, makeSchemaDocTextRangeArray } from './commands/current-workbench-schemas';
+import { addSchema, editSchema, renameSchema, deleteSchema, refreshSchemas, viewCsdl, shouldMockSchema, disableMockSchema, setUrlForService, updateSchemaFromUrl, viewSettings, viewCustomMocks, deleteSchemaDocTextRange, makeSchemaDocTextRangeArray, exportSchema, exportResolvers, exportGraphSchema, exportGraphCoreSchema } from './commands/current-workbench-schemas';
 import { addOperation, deleteOperation, editOperation, refreshOperations, openQueryPlan } from './commands/current-workbench-operations';
 import { loadFile, renameGraph, duplicateFile, deleteFile, refresh, exportProject } from './commands/local-workbench-files';
 
@@ -75,6 +75,10 @@ export async function activate(context: ExtensionContext) {
 	commands.registerCommand('current-workbench-schemas.viewCustomMocks', viewCustomMocks);
 	commands.registerCommand('current-workbench-schemas.deleteSchemaDocTextRange', deleteSchemaDocTextRange);
 	commands.registerCommand('current-workbench-schemas.makeSchemaDocTextRangeArray', makeSchemaDocTextRangeArray);
+	commands.registerCommand('current-workbench-schemas.exportSchema', exportSchema);
+	commands.registerCommand('current-workbench-schemas.exportResolvers', exportResolvers);
+	commands.registerCommand('current-workbench-schemas.exportGraphSchema', exportGraphSchema);
+	commands.registerCommand('current-workbench-schemas.exportGraphCoreSchema', exportGraphCoreSchema);
 	//Current Loaded Workbench Operations Commands
 	commands.registerCommand('current-workbench-operations.addOperation', addOperation);
 	commands.registerCommand("current-workbench-operations.editOperation", editOperation);

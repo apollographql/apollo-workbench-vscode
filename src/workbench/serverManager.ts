@@ -125,7 +125,6 @@ export class ServerManager {
             //Create and start up server locally
             const server = new ApolloServer({
                 schema,
-                engine: false,
                 subscriptions: false
             });
             server.listen({ port }).then(({ url }) => console.log(`${name}:🚀 ${serviceName} mocked server ready at ${url}`));

@@ -1,8 +1,11 @@
 import { FileProvider } from "../workbench/file-system/fileProvider";
-import { WorkbenchSchemaTreeItem } from "../workbench/tree-data-providers/currentWorkbenchSchemasTreeDataProvider";
-import { TextDocument, Range, window, workspace } from "vscode";
+import { WorkbenchSchemaTreeItem, WorkbenchCsdlTreeItem } from "../workbench/tree-data-providers/currentWorkbenchSchemasTreeDataProvider";
+import { TextDocument, Range, window, workspace, Uri, commands } from "vscode";
 import { StateManager } from "../workbench/stateManager";
 import { WorkbenchUri, WorkbenchUriType } from "../workbench/file-system/WorkbenchUri";
+import { TextEncoder } from "util";
+import { GraphQLSchema, parse, extendSchema, printSchema } from "graphql";
+import { generateJsFederatedResolvers } from "../utils/exportFiles";
 
 export async function addSchema() {
     await FileProvider.instance.promptToAddSchema();
@@ -20,6 +23,62 @@ export function deleteSchemaDocTextRange(document: TextDocument, range: Range) {
             await window.showTextDocument(editor.document);
         }
     })
+}
+
+const txtEncoder = new TextEncoder();
+export function exportSchema(item: WorkbenchSchemaTreeItem) {
+    const serviceName = item.serviceName;
+    const exportPath = StateManager.workspaceRoot ? `${StateManager.workspaceRoot}/${serviceName}.graphql` : null;
+    if (exportPath) {
+        const schema = FileProvider.instance.currrentWorkbenchSchemas[serviceName].sdl;
+        workspace.fs.writeFile(Uri.parse(exportPath), txtEncoder.encode(schema));
+
+        window.showInformationMessage(`${serviceName} schema was exported to ${exportPath}`);
+    }
+}
+export async function exportResolvers(item: WorkbenchSchemaTreeItem) {
+    const serviceName = item.serviceName;
+    let exportPath = StateManager.workspaceRoot ? `${StateManager.workspaceRoot}/${serviceName}-resolvers` : null;
+    if (exportPath) {
+        let resolvers = '';
+        const schema = FileProvider.instance.currrentWorkbenchSchemas[serviceName].sdl;
+        resolvers = generateJsFederatedResolvers(schema);
+        //TODO: Future Feature could have a more robust typescript generation version
+        // let exportLanguage = await window.showQuickPick(["Javascript", "Typescript"], { canPickMany: false, placeHolder: "Would you like to use Javascript or Typescript for the exported project?" });
+        // if (exportLanguage == "Typescript") {
+        //     resolvers = generateTsFederatedResolvers(schema);
+        //     exportPath += ".ts";
+        // } else {
+        //     resolvers = generateJsFederatedResolvers(schema);
+        //     exportPath += ".js";
+        // }
+
+        workspace.fs.writeFile(Uri.parse(`${exportPath}.js`), txtEncoder.encode(resolvers));
+        window.showInformationMessage(`${serviceName} resolvers was exported to ${exportPath}`);
+    }
+}
+export function exportGraphCoreSchema() {
+    const coreSchema = FileProvider.instance.currrentWorkbench.composedSchema;
+    if (coreSchema && StateManager.workspaceRoot) {
+        const exportPath = `${StateManager.workspaceRoot}/${FileProvider.instance.currrentWorkbench.graphName}-core-schema.graphql`;
+
+        workspace.fs.writeFile(Uri.parse(exportPath), txtEncoder.encode(coreSchema));
+        window.showInformationMessage(`Graph Core Schema was exported to ${exportPath}`);
+    }
+}
+export function exportGraphSchema() {
+    const csdl = FileProvider.instance.currrentWorkbench.composedSchema;
+    if (csdl && StateManager.workspaceRoot) {
+        const exportPath = `${StateManager.workspaceRoot}/${FileProvider.instance.currrentWorkbench.graphName}-schema.graphql`;
+        const schema = new GraphQLSchema({
+            query: undefined,
+        });
+        const parsed = parse(csdl);
+        const finalSchema = extendSchema(schema, parsed, { assumeValidSDL: true });
+
+        workspace.fs.writeFile(Uri.parse(exportPath), txtEncoder.encode(printSchema(finalSchema)));
+        window.showInformationMessage(`Graph schema was exported to ${exportPath}`);
+    }
 }
 
 export function disableMockSchema(service: WorkbenchSchemaTreeItem) {
