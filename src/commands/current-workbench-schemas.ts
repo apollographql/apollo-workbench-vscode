@@ -5,7 +5,7 @@ import { StateManager } from "../workbench/stateManager";
 import { WorkbenchUri, WorkbenchUriType } from "../workbench/file-system/WorkbenchUri";
 import { TextEncoder } from "util";
 import { GraphQLSchema, parse, extendSchema, printSchema } from "graphql";
-import { generateJsFederatedResolvers, generateTsFederatedResolvers } from "../utils/exportFiles";
+import { generateJsFederatedResolvers } from "../utils/exportFiles";
 
 export async function addSchema() {
     await FileProvider.instance.promptToAddSchema();
@@ -42,17 +42,18 @@ export async function exportResolvers(item: WorkbenchSchemaTreeItem) {
     if (exportPath) {
         let resolvers = '';
         const schema = FileProvider.instance.currrentWorkbenchSchemas[serviceName].sdl;
+        resolvers = generateJsFederatedResolvers(schema);
+        //TODO: Future Feature could have a more robust typescript generation version
+        // let exportLanguage = await window.showQuickPick(["Javascript", "Typescript"], { canPickMany: false, placeHolder: "Would you like to use Javascript or Typescript for the exported project?" });
+        // if (exportLanguage == "Typescript") {
+        //     resolvers = generateTsFederatedResolvers(schema);
+        //     exportPath += ".ts";
+        // } else {
+        //     resolvers = generateJsFederatedResolvers(schema);
+        //     exportPath += ".js";
+        // }
 
-        let exportLanguage = await window.showQuickPick(["Javascript", "Typescript"], { canPickMany: false, placeHolder: "Would you like to use Javascript or Typescript for the exported project?" });
-        if (exportLanguage == "Typescript") {
-            resolvers = generateTsFederatedResolvers(schema);
-            exportPath += ".ts";
-        } else {
-            resolvers = generateJsFederatedResolvers(schema);
-            exportPath += ".js";
-        }
-
-        workspace.fs.writeFile(Uri.parse(exportPath), txtEncoder.encode(resolvers));
+        workspace.fs.writeFile(Uri.parse(`${exportPath}.js`), txtEncoder.encode(resolvers));
         window.showInformationMessage(`${serviceName} resolvers was exported to ${exportPath}`);
     }
 }

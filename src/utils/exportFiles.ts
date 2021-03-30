@@ -1,7 +1,5 @@
 import { StateManager } from "../workbench/stateManager";
-import { extractEntityNames, extractEntitiesWithKeys } from "../graphql/parsers/schemaParser";
-import { runOnlineParser } from "../graphql/parsers/runOnlineParser";
-import { FieldWithType } from "../workbench/federationCompletionProvider";
+import { extractEntityNames } from "../graphql/parsers/schemaParser";
 
 export function generateTsConfig() {
     return JSON.stringify({
@@ -156,36 +154,10 @@ export function generateTsgatewayPackageJson() {
 }
 
 export function generateJsFederatedResolvers(schema: string) {
-    let resolvers = 'module.exports = {\n';
-
-    //1. Get all defined Entities 
-    let entities = extractEntitiesWithKeys(schema);
-    //2. For each Entity, create a default __resolveReference 
-    //  AND create a resolver for all fields _without_ `@external`
-    const resolver = (entity: string) => `   ${entity}: {
-        __resolveReference(parent, args) {
-            return { ...parent }
-        }
-    }`;
-    // entities.forEach(entity => resolvers += resolver(entity));
-    //3. Generate resolver for each field defined in Query and Mutation
-    //4. (Optional) Support interface/unions
-
-
-
-
-
-
-    resolvers += '\n}';
-
-    return resolvers;
-}
-
-export function generateTsFederatedResolvers(schema: string) {
-    let resolvers = 'export const resolvers = {\n';
+    let resolvers = 'const resolvers = {\n';
     let entities = extractEntityNames(schema);
     entities.forEach(entity => resolvers += `\t${entity}: {\n\t\t__resolveReference(parent, args) {\n\t\t\treturn { ...parent }\n\t\t}\n\t}\n`);
-    resolvers += '}';
+    resolvers += '}\nmodule.exports = resolvers;';
 
     return resolvers;
 }

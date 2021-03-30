@@ -287,7 +287,7 @@
       },
       {
         "command": "current-workbench-schemas.exportResolvers",
-        "title": "Export Resolvers for a Service"
+        "title": "Export Example Federation Entity Resolvers for a Service"
       },
       {
         "command": "current-workbench-schemas.exportGraphCoreSchema",
