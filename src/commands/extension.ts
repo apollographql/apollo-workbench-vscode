@@ -1,9 +1,7 @@
 import { StateManager } from "../workbench/stateManager";
-import { workspace, window, commands, ProgressLocation } from "vscode";
+import { workspace, window, commands } from "vscode";
 import { isValidKey } from "../graphql/graphClient";
-import { GettingStartedTreeItem } from "../workbench/tree-data-providers/localWorkbenchFilesTreeDataProvider";
-import { FileProvider } from "../workbench/file-system/fileProvider";
-import { ServerManager } from "../workbench/serverManager";
+import { GettingStartedTreeItem } from "../workbench/tree-data-providers/superGraphTreeDataProvider";
 
 export function deleteStudioApiKey() {
     StateManager.instance.globalState_userApiKey = ""
@@ -35,24 +33,7 @@ export async function gettingStarted(item: GettingStartedTreeItem) {
         .then(() => { }, (e) => console.error(e));
 }
 
-export async function newWorkbench() {
-    await FileProvider.instance.promptToCreateWorkbenchFile();
-}
-
 export async function openFolder() {
     let folder = await window.showOpenDialog({ canSelectFiles: false, canSelectFolders: true, canSelectMany: false });
     if (folder) await commands.executeCommand('openFolder', folder[0]);
 };
-
-export function startMocks() {
-    window.withProgress({ location: ProgressLocation.Notification, title: "Starting Mock Servers" }, async (progress, token) => {
-        ServerManager.instance.startMocks();
-        window.setStatusBarMessage('Apollo Workbench Mocks Running');
-    })
-}
-export function stopMocks() {
-    window.withProgress({ location: ProgressLocation.Notification, title: "Stopping Mock Servers" }, async (progress, token) => {
-        ServerManager.instance.stopMocks();
-        window.setStatusBarMessage("");
-    })
-}

@@ -32,11 +32,11 @@ export function cleanupWorkbenchFiles() {
 
 
 export async function createAndLoadEmptyWorkbenchFile() {
-    const workbenchFileName = 'empty-workbench';
-    const workbenchFilePath = FileProvider.instance.createNewWorkbenchFile(workbenchFileName);
-    if (!workbenchFilePath) throw new Error('Workbench file was not created');
+    // const workbenchFileName = 'empty-workbench';
+    // const workbenchFilePath = FileProvider.instance.createNewWorkbenchFile(workbenchFileName);
+    // if (!workbenchFilePath) throw new Error('Workbench file was not created');
 
-    await FileProvider.instance.loadWorkbenchFile(workbenchFileName, workbenchFilePath);
+    // await FileProvider.instance.loadWorkbenchFile(workbenchFileName, workbenchFilePath);
 }
 
 export const simpleSchema =

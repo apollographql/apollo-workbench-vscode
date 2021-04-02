@@ -9,8 +9,9 @@ import { FileProvider } from "./file-system/fileProvider";
 import { extractEntityNames } from "../graphql/parsers/schemaParser";
 import { resolve } from "path";
 import { mkdirSync } from "fs";
-import { workspace, Uri } from "vscode";
+import { workspace, Uri, window, StatusBarAlignment, tasks } from "vscode";
 import { execSync } from "child_process";
+import { Disposable } from "vscode-languageclient";
 
 const { name } = require('../../package.json');
 
@@ -27,7 +28,7 @@ export class ServerManager {
     //serverState will hold the ApolloServer/ApolloGateway instances based on the ports they are running on
     private serversState: { [port: string]: any } = {};
 
-    startMocks() {
+    startSupergraphMocks(wbFilePath: string) {
         //Setting up the mocks project folder - need to isolate to mocks running
         if (StateManager.instance.extensionGlobalStoragePath) {
             const mocksPath = resolve(StateManager.instance.extensionGlobalStoragePath, `mocks`);
@@ -41,9 +42,10 @@ export class ServerManager {
         else process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
         console.log(`${name}:Setting up mocks`);
-        let workbenchFile = FileProvider.instance.currrentWorkbench;
+        let workbenchFile = FileProvider.instance.workbenchFiles.get(wbFilePath);
         if (workbenchFile) {
             console.log(`${name}:Mocking workbench file: ${workbenchFile.graphName}`);
+            FileProvider.instance.loadedWorkbenchFile = workbenchFile;
             for (var serviceName in workbenchFile.schemas) {
                 //Check if we should be mocking this service
                 if (workbenchFile.schemas[serviceName].shouldMock) {
@@ -81,8 +83,8 @@ export class ServerManager {
                 this.stopServerOnPort(port);
             }
         }
-        this.portMapping = {};
         this.stopGateway();
+        this.portMapping = {};
     }
     private startServer(serviceName: string, schemaString: string, mocks?: IMocks) {
         //Ensure we don't have an empty schema string - meaning a blank new service was created
@@ -151,6 +153,7 @@ export class ServerManager {
         if (this.portMapping[serviceName])
             delete this.portMapping[serviceName];
     }
+    statusBarMessage: Disposable = window.setStatusBarMessage("");
     private stopGateway() {
         let gatewayPort = StateManager.settings_gatewayServerPort;
         if (this.serversState[gatewayPort]) {
@@ -158,6 +161,8 @@ export class ServerManager {
             this.serversState[gatewayPort].stop();
             delete this.serversState[gatewayPort];
         }
+        if (this.statusBarMessage)
+            this.statusBarMessage.dispose();
     }
     private startGateway() {
         let gatewayPort = StateManager.settings_gatewayServerPort;
@@ -166,22 +171,6 @@ export class ServerManager {
             this.serversState[gatewayPort].stop();
             delete this.serversState[gatewayPort];
         }
-        //We always have a gateway running in the background and change it's pollInterval when not in use
-        //This is a workaround because `server.stop()` doesn't stop that polling and becomes a memory leak if releasing the serer
-        if (!this.serversState['gateway']) {
-            console.log(`${name}:No gateway instance stored, creating instance`)
-            this.serversState['gateway'] = new OverrideApolloGateway({
-                debug: true,
-                buildService({ url, name }) {
-                    let source = new GatewayForwardHeadersDataSource({ url });
-                    source.serviceName = name;
-                    return source;
-                }
-            });
-        } else {
-            console.log(`${name}:Changing gateway instance polling interval to 10s`);
-            this.serversState['gateway'].experimental_pollInterval = StateManager.settings_gatewayReCompositionInterval ?? 10000;
-        }
 
         const graphApiKey = StateManager.settings_apiKey;
         const graphVariant = StateManager.settings_graphVariant;
@@ -189,11 +178,18 @@ export class ServerManager {
         const shouldRunOpReg = StateManager.settings_shouldRunOpRegistry;
         if (shouldRunOpReg) {
             console.log(`${name}:Enabling operation registry for ${graphVariant}`);
-            plugins = [ApolloServerPluginUsageReportingDisabled(), plugin({ graphVariant, forbidUnregisteredOperations: shouldRunOpReg, debug: true })()];
+            plugins = [ApolloServerPluginUsageReportingDisabled()];//, plugin({ graphVariant, forbidUnregisteredOperations: shouldRunOpReg, debug: true })()];
         }
 
         const server = new ApolloServer({
-            gateway: this.serversState['gateway'],
+            gateway: new OverrideApolloGateway({
+                debug: true,
+                buildService({ url, name }) {
+                    let source = new GatewayForwardHeadersDataSource({ url });
+                    source.serviceName = name;
+                    return source;
+                }
+            }),
             subscriptions: false,
             apollo: {
                 key: graphApiKey,
@@ -207,6 +203,9 @@ export class ServerManager {
 
         server.listen({ port: gatewayPort }).then(({ url }) => {
             console.log(`${name}:🚀 Apollo Workbench gateway ready at ${url}`);
+            ServerManager.instance.statusBarMessage = window.setStatusBarMessage("Apollo Workbench Mocks Running");
+        }).then(undefined, err => {
+            console.error('I am error');
         });
 
         this.serversState[gatewayPort] = server;
