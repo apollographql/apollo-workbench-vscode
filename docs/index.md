@@ -24,9 +24,9 @@ Workbench is a tool built by the Apollo Solutions Team to help design schemas us
 
 ### Supported Workflows
 
-- ![Design a New Supergraph](./new-supergraph.md)
-- ![Migrating from Monolith to a New Supergraph](./migration-monolith-to-supergraph.md)
-- ![Migrating from Multiple GraphQL Serers to a Supergraph](./migration-gql-microservices-to-supergraph.md)
+- [Design a New Supergraph](./new-supergraph.md)
+- [Migrating from Monolith to a New Supergraph](./migration-monolith-to-supergraph.md)
+- [Migrating from Multiple GraphQL Serers to a Supergraph](./migration-gql-microservices-to-supergraph.md)
 
 ## Apollo Solutions Team
 
