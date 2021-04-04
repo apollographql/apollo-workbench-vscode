@@ -30,6 +30,8 @@ export async function getComposedSchemaLogCompositionErrorsForWbFile(wbFilePath:
             } else if (workbenchFile.composedSchema)
                 workbenchFile.composedSchema = "";
 
+            if (!workbenchFile.composedSchema) StateManager.instance.workspaceState_selectedWorkbenchAvailableEntities = {};
+
             FileProvider.instance.saveWorkbenchFile(workbenchFile, wbFilePath);
 
             if (schema)

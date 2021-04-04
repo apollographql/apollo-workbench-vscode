@@ -125,7 +125,7 @@ export class SubgraphSummaryTreeItem extends TreeItem {
     ) {
         super(`${Object.keys(wbFile.schemas).length} subgraphs`, TreeItemCollapsibleState.Expanded);
 
-        this.tooltip = `${Object.keys(wbFile.schemas).length} subgraphs`;
+        this.tooltip = `${Object.keys(wbFile.schemas).length} Subgraphs`;
         this.contextValue = 'subgraphSummaryTreeItem';
 
         Object.keys(wbFile.schemas).forEach(subgraphName => {
@@ -168,7 +168,7 @@ export class OperationSummaryTreeItem extends TreeItem {
         public readonly wbFile: ApolloWorkbenchFile,
         public readonly filePath: string
     ) {
-        super(`${Object.keys(wbFile.operations).length} operations`, TreeItemCollapsibleState.Collapsed);
+        super(`${Object.keys(wbFile.operations).length} Operations`, TreeItemCollapsibleState.Collapsed);
 
         this.tooltip = `${Object.keys(wbFile.operations).length} operations`;
         this.contextValue = 'operationSummaryTreeItem';
