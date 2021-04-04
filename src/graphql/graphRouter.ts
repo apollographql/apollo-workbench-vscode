@@ -1,4 +1,4 @@
-import { ApolloGateway, RemoteGraphQLDataSource, GatewayConfig, Experimental_UpdateServiceDefinitions } from "@apollo/gateway";
+import { ApolloGateway, RemoteGraphQLDataSource, GatewayConfig, Experimental_UpdateComposition } from "@apollo/gateway";
 import { buildClientSchema, getIntrospectionQuery, parse, IntrospectionQuery, printIntrospectionSchema, printSchema } from 'graphql';
 import { Headers } from "apollo-server-env";
 import { ServiceDefinition } from '@apollo/federation';
@@ -20,7 +20,7 @@ export class GatewayForwardHeadersDataSource extends RemoteGraphQLDataSource {
                 log(`Header ${key} was not found on incoming request, did you forget to set it in your client application?`);
         });
 
-        let service = FileProvider.instance.currrentWorkbench.schemas[this.serviceName];
+        let service = FileProvider.instance.loadedWorkbenchFile?.schemas[this.serviceName];
         if (service) {
             service.requiredHeaders?.forEach(requiredHeader => {
                 if (requiredHeader)
@@ -31,13 +31,13 @@ export class GatewayForwardHeadersDataSource extends RemoteGraphQLDataSource {
 }
 
 export class OverrideApolloGateway extends ApolloGateway {
-    protected async loadServiceDefinitions(config: GatewayConfig): ReturnType<Experimental_UpdateServiceDefinitions> {
+    protected async loadServiceDefinitions(config: GatewayConfig): ReturnType<Experimental_UpdateComposition> {
         if (StateManager.settings_tlsRejectUnauthorized) process.env.NODE_TLS_REJECT_UNAUTHORIZED = '';
         else process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
         let newDefinitions: Array<ServiceDefinition> = [];
 
-        let wb = FileProvider.instance.currrentWorkbench;
+        let wb = FileProvider.instance.loadedWorkbenchFile;
         if (wb) {
             for (var serviceName in wb.schemas) {
                 const service = wb.schemas[serviceName];
@@ -69,7 +69,7 @@ export class OverrideApolloGateway extends ApolloGateway {
 
     public static async getTypeDefs(serviceURLOverride: string, serviceName: string) {
         let source = new RemoteGraphQLDataSource({ url: serviceURLOverride, });
-        let requiredHeaders = FileProvider.instance.currrentWorkbench.schemas[serviceName].requiredHeaders;
+        let requiredHeaders = FileProvider.instance.loadedWorkbenchFile?.schemas[serviceName]?.requiredHeaders;
         let headers = new Headers();
         requiredHeaders?.forEach(requiredHeader => {
             if (requiredHeader && requiredHeader.value)

@@ -12,7 +12,7 @@ export function createJavascriptTemplate(workbenchFile: ApolloWorkbenchFile) {
     const fileName = workbenchFile.graphName.replace(/[\/|\\:*?"<>]/g, " ");
     archive.append(generateJsVsCodeLaunch("Gateway"), { name: 'launch.json' });
     archive.append(generateJsgatewayPackageJson(), { name: 'package.json' });
-    archive.append(generateJsGatewayTempalte(), { name: 'index.ts' });
+    archive.append(generateJsGatewayTempalte(), { name: 'index.js' });
 
     for (var serviceName in workbenchFile.schemas) {
         let serviceFolder = `services/${serviceName}`;
@@ -21,7 +21,7 @@ export function createJavascriptTemplate(workbenchFile: ApolloWorkbenchFile) {
 
         archive.append(generateJsFederatedServerPackageJson(serviceName), { name: `${serviceFolder}/package.json` });
         archive.append(workbenchFile.schemas[serviceName].sdl, { name: `${serviceSrcFolder}/schema.graphql` });
-        archive.append(generateJsFederatedServerTemplate(port, serviceName), { name: `${serviceSrcFolder}/index.ts` });
+        archive.append(generateJsFederatedServerTemplate(port, serviceName), { name: `${serviceSrcFolder}/index.js` });
         archive.append(generateJsVsCodeLaunch(serviceName), { name: `${serviceVsCodeFolder}/launch.json` });
 
         port++;

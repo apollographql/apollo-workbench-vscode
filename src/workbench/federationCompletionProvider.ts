@@ -16,7 +16,7 @@ export const federationCompletionProvider = {
         let uri = document.uri;
         let completionItems = new Array<CompletionItem>();
 
-        if (uri.scheme == 'workbench' && uri.path.includes('schemas')) {
+        if (uri.scheme == 'workbench' && uri.path.includes('/subgraphs')) {
             let line = document.lineAt(position.line);
             let lineText = line.text;
             let serviceName = document.uri.query;
@@ -26,7 +26,7 @@ export const federationCompletionProvider = {
                 let trimmedText = lineText.trim();
                 let character = trimmedText.charAt(trimmedText.length - 1);
                 if (character == ':') {
-                    let completionTypes = await getServiceAvailableTypes(serviceName);
+                    let completionTypes = await getServiceAvailableTypes(serviceName, uri.path.split('/subgraphs')[0]);
                     for (var i = 0; i < completionTypes.length; i++) {
                         let typeName = completionTypes[i];
                         let details = '';

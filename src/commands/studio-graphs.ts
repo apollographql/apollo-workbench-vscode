@@ -12,18 +12,6 @@ export function refreshStudioGraphs() {
     StateManager.instance.apolloStudioGraphsProvider.refresh()
 }
 
-export async function createWorkbenchFromGraph(graphTreeItem: StudioGraphTreeItem) {
-    await FileProvider.instance.promptToCreateWorkbenchFileFromGraph(graphTreeItem.graphId, graphTreeItem.variants);
-}
-
-export async function createWorkbenchFromPreloaded(preloadedItem: PreloadedWorkbenchFile) {
-    await FileProvider.instance.copyPreloadedWorkbenchFile(preloadedItem.fileName);
-}
-
-export async function createWorkbenchFromGraphWithVariant(graphVariantTreeItem: StudioGraphVariantTreeItem) {
-    await FileProvider.instance.promptToCreateWorkbenchFileFromGraph(graphVariantTreeItem.graphId, [graphVariantTreeItem.graphVariant])
-}
-
 export async function loadOperations(graphTreeItem: any, graphVariant?: string) {
     StateManager.instance.setSelectedGraph(graphTreeItem.graphId, graphVariant)
 }

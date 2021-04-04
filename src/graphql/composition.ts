@@ -1,56 +1,51 @@
-import { composeAndValidate, ComposedGraphQLSchema, ServiceDefinition } from "@apollo/federation";
+import { composeAndValidate, ServiceDefinition } from "@apollo/federation";
 import { GraphQLError, parse } from "graphql";
-import { Diagnostic, DiagnosticSeverity, Range, Uri, workspace } from "vscode";
+import { Diagnostic, DiagnosticSeverity, Range, } from "vscode";
 import { compositionDiagnostics } from "../extension";
 import { StateManager } from "../workbench/stateManager";
 import { extractDefinedEntitiesByService } from "./parsers/csdlParser";
 import { FileProvider } from "../workbench/file-system/fileProvider";
-import { getRangeForFieldNamedType, getRangeForTypeDef } from "./parsers/schemaParser";
 import { WorkbenchUri } from "../workbench/file-system/WorkbenchUri";
 import { ApolloWorkbenchFile } from "../workbench/file-system/fileTypes";
 
-export async function* getComposedSchemaLogCompositionErrors() {
-    let workbenchFile = FileProvider.instance.currrentWorkbench;
-    try {
-        const result = getComposedSchema(workbenchFile).next() as any;
-        if (result) {
-            const { errors, composedSdl, schema } = result.value;
-            if (errors.length > 0) {
+export async function getComposedSchemaLogCompositionErrorsForWbFile(wbFilePath: string) {
+    let workbenchFile = FileProvider.instance.workbenchFiles.get(wbFilePath);
+    if (workbenchFile) {
+        compositionDiagnostics.clear();
+        try {
+            const { errors, composedSdl, schema } = await getComposedSchema(workbenchFile);
+            if (errors && errors.length > 0) {
                 console.log('Composition Errors Found:');
 
-                compositionDiagnostics.clear();
-
                 console.log(compositionDiagnostics.name);
-                let diagnosticsGroups = await handleErrors(workbenchFile, errors);
+                let diagnosticsGroups = handleErrors(workbenchFile, errors);
                 for (var sn in diagnosticsGroups) {
-                    if (sn == 'workbench') {
-                        compositionDiagnostics.set(Uri.file(StateManager.instance.workspaceState_selectedWorkbenchFile.path), diagnosticsGroups[sn]);
-                    } else
-                        compositionDiagnostics.set(WorkbenchUri.parse(sn), diagnosticsGroups[sn]);
+                    compositionDiagnostics.set(WorkbenchUri.parse(sn), diagnosticsGroups[sn]);
                 }
-            } else
-                compositionDiagnostics.clear();
-
-            FileProvider.instance.currrentWorkbench.composedSchema = composedSdl ?? "";
-            FileProvider.instance.saveCurrentWorkbench();
+            }
 
             if (composedSdl) {
-                FileProvider.instance.writeFile(WorkbenchUri.csdl(), Buffer.from(composedSdl), { create: true, overwrite: true })
-                await extractDefinedEntitiesByService();
-            }
+                workbenchFile.composedSchema = composedSdl ?? "";
+                await extractDefinedEntitiesByService(wbFilePath);
+            } else if (workbenchFile.composedSchema)
+                workbenchFile.composedSchema = "";
+
+            if (!workbenchFile.composedSchema) StateManager.instance.workspaceState_selectedWorkbenchAvailableEntities = {};
+
+            FileProvider.instance.saveWorkbenchFile(workbenchFile, wbFilePath);
 
             if (schema)
                 StateManager.instance.workspaceState_schema = schema;
             else
                 StateManager.instance.clearWorkspaceSchema();
         }
-    }
-    catch (err) {
-        console.log(`${err}`);
+        catch (err) {
+            console.log(`${err}`);
+        }
     }
 }
 
-export function* getComposedSchema(workbenchFile: ApolloWorkbenchFile) {
+export function getComposedSchema(workbenchFile: ApolloWorkbenchFile) {
     let sdls: ServiceDefinition[] = [];
     let errors: GraphQLError[] = [];
     for (var key in workbenchFile.schemas) {
@@ -92,37 +87,19 @@ export function* getComposedSchema(workbenchFile: ApolloWorkbenchFile) {
             errors.push(new GraphQLError(err, undefined, undefined, undefined, undefined, undefined, { noSchemaDefined: true, serviceName: key, message: err }));
         }
     }
+    if (errors.length > 0) {
+        return { errors, composedSdl: undefined, schema: undefined };
+    } else {
+        //This blocks UI thread, why I have no clue but it is overworking VS Code
+        let compositionResults = composeAndValidate(sdls);
 
-    let compositionResults: {
-        schema?: ComposedGraphQLSchema;
-        warnings?: never[];
-        errors: GraphQLError[];
-        composedSdl?: string | undefined;
-    } = { errors: [] };
-
-    try {
-        if (errors.length == 0) {
-            //Write validators for 80% composition errors
-            //Parser runs on an individual file, saves that state, run validation over state
-            //composeValidate -> remove errors that we already found
-
-            //This blocks UI thread, why I have no clue but it is overworking VS Code
-            compositionResults = composeAndValidate(sdls);
-            // Promise.resolve(composeAndValidate(sdls)) as any;
-
-            if (Object.keys(workbenchFile.schemas).length == 0)
-                compositionResults.errors = [new GraphQLError("No schemas defined in workbench yet", undefined, undefined, undefined, undefined, undefined, { noServicesDefined: true })];
-        } else {
-            errors.map(error => compositionResults.errors.push(error));
-        }
-    } catch (err) {
-        compositionResults.errors = [new GraphQLError(err.message)];
+        if (Object.keys(workbenchFile.schemas).length == 0)
+            compositionResults.errors = [new GraphQLError("No schemas defined in workbench yet", undefined, undefined, undefined, undefined, undefined, { noServicesDefined: true })];
+        return { ...compositionResults };
     }
-
-    yield { ...compositionResults };
 }
 
-export async function handleErrors(wb: ApolloWorkbenchFile, errors: GraphQLError[]) {
+export function handleErrors(wb: ApolloWorkbenchFile, errors: GraphQLError[]) {
     let schemas = wb.schemas;
     let diagnosticsGroups: { [key: string]: Diagnostic[]; } = {};
 
@@ -137,13 +114,9 @@ export async function handleErrors(wb: ApolloWorkbenchFile, errors: GraphQLError
         if (error.extensions) {
             if (error.extensions?.noServicesDefined) {
                 let emptySchemas = `"schemas":{}`;
-                // let textAtLine = await getLineText(StateManager.instance.workspaceState_selectedWorkbenchFile.path);
-                // let schemasIndex = textAtLine.indexOf(emptySchemas);
                 let schemasIndex = 0;
                 range = new Range(0, schemasIndex, 0, schemasIndex + emptySchemas.length);
             } else if (error.extensions?.noSchemaDefined || error.extensions?.invalidSchema) {
-                // let schemaFilePath = `${WorkbenchFileManager.workbenchSchemasFolderPath()}/${serviceName}.graphql`;
-
                 if (error.extensions.unexpectedName) {
                     let unexpectedName = error.extensions.unexpectedName;
                     let location = error.extensions.locations[0];
@@ -162,10 +135,10 @@ export async function handleErrors(wb: ApolloWorkbenchFile, errors: GraphQLError
 
                     range = new Range(lineNumber - 1, 0, lineNumber, 0);
                 } else {
-                    let doc = await workspace.openTextDocument(WorkbenchUri.parse(serviceName));
-                    let lastLine = doc.lineAt(doc.lineCount - 1);
+                    // let doc = await workspace.openTextDocument(WorkbenchUri.parse(serviceName));
+                    // let lastLine = doc.lineAt(doc.lineCount - 1);
 
-                    range = new Range(0, 0, lastLine.lineNumber, lastLine.text.length);
+                    // range = new Range(0, 0, lastLine.lineNumber, lastLine.text.length);
                 }
             } else if (error.extensions?.code) {
                 //We have a federation error with code
@@ -225,8 +198,8 @@ export async function handleErrors(wb: ApolloWorkbenchFile, errors: GraphQLError
                 if (schemas[sn].sdl.includes(typeToIgnore))
                     serviceName = sn;
 
-            let typeRange = getRangeForFieldNamedType(fieldType, schemas[serviceName].sdl);
-            range = new Range(typeRange.startLine, typeRange.startColumn, typeRange.endLine, typeRange.endColumn);
+            // let typeRange = getRangeForFieldNamedType(fieldType, schemas[serviceName].sdl);
+            // range = new Range(typeRange.startLine, typeRange.startColumn, typeRange.endLine, typeRange.endColumn);
         }
 
         //If we have a typeToIgnore, try getting a valid range for it
@@ -237,10 +210,10 @@ export async function handleErrors(wb: ApolloWorkbenchFile, errors: GraphQLError
                         serviceName = sn;
             }
 
-            if (schemas[serviceName]) {
-                let typeRange = getRangeForFieldNamedType(typeToIgnore, schemas[serviceName].sdl);
-                range = new Range(typeRange.startLine, typeRange.startColumn, typeRange.endLine, typeRange.endColumn);
-            }
+            // if (schemas[serviceName]) {
+            //     let typeRange = getRangeForFieldNamedType(typeToIgnore, schemas[serviceName].sdl);
+            //     range = new Range(typeRange.startLine, typeRange.startColumn, typeRange.endLine, typeRange.endColumn);
+            // }
         }
 
         //If we have multiple services, we'll need to create multiple diagnostics
@@ -251,23 +224,23 @@ export async function handleErrors(wb: ApolloWorkbenchFile, errors: GraphQLError
                     let schema = schemas[s].sdl;
                     let diagnostic = new Diagnostic(range, errorMessage, DiagnosticSeverity.Error);
                     if (!diagnosticsGroups[s]) diagnosticsGroups[s] = new Array<Diagnostic>();
-                    if (typeToIgnore && schema.includes(typeToIgnore)) {
-                        let typeRange = getRangeForTypeDef(typeToIgnore, schema);
-                        diagnostic = new Diagnostic(new Range(typeRange.startLine, typeRange.startColumn, typeRange.endLine, typeRange.endColumn), errorMessage, DiagnosticSeverity.Error);
+                    // if (typeToIgnore && schema.includes(typeToIgnore)) {
+                    //     let typeRange = getRangeForTypeDef(typeToIgnore, schema);
+                    //     diagnostic = new Diagnostic(new Range(typeRange.startLine, typeRange.startColumn, typeRange.endLine, typeRange.endColumn), errorMessage, DiagnosticSeverity.Error);
 
-                        if (diagnosticCode)
-                            diagnostic.code = diagnosticCode;
-                    }
+                    //     if (diagnosticCode)
+                    //         diagnostic.code = diagnosticCode;
+                    // }
 
                     diagnosticsGroups[s].push(diagnostic);
                 }
             })
         } else {
             let diagnostic = new Diagnostic(range, errorMessage, DiagnosticSeverity.Error);
-            if (typeToIgnore && schemas[serviceName] && schemas[serviceName].sdl.includes(typeToIgnore)) {
-                let typeRange = getRangeForTypeDef(typeToIgnore, schemas[serviceName].sdl);
-                diagnostic = new Diagnostic(new Range(typeRange.startLine, typeRange.startColumn, typeRange.endLine, typeRange.endColumn), errorMessage, DiagnosticSeverity.Error);
-            }
+            // if (typeToIgnore && schemas[serviceName] && schemas[serviceName].sdl.includes(typeToIgnore)) {
+            //     let typeRange = getRangeForTypeDef(typeToIgnore, schemas[serviceName].sdl);
+            //     diagnostic = new Diagnostic(new Range(typeRange.startLine, typeRange.startColumn, typeRange.endLine, typeRange.endColumn), errorMessage, DiagnosticSeverity.Error);
+            // }
 
             if (diagnosticCode)
                 diagnostic.code = diagnosticCode;

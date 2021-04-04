@@ -1,18 +1,11 @@
-import { serializeQueryPlan } from '@apollo/gateway';
-import { getQueryPlan, getQueryPlanner } from '@apollo/query-planner-wasm';
-import { existsSync, readdirSync, readFileSync, unlinkSync, writeFileSync } from 'fs';
+import { getQueryPlan, getQueryPlanner, prettyFormatQueryPlan } from '@apollo/query-planner';
+import { existsSync, readdirSync, readFileSync, writeFileSync } from 'fs';
 import path, { join, resolve } from 'path';
-import { commands, Disposable, EventEmitter, FileChangeEvent, FileStat, FileSystemProvider, FileType, Uri, window, Range } from 'vscode';
-import { compositionDiagnostics, outputChannel } from '../../extension';
-import { getGraphSchemasByVariant } from '../../graphql/graphClient';
-import { GetGraphSchemas_service_implementingServices_FederatedImplementingServices, GetGraphSchemas_service_implementingServices_NonFederatedImplementingService } from '../../graphql/types/GetGraphSchemas';
-import { ServerManager } from '../serverManager';
+import { commands, Disposable, EventEmitter, FileChangeEvent, FileStat, FileSystemProvider, FileType, Uri, window, ProgressLocation } from 'vscode';
 import { StateManager } from '../stateManager';
-import { getComposedSchema, getComposedSchemaLogCompositionErrors, handleErrors } from '../../graphql/composition';
+import { getComposedSchemaLogCompositionErrorsForWbFile } from '../../graphql/composition';
 import { ApolloWorkbenchFile, WorkbenchSettings } from './fileTypes';
-import { parse, print } from 'graphql';
-import { OverrideApolloGateway } from '../../graphql/graphRouter';
-import { WorkbenchUri, WorkbenchUriType } from './WorkbenchUri';
+import { parse, GraphQLSchema, extendSchema, printSchema } from 'graphql';
 
 export class FileProvider implements FileSystemProvider {
     //Singleton implementation
@@ -46,12 +39,21 @@ export class FileProvider implements FileSystemProvider {
 
         return this.workbenchFiles;
     }
-    get currrentWorkbench() {
-        return this.workbenchFiles.get(StateManager.instance.workspaceState_selectedWorkbenchFile.path) as ApolloWorkbenchFile;
+
+    private loadedWorbenchFilePath = '';
+    loadedWorkbenchFile?: ApolloWorkbenchFile;
+    loadWorkbenchForComposition(wbFilePath: string, forceCompose: boolean = false) {
+        if (this.loadedWorbenchFilePath != wbFilePath) {
+            this.loadedWorbenchFilePath = wbFilePath;
+            this.loadedWorkbenchFile = this.workbenchFiles.get(wbFilePath);
+            this.refreshComposition(wbFilePath);
+        } else if (forceCompose) {
+            this.refreshComposition(wbFilePath);
+        }
     }
-    get currrentWorkbenchSchemas() { return this.currrentWorkbench?.schemas; }
-    get currrentWorkbenchOperations() { return this.currrentWorkbench?.operations; }
-    get currrentWorkbenchOperationQueryPlans() { return this.currrentWorkbench?.queryPlans; }
+    refreshComposition(wbFilePath: string) {
+        window.setStatusBarMessage('Composition Running', getComposedSchemaLogCompositionErrorsForWbFile(wbFilePath));
+    }
 
     async promptOpenFolder() {
         let openFolder = "Open Folder";
@@ -61,487 +63,176 @@ export class FileProvider implements FileSystemProvider {
     }
 
     //Workbench File Implementations
-    async promptToCreateWorkbenchFileFromGraph(graphId: string, graphVariants: string[]) {
-        if (!StateManager.workspaceRoot) {
-            await this.promptOpenFolder();
-        } else {
-            let selectedVariant = '';
-
-            if (graphVariants.length == 0) {
-                selectedVariant = 'currrent'
-            } else if (graphVariants.length == 1) {
-                selectedVariant = graphVariants[0];
-            } else {
-                selectedVariant = await window.showQuickPick(graphVariants) ?? '';
-            }
-
-            if (selectedVariant == '') {
-                window.showInformationMessage("You must select a variant to load the graph from");
-            } else {
-                let defaultGraphName = `${graphId}-${selectedVariant}-`;
-                let graphName = await window.showInputBox({
-                    prompt: "Enter a name for your new workbench file",
-                    placeHolder: defaultGraphName,
-                    value: defaultGraphName
-                });
-                if (graphName) {
-                    let workbenchFile: ApolloWorkbenchFile = new ApolloWorkbenchFile();
-                    workbenchFile.graphName = graphName;
-
-                    let results = await getGraphSchemasByVariant(StateManager.instance.globalState_userApiKey, graphId, selectedVariant);
-                    let monolithicService = results.service?.implementingServices as GetGraphSchemas_service_implementingServices_NonFederatedImplementingService;
-                    if (monolithicService?.graphID) {
-                        workbenchFile.schemas['monolith'] = { sdl: results.service?.schema?.document, shouldMock: true, autoUpdateSchemaFromUrl: false };
-                    } else {
-                        let implementingServices = results.service?.implementingServices as GetGraphSchemas_service_implementingServices_FederatedImplementingServices;
-                        implementingServices?.services?.map(service => workbenchFile.schemas[service.name] = { sdl: service.activePartialSchema.sdl, url: service.url ?? "", shouldMock: true, autoUpdateSchemaFromUrl: false });
-                    }
-
-                    const path = resolve(StateManager.workspaceRoot, `${graphName}.apollo-workbench`);
-
-                    try {
-                        const compositionResults = getComposedSchema(workbenchFile).next().value;
-                        if (compositionResults) {
-                            if (compositionResults.composedSdl) workbenchFile.composedSchema = compositionResults.composedSdl;
-                            else await handleErrors(workbenchFile, compositionResults.errors);
-                        }
-                    } catch (err) {
-                        //Some issue happened in composition
-                        console.log(err);
-                        window.showErrorMessage(err);
-                    }
-
-                    this.workbenchFiles.set(path, workbenchFile);
-                    writeFileSync(path, JSON.stringify(workbenchFile), { encoding: "utf8" });
-
-                    StateManager.instance.localWorkbenchFilesProvider.refresh();
-                } else {
-                    window.showInformationMessage("You must provide a name to create a new workbench file")
-                }
-            }
-        }
-    }
-    async promptToCreateWorkbenchFile() {
-        if (!StateManager.workspaceRoot) {
-            await this.promptOpenFolder();
-        } else {
-            let workbenchName = await window.showInputBox({ placeHolder: "Enter name for workbench file" });
-            if (!workbenchName) {
-                const msg = 'No name was provided for the file.\n Cancelling new workbench create';
-                outputChannel.appendLine(msg);
-                window.showErrorMessage(msg);
-            } else {
-                const filePath = FileProvider.instance.createNewWorkbenchFile(workbenchName);
-                if (filePath) {
-                    let shouldLoad = await window.showInformationMessage("Would you like to load the new workbench file?", "Yes");
-                    if (shouldLoad?.toLowerCase() == "yes") {
-                        await this.loadWorkbenchFile(workbenchName, filePath);
-                    }
-                }
-            }
-        }
-    }
-    async promptToDeleteWorkbenchFile(filePath: string) {
-        let result = await window.showWarningMessage(`Are you sure you want to delete ${filePath}?`, { modal: true }, "Yes")
-        if (result?.toLowerCase() != "yes") return;
-
-        let selectedWbFile = StateManager.instance.workspaceState_selectedWorkbenchFile;
-        if (selectedWbFile && selectedWbFile.path == filePath) {
-            StateManager.instance.workspaceState_selectedWorkbenchFile = { name: "", path: "" };
-        }
-
-        this.workbenchFiles.delete(filePath);
-        unlinkSync(filePath);
-
-        StateManager.instance.localWorkbenchFilesProvider?.refresh();
-    }
-    async promptToRenameWorkbenchFile(oldGraphName: string, wbFilePath: string) {
-        let result = await window.showInputBox({ prompt: "Enter what you want to rename your graph to", value: oldGraphName });
-        if (!result) return;
-
-        let shouldSelectAfterRename = false;
-        if (result == this.currrentWorkbench?.graphName)
-            shouldSelectAfterRename = true;
-
-        let workbenchFileToRename = this.workbenchFiles.get(wbFilePath);
-        if (workbenchFileToRename) {
-            workbenchFileToRename.graphName = result;
-            writeFileSync(wbFilePath, JSON.stringify(workbenchFileToRename), { encoding: "utf8" });
-
-            if (shouldSelectAfterRename) {
-                StateManager.instance.workspaceState_selectedWorkbenchFile = { name: workbenchFileToRename.graphName, path: wbFilePath };
-            }
-
-            StateManager.instance.localWorkbenchFilesProvider?.refresh();
-        } else
-            window.showErrorMessage(`Workbench file was not found in  virtual documents: ${wbFilePath}`);
-    }
-    createNewWorkbenchFile(workbenchFileName: string, graphName?: string) {
+    createWorkbenchFileLocally(wbFile: ApolloWorkbenchFile) {
         if (StateManager.workspaceRoot) {
-            const path = `${StateManager.workspaceRoot}/${workbenchFileName}.apollo-workbench`;
-            const uri = Uri.parse(path);
-            const wbFile = new ApolloWorkbenchFile();
-            wbFile.graphName = graphName ?? workbenchFileName;
-
-            this.workbenchFiles.set(uri.fsPath, wbFile);
-            writeFileSync(uri.fsPath, JSON.stringify(wbFile));
-            StateManager.instance.localWorkbenchFilesProvider?.refresh();
-
-            return uri.fsPath;
-        }
-    }
-    async duplicateWorkbenchFile(workbenchFileName: string, filePathToDuplicate: string) {
-        if (StateManager.workspaceRoot) {
-            let newWorkbenchFileName = await window.showInputBox({ prompt: "Enter the name for new workbench file", value: `${workbenchFileName}-copy` });
-            if (newWorkbenchFileName) {
-                const newUri = Uri.parse(`${StateManager.workspaceRoot}/${newWorkbenchFileName}.apollo-workbench`);
-                const workbenchFileToDuplicate = this.workbenchFiles.get(filePathToDuplicate);
-                if (workbenchFileToDuplicate) {
-                    workbenchFileToDuplicate.graphName = newWorkbenchFileName;
-                    this.workbenchFiles.set(newUri.fsPath, workbenchFileToDuplicate);
-
-                    writeFileSync(newUri.fsPath, JSON.stringify(workbenchFileToDuplicate), { encoding: 'utf-8' });
-                } else {
-                    window.showInformationMessage(`Original workspace file not found: ${workbenchFileName}`);
-                }
-            }
-        } else {
-            window.showInformationMessage("No name entered, cancelling copy");
+            const path = resolve(StateManager.workspaceRoot, `${wbFile.graphName}.apollo-workbench`);
+            writeFileSync(path, JSON.stringify(wbFile), { encoding: "utf8" });
+            StateManager.instance.localSupergraphTreeDataProvider.refresh();
         }
     }
     async copyPreloadedWorkbenchFile(fileName: string) {
         if (!StateManager.workspaceRoot) {
             await this.promptOpenFolder();
         } else {
-            let file = `${fileName}.apollo-workbench`;
-            let preloadFileDir = join(__dirname, '..', '..', '..', 'media', `preloaded-files`, file);
-            let workbenchFile = JSON.parse(readFileSync(preloadFileDir, { encoding: 'utf-8' })) as ApolloWorkbenchFile;
-            workbenchFile.graphName = fileName;
-            this.workbenchFiles.set(preloadFileDir, workbenchFile);
-            await this.duplicateWorkbenchFile(fileName, preloadFileDir);
-            this.workbenchFiles.delete(preloadFileDir);
-            StateManager.instance.localWorkbenchFilesProvider?.refresh();
-        }
-    }
-    async loadWorkbenchFile(workbenchFileName: string, filePath: string) {
-        window.setStatusBarMessage("Loading Workbench File", 500);
-        ServerManager.instance.stopMocks();
-        let isCancelled = false;
-        let lastEditor: any;
-        while (window.activeTextEditor && window.visibleTextEditors.length > 0 && !isCancelled) {
-            if (lastEditor == window.activeTextEditor) {
-                let cancelledMessage = `Cancelled Loading WB:${workbenchFileName}`;
-                console.log(cancelledMessage);
-                window.setStatusBarMessage(cancelledMessage, 3000);
-                return;
-            } else {
-                lastEditor = window.activeTextEditor;
-                for (var i = 0; i < window.visibleTextEditors.length; i++) {
-                    const editor = window.visibleTextEditors[i];
-                    if (editor == window.activeTextEditor) {
-                        await commands.executeCommand('workbench.action.closeActiveEditor');
-                        continue;
-                    }
-                }
-            }
-        }
-        compositionDiagnostics.clear();
-        if (this.workbenchFiles.get(filePath)) {
-            StateManager.instance.workspaceState_selectedWorkbenchFile = { name: workbenchFileName, path: filePath };
+            const preloadFileDir = join(__dirname, '..', '..', '..', 'media', `preloaded-files`, `${fileName}.apollo-workbench`);
+            const workbenchFile = JSON.parse(readFileSync(preloadFileDir, { encoding: 'utf-8' })) as ApolloWorkbenchFile;
 
-            //TODO: figure out blocking UI thread
-            //  Ruled out try/catch blocks further down the stack
-            //  Seems that composeAndValidate(sdls) is the culprit
-            getComposedSchemaLogCompositionErrors().next();
-        } else {
-            window.showErrorMessage(`Worbench file ${workbenchFileName} does not exist at ${filePath}`);
-            StateManager.instance.localWorkbenchFilesProvider.refresh();
+            this.createWorkbenchFileLocally(workbenchFile);
         }
     }
-    saveCurrentWorkbench(shouldRevertFile = true) {
-        writeFileSync(StateManager.instance.workspaceState_selectedWorkbenchFile.path, JSON.stringify(this.currrentWorkbench), { encoding: "utf8" });
-        StateManager.instance.currentWorkbenchSchemasProvider.refresh();
-        StateManager.instance.currentWorkbenchOperationsProvider.refresh();
-        window.setStatusBarMessage("Current Workbench Saved", 500);
-
-        if (shouldRevertFile)
-            commands.executeCommand('workbench.action.files.revert');
-    }
-    //Schema File Implementations
-    async openSchema(serviceName: string) {
-        await window.showTextDocument(WorkbenchUri.parse(serviceName));
-    }
-    async promptToAddSchema() {
-        let serviceName = await window.showInputBox({ placeHolder: "Enter a unique name for the schema/service" }) ?? "";
-        if (!serviceName) {
-            const message = `Create schema cancelled - No name entered.`;
-            outputChannel.appendLine(message);
-            window.setStatusBarMessage(message, 3000);
-        } else {
-            await this.addSchema(serviceName);
-        }
-    }
-    async addSchema(serviceName: string) {
-        this.currrentWorkbenchSchemas[serviceName] = { shouldMock: true, sdl: "", autoUpdateSchemaFromUrl: false };
-        this.saveCurrentWorkbench();
-        await this.openSchema(serviceName);
-    }
-    async renameSchema(serviceToRename: string) {
-        let newServiceName = await window.showInputBox({ placeHolder: "Enter a unique name for the schema/service" }) ?? "";
-        if (!newServiceName) {
-            const message = `Renaming schema cancelled ${serviceToRename} - No new name entered.`;
-            outputChannel.appendLine(message);
-            window.setStatusBarMessage(message, 3000);
-        } else if (this.currrentWorkbenchSchemas[newServiceName]) {
-            window.showErrorMessage(`Rename cancelled, there is already another service named ${newServiceName}`)
-        } else {
-            await this.rename(WorkbenchUri.parse(serviceToRename), WorkbenchUri.parse(newServiceName), { overwrite: true });
-        }
-    }
-    async promptServiceUrl(serviceToUpdateUrl: string) {
-        let serviceUrl = await window.showInputBox({ placeHolder: "Enter a the url for the schema/service" }) ?? "";
-        if (!serviceUrl) {
-            const message = `Set service URL cancelled for ${serviceToUpdateUrl} - No URL entered.`;
-            outputChannel.appendLine(message);
-            window.setStatusBarMessage(message, 3000);
-        } else {
-            if (this.currrentWorkbenchSchemas[serviceToUpdateUrl]) {
-                this.currrentWorkbenchSchemas[serviceToUpdateUrl].url = serviceUrl;
-                this.saveCurrentWorkbench();
-            }
-        }
-    }
-    shouldMockSchema(serviceToMock: string) {
-        if (this.currrentWorkbenchSchemas[serviceToMock]) {
-            this.currrentWorkbenchSchemas[serviceToMock].shouldMock = true;
-            this.saveCurrentWorkbench();
-        }
-    }
-    async disableMockSchema(serviceToMock: string) {
-        if (this.currrentWorkbenchSchemas[serviceToMock]) {
-            if (!this.currrentWorkbenchSchemas[serviceToMock].url)
-                await this.promptServiceUrl(serviceToMock);
-
-            if (this.currrentWorkbenchSchemas[serviceToMock].url) {
-                this.currrentWorkbenchSchemas[serviceToMock].shouldMock = false;
-                this.saveCurrentWorkbench();
-            } else {
-                window.showErrorMessage("You must set a url for the service if you want to disable mocks. The URL will be used to direct traffic and update the schema in the workbench file.");
-            }
-        }
-    }
-    async updateSchemaFromUrl(serviceToUpdateUrl: string) {
-        if (StateManager.settings_tlsRejectUnauthorized) process.env.NODE_TLS_REJECT_UNAUTHORIZED = '';
-        else process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
-
-        if (!this.currrentWorkbenchSchemas[serviceToUpdateUrl].url) {
-            await this.promptServiceUrl(serviceToUpdateUrl);
-        }
-
-        if (this.currrentWorkbenchSchemas[serviceToUpdateUrl].url) {
-            const sdl = await OverrideApolloGateway.getTypeDefs(this.currrentWorkbenchSchemas[serviceToUpdateUrl].url ?? "", serviceToUpdateUrl);
-            if (sdl) {
-                this.currrentWorkbenchSchemas[serviceToUpdateUrl].sdl = sdl;
-                this.saveCurrentWorkbench();
-                let editor = await window.showTextDocument(WorkbenchUri.parse(serviceToUpdateUrl, WorkbenchUriType.SCHEMAS));
-                if (editor) {
-                    const document = editor.document;
-                    await editor.edit((editor) => {
-                        editor.replace(new Range(0, 0, document.lineCount, 0), sdl);
-                    });
-                    await document.save();
-                }
-            }
-        } else {//No URL entered for schema
-            window.showErrorMessage("You must set a url for the service if you want to update the schema from it.");
-        }
-    }
-    //Operation File Implementations
-    async openOperation(operationName: string) {
-        await window.showTextDocument(WorkbenchUri.parse(operationName, WorkbenchUriType.QUERIES));
-    }
-    async promptToAddOperation() {
-        let operationName = await window.showInputBox({ placeHolder: "Enter a unique name for the operation" }) ?? "";
-        if (!operationName) {
-            const message = `Create operation cancelled - No name entered.`;
-            outputChannel.appendLine(message);
-            window.setStatusBarMessage(message, 3000);
-        } else {
-            await FileProvider.instance.addOperation(operationName);
-        }
-    }
-    async addOperation(operationName: string, operationSignature?: string) {
-        if (!operationSignature) operationSignature = `query ${operationName} {\n\t\n}`
-        else operationSignature = print(parse(operationSignature));
-
-        this.currrentWorkbenchOperations[operationName] = operationSignature;
-        await this.writeFile(WorkbenchUri.parse(operationName, WorkbenchUriType.QUERIES), Buffer.from(operationSignature), { create: true, overwrite: true });
-        await this.openOperation(operationName);
-    }
-    async renameOperation(operationToRename: string) {
-        let newOperationName = await window.showInputBox({ placeHolder: "Enter a unique name for the schema/service" }) ?? "";
-        if (!newOperationName) {
-            const message = `Renaming schema cancelled for ${operationToRename} - No new name entered.`;
-            outputChannel.appendLine(message);
-            window.setStatusBarMessage(message, 3000);
-        } else if (this.currrentWorkbenchOperations[newOperationName]) {
-            window.showErrorMessage(`Rename cancelled, there is already another operation named ${newOperationName}`)
-        } else {
-            await this.rename(WorkbenchUri.parse(operationToRename, WorkbenchUriType.QUERIES), WorkbenchUri.parse(newOperationName, WorkbenchUriType.QUERIES), { overwrite: true });
-        }
-    }
-    //Operation Query Plan File Implementations
-    async openOperationQueryPlan(operationName: string) {
-        await window.showTextDocument(WorkbenchUri.parse(operationName, WorkbenchUriType.QUERY_PLANS));
-    }
-    generateQueryPlan(operationName: string) {
-        if (!this.currrentWorkbench.composedSchema) return;
-
-        try {
-            const operation = this.currrentWorkbenchOperations[operationName];
-            const queryPlanPointer = getQueryPlanner(this.currrentWorkbench.composedSchema);
-            const queryPlan = getQueryPlan(queryPlanPointer, operation, { autoFragmentization: false });
-
-            this.currrentWorkbench.queryPlans[operationName] = serializeQueryPlan(queryPlan);
-        } catch (err) {
-            console.log(err);
-        }
+    saveWorkbenchFile(wbFile: ApolloWorkbenchFile, wbFilePath: string, refreshTree: boolean = true) {
+        writeFileSync(wbFilePath, JSON.stringify(wbFile), { encoding: "utf8" });
+        if (refreshTree) StateManager.instance.localSupergraphTreeDataProvider.refresh();
     }
     //FileSystemProvider Implementations
     //File chagnes are watched at the `vscode.workspace.onDidChangeTextDocument` level
     readFile(uri: Uri): Uint8Array | Thenable<Uint8Array> {
-        if (this.currrentWorkbench) {
-            if (uri.path.includes('/schemas')) {
-                const serviceName = uri.query;
-                if (!this.currrentWorkbenchSchemas[serviceName]) throw new Error(`Trying to read schema file for ${serviceName}, but it isn't in the current workbench file`);
-
-                const schema = this.currrentWorkbenchSchemas[serviceName].sdl;
-                return Buffer.from(schema);
-            } else if (uri.path.includes('/settings-schemas')) {
-                const serviceName = uri.query;
-                if (!this.currrentWorkbenchSchemas[serviceName]) throw new Error(`Trying to read schema file for ${serviceName}, but it isn't in the current workbench file`);
-
-                const service = this.currrentWorkbenchSchemas[serviceName];
+        const name = uri.query;
+        if (uri.path.includes('/subgraphs')) {
+            const wbFile = this.workbenchFiles.get(uri.fsPath.split('/subgraphs')[0]);
+            return Buffer.from(wbFile?.schemas[name].sdl ?? "");
+        } else if (uri.path.includes('/queries')) {
+            const wbFilePath = uri.fsPath.split('/queries')[0];
+            const wbFile = this.workbenchFiles.get(wbFilePath);
+            return Buffer.from(wbFile?.operations[name] ?? "");
+        } else if (uri.path.includes('/queryplans')) {
+            const wbFilePath = uri.fsPath.split('/queryplans')[0];
+            const wbFile = this.workbenchFiles.get(wbFilePath);
+            return Buffer.from(wbFile?.queryPlans[name] ?? "");
+        } else if (uri.path.includes('/subgraph-settings')) {
+            const wbFilePath = uri.fsPath.split('/subgraph-settings')[0];
+            const wbFile = this.workbenchFiles.get(wbFilePath);
+            const subgraph = wbFile?.schemas[name];
+            if (subgraph) {
                 let settings: WorkbenchSettings = {
-                    url: service.url ?? '',
-                    requiredHeaders: service.requiredHeaders ?? [],
+                    url: subgraph?.url ?? '',
+                    requiredHeaders: subgraph?.requiredHeaders ?? [],
                     mocks: {
-                        shouldMock: service.shouldMock ?? true,
-                        autoUpdateSchemaFromUrl: service.autoUpdateSchemaFromUrl ?? false
+                        shouldMock: subgraph?.shouldMock ?? true,
+                        autoUpdateSchemaFromUrl: subgraph?.autoUpdateSchemaFromUrl ?? false
                     }
                 };
 
                 return Buffer.from(JSON.stringify(settings, null, 2));
+            } else return Buffer.from(JSON.stringify(new WorkbenchSettings(), null, 2));
+        } else if (uri.path.includes('/supergraph-schema')) {
+            const wbFilePath = uri.fsPath.split('/supergraph-schema')[0];
+            const wbFile = this.workbenchFiles.get(wbFilePath);
+            return Buffer.from(wbFile?.composedSchema ?? "");
+        } else if (uri.path.includes('/supergraph-api-schema')) {
+            const wbFilePath = uri.fsPath.split('/supergraph-api-schema')[0];
+            const wbFile = this.workbenchFiles.get(wbFilePath);
+            const schema = new GraphQLSchema({
+                query: undefined,
+            });
+            const parsed = parse(wbFile?.composedSchema ?? "");
+            const finalSchema = extendSchema(schema, parsed, { assumeValidSDL: true });
+
+            return Buffer.from(printSchema(finalSchema));
+        }
+
+        throw new Error('Unhandled workbench URI');
+    }
+    getPath(path: string) {
+        if (path.includes('/subgraphs')) {
+            return path.split('/subgraphs')[0];
+        } else if (path.includes('/queries')) {
+            return path.split('/queries')[0];
+        } else if (path.includes('/queryplans')) {
+            return path.split('/queryplans')[0];
+        } else if (path.includes('/subgraph-settings')) {
+            return path.split('/subgraph-settings')[0];
+        } else if (path.includes('/mocks')) {
+            return path.split('/mocks')[0];
+        }
+        throw new Error('Unknown path type')
+    }
+
+    writeFile(uri: Uri, content: Uint8Array, options: { create: boolean; overwrite: boolean; }): void | Thenable<void> {
+        //Supergraph schema and queryplans are read-only
+        if (uri.fsPath.includes('supergraph-schema') || uri.fsPath.includes('supergraph-api-schema') || uri.fsPath.includes('queryplans')) return;
+
+        const name = uri.query;
+        const wbFilePath = this.getPath(uri.fsPath);
+        const wbFile = this.workbenchFiles.get(wbFilePath);
+        const stringContent = content.toString();
+
+        if (wbFile) {
+            let shouldRecompose = false;
+            if (uri.path.includes('/subgraphs')) {
+                if (wbFile.schemas[name].sdl != stringContent) {
+                    wbFile.schemas[name].sdl = stringContent;
+                    shouldRecompose = true;
+                }
             } else if (uri.path.includes('/queries')) {
-                const operationName = uri.query;
-                const operation = this.currrentWorkbenchOperations[operationName];
-                return Buffer.from(operation);
-            } else if (uri.path.includes('/queryplans')) {
-                const operationName = uri.query;
-                let queryPlan = this.currrentWorkbenchOperationQueryPlans[operationName];
-                if (queryPlan)
-                    return Buffer.from(queryPlan);
-                else {
-                    this.generateQueryPlan(operationName);
-                    queryPlan = this.currrentWorkbenchOperationQueryPlans[operationName];
-                    if (queryPlan) {
-                        this.saveCurrentWorkbench();
-                        return Buffer.from(queryPlan);
+                wbFile.operations[name] = stringContent;
+
+                if (wbFile.composedSchema) {
+                    try {
+                        const operation = wbFile.operations[name];
+                        const queryPlanPointer = getQueryPlanner(wbFile.composedSchema);
+                        const queryPlan = getQueryPlan(queryPlanPointer, operation, { autoFragmentization: false });
+
+                        wbFile.queryPlans[name] = prettyFormatQueryPlan(queryPlan);
+                    } catch (err) {
                     }
                 }
-
-                return Buffer.from('Either there is no valid composed schema or the query is not valid\nUnable to generate query plan');
-            } else if (uri.path == '/csdl.graphql') {
-                return Buffer.from(this.currrentWorkbench.composedSchema);
-            } else if (uri.path.includes('mocks.js')) {
-                const serviceName = uri.query;
-                if (!this.currrentWorkbenchSchemas[serviceName]) throw new Error(`Trying to read schema file for ${serviceName}, but it isn't in the current workbench file`);
-
-                const customMocks = this.currrentWorkbenchSchemas[serviceName].customMocks ?? "const faker = require('faker')\n\nconst mocks = {\n\n}\nmodule.exports = mocks;";
-
-                return Buffer.from(customMocks);
-            }
-        }
-        throw new Error('No workbench currently selected');
-    }
-    writeFile(uri: Uri, content: Uint8Array, options: { create: boolean; overwrite: boolean; }): void | Thenable<void> {
-        if (this.currrentWorkbench && uri.scheme == 'workbench' && !uri.path.includes('queryplans')) {
-            const stringContent = content.toString();
-            if (uri.path.includes('/schemas')) {
-                const serviceName = uri.query;
-                this.currrentWorkbenchSchemas[serviceName].sdl = stringContent;
-
-                //Come up with your list of things to be used in linting
-
-                //Parse individual file
-                //  This should include the 3 criteria:
-                //      1. missing @external
-                //      2. extending a type with no @key defined
-                //      3. mismastched value types/enums
-                //If Individual file is valid sdl, then try composition
-                //  Remove individual parse errors from composition errors
-                getComposedSchemaLogCompositionErrors().next();
-            } else if (uri.path.includes('/settings-schemas')) {
-                const serviceName = uri.query;
+            } else if (uri.path.includes('/subgraph-settings')) {
                 const savedSettings: WorkbenchSettings = JSON.parse(stringContent);
-
-                this.currrentWorkbenchSchemas[serviceName].url = savedSettings.url;
-                this.currrentWorkbenchSchemas[serviceName].shouldMock = savedSettings.mocks.shouldMock;
-                this.currrentWorkbenchSchemas[serviceName].autoUpdateSchemaFromUrl = savedSettings.mocks.autoUpdateSchemaFromUrl;
-                this.currrentWorkbenchSchemas[serviceName].requiredHeaders = savedSettings.requiredHeaders;
-            } else if (uri.path.includes('/queries')) {
-                const operationName = uri.query;
-                this.currrentWorkbenchOperations[operationName] = stringContent;
-                this.generateQueryPlan(operationName);
-            } else if (uri.path == '/csdl.graphql') {
-                this.currrentWorkbench.composedSchema = stringContent;
-            } else if (uri.path.includes('mocks.js')) {
-                const serviceName = uri.query;
-                this.currrentWorkbenchSchemas[serviceName].customMocks = stringContent;
-            } else {
-                throw new Error('Unknown uri format')
+                wbFile.schemas[name].url = savedSettings.url;
+                wbFile.schemas[name].shouldMock = savedSettings.mocks.shouldMock;
+                wbFile.schemas[name].autoUpdateSchemaFromUrl = savedSettings.mocks.autoUpdateSchemaFromUrl;
+                wbFile.schemas[name].requiredHeaders = savedSettings.requiredHeaders;
+            } else if (uri.path.includes('/mocks')) {
+                wbFile.schemas[name].customMocks = stringContent;
+            } else if (uri.path.includes('/supergraph-schema')) {
+                wbFile.composedSchema = stringContent;
+            } else if (uri.path.includes('/queryplans')) {
+                wbFile.queryPlans[name] = stringContent;
             }
 
-            this.saveCurrentWorkbench();
-        }
+            this.saveWorkbenchFile(wbFile, wbFilePath);
+            if (shouldRecompose)
+                this.loadWorkbenchForComposition(wbFilePath, true);
+        } else throw new Error('Workbench file was unable to load');
     }
     delete(uri: Uri, options: { recursive: boolean; }): void | Thenable<void> {
-        if (this.currrentWorkbench && uri.scheme == 'workbench') {
-            if (uri.path.includes('/schemas')) {
-                const serviceName = uri.query;
-                delete this.currrentWorkbenchSchemas[serviceName];
-            } else if (uri.path.includes('/queries')) {
-                const operationName = uri.query;
-                delete this.currrentWorkbenchOperations[operationName];
-            } else {
-                throw new Error('Unknown uri format')
-            }
+        // if (uri.scheme == 'workbench') {
+        //     if (uri.path.includes('/schemas')) {
+        //         const serviceName = uri.query;
+        //         delete this.currrentWorkbenchSchemas[serviceName];
+        //     } else if (uri.path.includes('/queries')) {
+        //         const operationName = uri.query;
+        //         delete this.currrentWorkbenchOperations[operationName];
+        //     } else {
+        //         throw new Error('Unknown uri format')
+        //     }
 
-            window.showTextDocument(uri, { preview: true, preserveFocus: false })
-                .then(() => commands.executeCommand('workbench.action.closeActiveEditor'));
+        //     window.showTextDocument(uri, { preview: true, preserveFocus: false })
+        //         .then(() => commands.executeCommand('workbench.action.closeActiveEditor'));
 
-            this.saveCurrentWorkbench(false);
-        }
+        //     // this.saveCurrentWorkbench(false);
+        // }
     }
     rename(oldUri: Uri, newUri: Uri, options: { overwrite: boolean; }): void | Thenable<void> {
-        if (this.currrentWorkbench && oldUri.scheme == 'workbench' && newUri.scheme == 'workbench') {
-            const oldName = oldUri.query;
-            const newName = newUri.query;
+        // if (this.currrentWorkbench && oldUri.scheme == 'workbench' && newUri.scheme == 'workbench') {
+        //     const oldName = oldUri.query;
+        //     const newName = newUri.query;
 
-            if (oldUri.path.includes('/schemas')) {
-                this.currrentWorkbenchSchemas[newName] = this.currrentWorkbenchSchemas[oldName];
-                delete this.currrentWorkbenchSchemas[oldName];
+        //     if (oldUri.path.includes('/schemas')) {
+        //         this.currrentWorkbenchSchemas[newName] = this.currrentWorkbenchSchemas[oldName];
+        //         delete this.currrentWorkbenchSchemas[oldName];
 
-                getComposedSchemaLogCompositionErrors().next();
-            } else if (oldUri.path.includes('/queries')) {
-                this.currrentWorkbenchOperations[newName] = this.currrentWorkbenchOperations[oldName];
-                delete this.currrentWorkbenchOperations[oldName];
-            } else {
-                throw new Error('Unknown uri format')
-            }
+        //         // getComposedSchemaLogCompositionErrors().next();
+        //     } else if (oldUri.path.includes('/queries')) {
+        //         this.currrentWorkbenchOperations[newName] = this.currrentWorkbenchOperations[oldName];
+        //         delete this.currrentWorkbenchOperations[oldName];
+        //     } else {
+        //         throw new Error('Unknown uri format')
+        //     }
 
-            this.saveCurrentWorkbench();
-        }
+        //     // this.saveCurrentWorkbench();
+        // }
     }
     watch(uri: Uri, options: { recursive: boolean; excludes: string[]; }): Disposable {
         return new Disposable(() => { });
@@ -580,7 +271,8 @@ export class FileProvider implements FileSystemProvider {
                 if (dirent.isDirectory() && dirent.name != 'node_modules') {
                     directories.push(directoryPath);
                 } else if (dirent.name.includes('.apollo-workbench')) {
-                    workbenchFiles.push(Uri.parse(directoryPath));
+                    const uri = Uri.parse(directoryPath);
+                    workbenchFiles.push(uri);
                 }
             }
 

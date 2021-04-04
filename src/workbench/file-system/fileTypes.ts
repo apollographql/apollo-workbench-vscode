@@ -14,19 +14,20 @@ export interface WorkbenchSchema {
 }
 
 export class ApolloWorkbenchFile {
-    graphName: string = "";
     operations: { [opName: string]: string } = {};
     queryPlans: { [opName: string]: string } = {};
     schemas: { [serviceName: string]: WorkbenchSchema } = {};
     composedSchema: string = "";
+
+    constructor(public graphName: string) { }
 }
 
 ///This is the user facing settings displayed
-export interface WorkbenchSettings {
-    url: string;
+export class WorkbenchSettings {
+    url: string = "";
     requiredHeaders?: [RequiredHeader?];
     mocks: {
         shouldMock: boolean;
         autoUpdateSchemaFromUrl: boolean;
-    };
+    } = { shouldMock: true, autoUpdateSchemaFromUrl: false };
 }

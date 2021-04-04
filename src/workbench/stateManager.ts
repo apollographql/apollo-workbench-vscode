@@ -1,12 +1,10 @@
 import { GraphQLSchema } from "graphql";
 import { ExtensionContext, window, workspace, StatusBarItem } from "vscode";
 import { getUserMemberships } from "../graphql/graphClient";
-import { CurrentWorkbenchOpsTreeDataProvider } from "./tree-data-providers/currentWorkbenchOpsTreeDataProvider";
-import { CurrentWorkbenchSchemasTreeDataProvider } from "./tree-data-providers/currentWorkbenchSchemasTreeDataProvider";
 import { FieldWithType } from "./federationCompletionProvider";
-import { LocalWorkbenchFilesTreeDataProvider, WorkbenchFile } from "./tree-data-providers/localWorkbenchFilesTreeDataProvider";
 import { ApolloStudioGraphsTreeDataProvider } from "./tree-data-providers/apolloStudioGraphsTreeDataProvider";
 import { ApolloStudioGraphOpsTreeDataProvider } from "./tree-data-providers/apolloStudioGraphOpsTreeDataProvider";
+import { LocalSupergraphTreeDataProvider } from "./tree-data-providers/superGraphTreeDataProvider";
 
 export class StateManager {
     context?: ExtensionContext;
@@ -26,14 +24,18 @@ export class StateManager {
         this._instance = new StateManager(context);
     }
 
-    localWorkbenchFilesProvider: LocalWorkbenchFilesTreeDataProvider = new LocalWorkbenchFilesTreeDataProvider(workspace.rootPath ?? ".");;
-    currentWorkbenchSchemasProvider: CurrentWorkbenchSchemasTreeDataProvider = new CurrentWorkbenchSchemasTreeDataProvider(workspace.rootPath ?? ".");
-    currentWorkbenchOperationsProvider: CurrentWorkbenchOpsTreeDataProvider = new CurrentWorkbenchOpsTreeDataProvider(workspace.rootPath ?? ".");;
     apolloStudioGraphsProvider: ApolloStudioGraphsTreeDataProvider = new ApolloStudioGraphsTreeDataProvider(workspace.rootPath ?? ".");;
     apolloStudioGraphOpsProvider: ApolloStudioGraphOpsTreeDataProvider = new ApolloStudioGraphOpsTreeDataProvider();
+    localSupergraphTreeDataProvider: LocalSupergraphTreeDataProvider = new LocalSupergraphTreeDataProvider();
 
     get extensionGlobalStoragePath(): string | undefined {
-        return this.context?.globalStoragePath;
+        try {
+            //Running version 1.49+
+            return this.context?.globalStorageUri?.fsPath;
+        } catch (err) {
+            //Running version 1.48 or lower
+            return this.context?.globalStoragePath;
+        }
     }
 
     static get workspaceRoot(): string | undefined {
@@ -86,7 +88,7 @@ export class StateManager {
 
         this.apolloStudioGraphsProvider.refresh();
         this.apolloStudioGraphOpsProvider.refresh();
-        this.localWorkbenchFilesProvider.refresh();
+        this.localSupergraphTreeDataProvider.refresh();
     }
     get globalState_selectedApolloAccount() {
         if (StateManager.settings_apolloOrg) return StateManager.settings_apolloOrg;
@@ -117,17 +119,6 @@ export class StateManager {
     }
     set workspaceState_selectedWorkbenchAvailableEntities(entities: { [serviceName: string]: { type: string, keys: { [key: string]: FieldWithType[] } }[] }) {
         this.context?.workspaceState.update('selectedWorkbenchAvailableEntities', entities);
-    }
-    get workspaceState_selectedWorkbenchFile() {
-        return this.context?.workspaceState.get('selectedWbFile') as WorkbenchFile;
-    }
-    set workspaceState_selectedWorkbenchFile(wbFile: WorkbenchFile) {
-        this.context?.workspaceState.update("selectedWbFile", wbFile);
-        this.clearWorkspaceSchema();
-
-        this.workspaceState_selectedWorkbenchAvailableEntities = {};
-        this.currentWorkbenchSchemasProvider.refresh();
-        this.currentWorkbenchOperationsProvider.refresh();
     }
     clearWorkspaceSchema() {
         this.context?.workspaceState.update("schema", undefined);
