@@ -30,7 +30,7 @@ export function run(): Promise<void> {
 
             try {
                 // Run the mocha test
-                mocha.ui('bdd').run(failures => {
+                mocha.run(failures => {
                     if (failures > 0) {
                         e(new Error(`${failures} tests failed.`));
                     } else {
@@ -38,7 +38,7 @@ export function run(): Promise<void> {
                     }
                 });
             } catch (err) {
-                console.error(err);
+                console.error(`Mocha Run Error: ${err}`);
                 e(err);
             }
         });
