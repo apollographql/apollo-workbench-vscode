@@ -20,6 +20,7 @@ export async function testRunner(loadFolder: boolean = false) {
 
         return testResults;
     } catch (err) {
+        console.error(err);
         console.error('Failed to run tests');
         process.exit(1);
     }
