@@ -2,7 +2,6 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import { readdirSync, unlinkSync } from 'fs';
 import { FileProvider } from '../../workbench/file-system/fileProvider';
-import { StateManager } from '../../workbench/stateManager';
 
 export const activateExtension = async () => {
     return new Promise<void>(async (resolve) => {
@@ -23,11 +22,9 @@ export function cleanupWorkbenchFiles() {
                 unlinkSync(path.resolve(directory, dirent.name));
         }
     } catch (err) {
-        console.log(err);
+        console.log(`Cleanup Error: ${err}`);
     }
     FileProvider.instance.workbenchFiles.clear();
-    if (StateManager.instance.context)
-        StateManager.instance.context.workspaceState.update("selectedWbFile", "");
 }
 
 
