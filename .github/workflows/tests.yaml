@@ -29,14 +29,14 @@ jobs:
           ref: ${{ github.ref }}
 
       #Run project tests
-      - run: npm install
-      - run: xvfb-run -a npm run test:ci
-        env:
-          GITHUB_SHA: ${{ github.sha }}
-          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
-        if: runner.os == 'Linux'
-      - run: npm run test:ci
-        env:
-          GITHUB_SHA: ${{ github.sha }}
-          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
-        if: runner.os != 'Linux'
+      # - run: npm install
+      # - run: xvfb-run -a npm run test:ci
+      #   env:
+      #     GITHUB_SHA: ${{ github.sha }}
+      #     GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+      #   if: runner.os == 'Linux'
+      # - run: npm run test:ci
+      #   env:
+      #     GITHUB_SHA: ${{ github.sha }}
+      #     GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+      #   if: runner.os != 'Linux'

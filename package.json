@@ -3,7 +3,7 @@
   "displayName": "Apollo Workbench",
   "description": "Tooling to help you develop and mock federated schemas using Apollo Federation",
   "icon": "media/workbench.png",
-  "version": "0.3.6",
+  "version": "1.0.0",
   "publisher": "ApolloGraphQL",
   "engines": {
     "vscode": "^1.34.0"
@@ -12,7 +12,7 @@
     "Other"
   ],
   "activationEvents": [
-    "onView:current-workbench-schemas"
+    "onView:local-supergraph-designs"
   ],
   "main": "./out/extension.js",
   "scripts": {
@@ -49,7 +49,7 @@
     "@apollographql/graphql-language-service-interface": "^2.0.2",
     "@types/archiver": "^5.1.0",
     "apollo-language-server": "^1.24.1",
-    "apollo-server": "^2.19.0",
+    "apollo-server": "^2.22.2",
     "apollo-server-plugin-operation-registry": "^0.7.2",
     "archiver": "^5.2.0",
     "chokidar": "^3.4.3",
@@ -159,6 +159,97 @@
     },
     "commands": [
       {
+        "command": "local-supergraph-designs.refresh",
+        "title": "Refresh local subgraph designs",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "local-supergraph-designs.editSubgraph",
+        "title": "Edit Subgraph",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "local-supergraph-designs.addSubgraph",
+        "title": "Add New Subgrraph to Design",
+        "icon": "$(add)"
+      },
+      {
+        "command": "local-supergraph-designs.newDesign",
+        "title": "Create New Supergraph Design",
+        "icon": "$(add)"
+      },
+      {
+        "command": "local-supergraph-designs.viewSettings",
+        "title": "View Settings for Service",
+        "icon": "$(gear)"
+      },
+      {
+        "command": "local-supergraph-designs.viewSupergraphSchema",
+        "title": "View Supergraph Schema"
+      },
+      {
+        "command": "local-supergraph-designs.viewSupergraphApiSchema",
+        "title": "View API Schema for Supergraph"
+      },
+      {
+        "command": "local-supergraph-designs.exportSupergraphSchema",
+        "title": "Export Supergraph Schema"
+      },
+      {
+        "command": "local-supergraph-designs.exportSupergraphApiSchema",
+        "title": "Export API Schema for Supergraph"
+      },
+      {
+        "command": "local-supergraph-designs.editOperation",
+        "title": "Edit Operation"
+      },
+      {
+        "command": "local-supergraph-designs.addOperation",
+        "title": "Add Operation",
+        "icon": "$(add)"
+      },
+      {
+        "command": "local-supergraph-designs.viewQueryPlan",
+        "title": "View Query Plan",
+        "icon": "$(output)"
+      },
+      {
+        "command": "local-supergraph-designs.deleteSubgraph",
+        "title": "Delete Subgraph",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "local-supergraph-designs.deleteOperation",
+        "title": "Delete Operation",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "local-supergraph-designs.startMocks",
+        "title": "Start Supergraph Mocks",
+        "icon": "$(play)"
+      },
+      {
+        "command": "local-supergraph-designs.stopMocks",
+        "title": "Stop Supergraph Mocks",
+        "icon": "$(debug-stop)"
+      },
+      {
+        "command": "local-supergraph-designs.updateSubgraphSchemaFromURL",
+        "title": "Update Subgraph Schema from URL"
+      },
+      {
+        "command": "local-supergraph-designs.viewSubgraphCustomMocks",
+        "title": "View Subgraph Custom Mocks"
+      },
+      {
+        "command": "local-supergraph-designs.exportSubgraphSchema",
+        "title": "Export Subgraph Schema"
+      },
+      {
+        "command": "local-supergraph-designs.exportSubgraphResolvers",
+        "title": "Export Subgraph Entity Resolvers"
+      },
+      {
         "command": "extension.gettingStarted",
         "title": "Getting Started"
       },
@@ -166,12 +257,6 @@
         "command": "extension.openFolder",
         "title": "Open Folder",
         "category": "Apollo Workbench"
-      },
-      {
-        "command": "extension.newWorkbench",
-        "title": "Create New Workbench",
-        "category": "Apollo Workbench",
-        "icon": "$(add)"
       },
       {
         "command": "extension.enterStudioApiKey",
@@ -186,169 +271,6 @@
         "icon": "$(log-out)"
       },
       {
-        "command": "extension.startMocks",
-        "title": "Start Mocked Servers",
-        "category": "Apollo Workbench",
-        "icon": "$(play)",
-        "enablement": "true"
-      },
-      {
-        "command": "extension.stopMocks",
-        "title": "Stop Mocked Servers",
-        "category": "Apollo Workbench",
-        "icon": "$(debug-stop)"
-      },
-      {
-        "command": "local-workbench-files.loadFile",
-        "title": "Load Workbench File",
-        "icon": "$(arrow-up)"
-      },
-      {
-        "command": "local-workbench-files.renameGraph",
-        "title": "Rename Workbench Graph"
-      },
-      {
-        "command": "local-workbench-files.deleteFile",
-        "title": "Delete Workbench File",
-        "icon": "$(trash)"
-      },
-      {
-        "command": "local-workbench-files.duplicateFile",
-        "title": "Duplicate Workbench File"
-      },
-      {
-        "command": "local-workbench-files.refresh",
-        "title": "Refresh local workbench files",
-        "icon": "$(refresh)"
-      },
-      {
-        "command": "local-workbench-files.exportProject",
-        "title": "Export selected workbench to templated project",
-        "icon": "$(export)"
-      },
-      {
-        "command": "local-workbench-files.dockerize",
-        "title": "Create Docker Image"
-      },
-      {
-        "command": "current-workbench-schemas.refreshSchemas",
-        "title": "Refresh Current Workbench",
-        "icon": "$(refresh)"
-      },
-      {
-        "command": "current-workbench-schemas.editSchema",
-        "title": "Edit Service",
-        "icon": "$(edit)"
-      },
-      {
-        "command": "current-workbench-schemas.renameSchema",
-        "title": "Rename Service"
-      },
-      {
-        "command": "current-workbench-schemas.addSchema",
-        "title": "Add Service",
-        "icon": "$(add)"
-      },
-      {
-        "command": "current-workbench-schemas.deleteSchema",
-        "title": "Delete Service",
-        "icon": "$(trash)"
-      },
-      {
-        "command": "current-workbench-schemas.shouldMockSchema",
-        "title": "Set as Mock Service"
-      },
-      {
-        "command": "current-workbench-schemas.disableMockSchema",
-        "title": "Disable Mocks (use URL instead)"
-      },
-      {
-        "command": "current-workbench-schemas.setUrlForService",
-        "title": "Set URL for Service"
-      },
-      {
-        "command": "current-workbench-schemas.updateSchemaFromUrl",
-        "title": "Update Schema from URL"
-      },
-      {
-        "command": "current-workbench-schemas.viewSettings",
-        "title": "View Settings for Service",
-        "icon": "$(gear)"
-      },
-      {
-        "command": "current-workbench-schemas.viewCustomMocks",
-        "title": "View Custom Mocks for Service",
-        "icon": "$(database)"
-      },
-      {
-        "command": "current-workbench-schemas.exportSchema",
-        "title": "Export Schema for a Service",
-        "icon": "$(desktop-download)"
-      },
-      {
-        "command": "current-workbench-schemas.exportResolvers",
-        "title": "Export Example Federation Entity Resolvers for a Service"
-      },
-      {
-        "command": "current-workbench-schemas.exportGraphCoreSchema",
-        "title": "Export Core Schema for Graph",
-        "icon": "$(desktop-download)"
-      },
-      {
-        "command": "current-workbench-schemas.exportGraphSchema",
-        "title": "Export Schema for a Graph",
-        "icon": "$(desktop-download)"
-      },
-      {
-        "command": "current-workbench-operations.editOperation",
-        "title": "Edit Operation",
-        "icon": "$(edit)"
-      },
-      {
-        "command": "current-workbench-operations.addOperation",
-        "title": "Add Operation",
-        "icon": "$(add)"
-      },
-      {
-        "command": "current-workbench-operations.deleteOperation",
-        "title": "Delete Operation",
-        "icon": "$(trash)"
-      },
-      {
-        "command": "current-workbench-operations.openQueryPlan",
-        "title": "Open Query Plan",
-        "icon": "$(output)"
-      },
-      {
-        "command": "current-workbench-operations.viewQueryPlan",
-        "title": "View Operation Query Plan",
-        "icon": "$(compare-changes)"
-      },
-      {
-        "command": "current-workbench-operations.refreshOperations",
-        "title": "Refresh Current Workbench Operations",
-        "icon": "$(refresh)"
-      },
-      {
-        "command": "local-workbench-files.loadFile",
-        "title": "Load Workbench File",
-        "icon": "$(arrow-up)"
-      },
-      {
-        "command": "local-workbench-files.deleteFile",
-        "title": "Delete Workbench File",
-        "icon": "$(trash)"
-      },
-      {
-        "command": "local-workbench-files.duplicateFile",
-        "title": "Duplicate Workbench File"
-      },
-      {
-        "command": "local-workbench-files.refresh",
-        "title": "Refresh local workbench files",
-        "icon": "$(refresh)"
-      },
-      {
         "command": "studio-graphs.createWorkbenchFromGraph",
         "title": "Create Workbench File from Graph"
       },
@@ -357,7 +279,7 @@
         "title": "Create Workbench File from Example"
       },
       {
-        "command": "studio-graphs.createWorkbenchFromGraphWithVariant",
+        "command": "studio-graphs.createWorkbenchFromSupergraphVariant",
         "title": "Create Workbench File from Graph"
       },
       {
@@ -392,16 +314,8 @@
     "views": {
       "apollo-workbench": [
         {
-          "id": "local-workbench-files",
-          "name": "Local Workbench Files"
-        },
-        {
-          "id": "current-workbench-schemas",
-          "name": "Current Workbench Services"
-        },
-        {
-          "id": "current-workbench-operations",
-          "name": "Current Workbench Operations"
+          "id": "local-supergraph-designs",
+          "name": "Local Supergraph Designs"
         },
         {
           "id": "studio-graphs",
@@ -409,52 +323,21 @@
         },
         {
           "id": "studio-operations",
-          "name": "Apollo Studio Graph Operations",
-          "visibility": "collapsed"
+          "name": "Apollo Studio Graph Operations"
         }
       ]
     },
     "menus": {
       "view/title": [
         {
-          "command": "extension.startMocks",
-          "when": "view == local-workbench-files",
+          "command": "local-supergraph-designs.refresh",
+          "when": "view == local-supergraph-designs",
           "group": "navigation@2"
         },
         {
-          "command": "extension.stopMocks",
-          "when": "view == local-workbench-files",
-          "group": "navigation@3"
-        },
-        {
-          "command": "extension.newWorkbench",
-          "when": "view == local-workbench-files",
+          "command": "local-supergraph-designs.newDesign",
+          "when": "view == local-supergraph-designs",
           "group": "navigation@1"
-        },
-        {
-          "command": "local-workbench-files.refresh",
-          "when": "view == local-workbench-files",
-          "group": "navigation@4"
-        },
-        {
-          "command": "current-workbench-schemas.addSchema",
-          "when": "view == current-workbench-schemas",
-          "group": "navigation@1"
-        },
-        {
-          "command": "current-workbench-schemas.refreshSchemas",
-          "when": "view == current-workbench-schemas",
-          "group": "navigation@1"
-        },
-        {
-          "command": "current-workbench-operations.addOperation",
-          "when": "view == current-workbench-operations",
-          "group": "navigation"
-        },
-        {
-          "command": "current-workbench-operations.refreshOperations",
-          "when": "view == current-workbench-operations",
-          "group": "navigation"
         },
         {
           "command": "studio-graphs.refresh",
@@ -464,103 +347,73 @@
       ],
       "view/item/context": [
         {
-          "command": "current-workbench-schemas.renameSchema",
-          "when": "view == current-workbench-schemas && viewItem == workbenchSchemaTreeItem",
+          "command": "local-supergraph-designs.viewSettings",
+          "when": "view == local-supergraph-designs && viewItem == subgraphTreeItem",
+          "group": "inline"
+        },
+        {
+          "command": "local-supergraph-designs.startMocks",
+          "when": "view == local-supergraph-designs && viewItem == subgraphSummaryTreeItem",
+          "group": "inline@1"
+        },
+        {
+          "command": "local-supergraph-designs.stopMocks",
+          "when": "view == local-supergraph-designs && viewItem == subgraphSummaryTreeItem",
+          "group": "inline@2"
+        },
+        {
+          "command": "local-supergraph-designs.addSubgraph",
+          "when": "view == local-supergraph-designs && viewItem == subgraphSummaryTreeItem",
+          "group": "inline@3"
+        },
+        {
+          "command": "local-supergraph-designs.addOperation",
+          "when": "view == local-supergraph-designs && viewItem == operationSummaryTreeItem",
+          "group": "inline"
+        },
+        {
+          "command": "local-supergraph-designs.viewQueryPlan",
+          "when": "view == local-supergraph-designs && viewItem == operationTreeItem",
+          "group": "inline"
+        },
+        {
+          "command": "local-supergraph-designs.updateSubgraphSchemaFromURL",
+          "when": "view == local-supergraph-designs && viewItem == subgraphTreeItem",
           "group": "1@1"
         },
         {
-          "command": "current-workbench-schemas.setUrlForService",
-          "when": "view == current-workbench-schemas && viewItem == workbenchSchemaTreeItem",
+          "command": "local-supergraph-designs.viewSubgraphCustomMocks",
+          "when": "view == local-supergraph-designs && viewItem == subgraphTreeItem",
           "group": "1@2"
         },
         {
-          "command": "current-workbench-schemas.updateSchemaFromUrl",
-          "when": "view == current-workbench-schemas && viewItem == workbenchSchemaTreeItem",
-          "group": "1@3"
-        },
-        {
-          "command": "current-workbench-schemas.viewSettings",
-          "when": "view == current-workbench-schemas && viewItem == workbenchSchemaTreeItem",
-          "group": "1@4"
-        },
-        {
-          "command": "current-workbench-schemas.shouldMockSchema",
-          "when": "view == current-workbench-schemas && viewItem == workbenchSchemaTreeItem",
+          "command": "local-supergraph-designs.exportSubgraphSchema",
+          "when": "view == local-supergraph-designs && viewItem == subgraphTreeItem",
           "group": "2@1"
         },
         {
-          "command": "current-workbench-schemas.viewCustomMocks",
-          "when": "view == current-workbench-schemas && viewItem == workbenchSchemaTreeItem",
+          "command": "local-supergraph-designs.exportSubgraphResolvers",
+          "when": "view == local-supergraph-designs && viewItem == subgraphTreeItem",
           "group": "2@2"
         },
         {
-          "command": "current-workbench-schemas.disableMockSchema",
-          "when": "view == current-workbench-schemas && viewItem == workbenchSchemaTreeItem",
-          "group": "2@3"
+          "command": "local-supergraph-designs.deleteSubgraph",
+          "when": "view == local-supergraph-designs && viewItem == subgraphTreeItem",
+          "group": "9@1"
         },
         {
-          "command": "current-workbench-schemas.viewSettings",
-          "when": "view == current-workbench-schemas && viewItem == workbenchSchemaTreeItem",
-          "group": "inline"
+          "command": "local-supergraph-designs.deleteOperation",
+          "when": "view == local-supergraph-designs && viewItem == operationTreeItem",
+          "group": "10@1"
         },
         {
-          "command": "current-workbench-schemas.exportSchema",
-          "when": "view == current-workbench-schemas && viewItem == workbenchSchemaTreeItem",
-          "group": "3@1"
-        },
-        {
-          "command": "current-workbench-schemas.exportResolvers",
-          "when": "view == current-workbench-schemas && viewItem == workbenchSchemaTreeItem",
-          "group": "3@1"
-        },
-        {
-          "command": "current-workbench-schemas.exportGraphCoreSchema",
-          "when": "view == current-workbench-schemas && viewItem == workbenchGraphSchemaTreeItem",
-          "group": "4@1"
-        },
-        {
-          "command": "current-workbench-schemas.exportGraphSchema",
-          "when": "view == current-workbench-schemas && viewItem == workbenchGraphSchemaTreeItem",
-          "group": "4@2"
-        },
-        {
-          "command": "current-workbench-schemas.deleteSchema",
-          "when": "view == current-workbench-schemas && viewItem == workbenchSchemaTreeItem",
-          "group": "4"
-        },
-        {
-          "command": "current-workbench-operations.deleteOperation",
-          "when": "view == current-workbench-operations && viewItem == workbenchOperationTreeItem",
-          "group": "2"
-        },
-        {
-          "command": "current-workbench-operations.openQueryPlan",
-          "when": "view == current-workbench-operations && viewItem == workbenchOperationTreeItem",
-          "group": "inline"
-        },
-        {
-          "command": "current-workbench-operations.openQueryPlan",
-          "when": "view == current-workbench-operations && viewItem == workbenchOperationTreeItem",
+          "command": "local-supergraph-designs.exportSupergraphSchema",
+          "when": "view == local-supergraph-designs && viewItem == supergraphSchemaTreeItem",
           "group": "1"
         },
         {
-          "command": "local-workbench-files.renameGraph",
-          "when": "view == local-workbench-files && viewItem == workbenchFileTreeItem",
-          "group": "1@1"
-        },
-        {
-          "command": "local-workbench-files.duplicateFile",
-          "when": "view == local-workbench-files && viewItem == workbenchFileTreeItem",
-          "group": "1@2"
-        },
-        {
-          "command": "local-workbench-files.exportProject",
-          "when": "view == local-workbench-files && viewItem == workbenchFileTreeItem",
-          "group": "1@3"
-        },
-        {
-          "command": "local-workbench-files.deleteFile",
-          "when": "view == local-workbench-files && viewItem == workbenchFileTreeItem",
+          "command": "local-supergraph-designs.exportSupergraphApiSchema",
+          "when": "view == local-supergraph-designs && viewItem == supergraphApiSchemaTreeItem",
           "group": "2"
         },
         {
@@ -572,7 +425,7 @@
           "when": "view == studio-graphs && viewItem == preloadedWorkbenchFile"
         },
         {
-          "command": "studio-graphs.createWorkbenchFromGraphWithVariant",
+          "command": "studio-graphs.createWorkbenchFromSupergraphVariant",
           "when": "view == studio-graphs && viewItem == studioGraphVariantTreeItem"
         },
         {

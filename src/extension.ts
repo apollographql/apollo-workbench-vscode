@@ -1,21 +1,20 @@
 import { workspace, commands, languages, window, ExtensionContext, DiagnosticCollection, Range, Diagnostic, Position } from 'vscode';
-import { StateManager } from './workbench/stateManager';
-import { ServerManager } from './workbench/serverManager';
-import { federationCompletionProvider } from './workbench/federationCompletionProvider';
-import { FederationCodeActionProvider } from './workbench/federationCodeActionProvider';
-import { FileProvider } from './workbench/file-system/fileProvider';
-import { ApolloStudioOperationsProvider, GettingStartedDocProvider } from './workbench/docProviders';
 import { Kind, Source } from 'graphql';
-import { collectExecutableDefinitionDiagnositics } from 'apollo-language-server/lib/diagnostics';
+import { DiagnosticSeverity } from 'vscode-languageclient';
 import { GraphQLDocument } from 'apollo-language-server/lib/document';
 import { defaultValidationRules } from 'apollo-language-server/lib/errors/validation';
-import { DiagnosticSeverity } from 'vscode-languageclient';
-import { refreshStudioGraphs, createWorkbenchFromGraph, createWorkbenchFromPreloaded, createWorkbenchFromGraphWithVariant, loadOperations, viewStudioOperation, switchOrg } from './commands/studio-graphs';
+import { collectExecutableDefinitionDiagnositics } from 'apollo-language-server/lib/diagnostics';
+
+import { StateManager } from './workbench/stateManager';
+import { ServerManager } from './workbench/serverManager';
+import { FileProvider } from './workbench/file-system/fileProvider';
+import { federationCompletionProvider } from './workbench/federationCompletionProvider';
+import { FederationCodeActionProvider } from './workbench/federationCodeActionProvider';
+import { ApolloStudioOperationsProvider, GettingStartedDocProvider } from './workbench/docProviders';
 import { addToWorkbench } from './commands/studio-operations';
-import { ensureFolderIsOpen, openFolder, newWorkbench, enterStudioApiKey, startMocks, stopMocks, gettingStarted } from './commands/extension';
-import { addSchema, editSchema, renameSchema, deleteSchema, refreshSchemas, viewCsdl, shouldMockSchema, disableMockSchema, setUrlForService, updateSchemaFromUrl, viewSettings, viewCustomMocks, deleteSchemaDocTextRange, makeSchemaDocTextRangeArray, exportSchema, exportResolvers, exportGraphSchema, exportGraphCoreSchema } from './commands/current-workbench-schemas';
-import { addOperation, deleteOperation, editOperation, refreshOperations, openQueryPlan } from './commands/current-workbench-operations';
-import { loadFile, renameGraph, duplicateFile, deleteFile, refresh, exportProject } from './commands/local-workbench-files';
+import { ensureFolderIsOpen, openFolder, enterStudioApiKey, gettingStarted } from './commands/extension';
+import { refreshStudioGraphs, loadOperations, viewStudioOperation, switchOrg } from './commands/studio-graphs';
+import { createWorkbenchFromPreloaded, startMocks, stopMocks, deleteOperation, addOperation, viewQueryPlan, editSubgraph, deleteSubgraph, refreshSupergraphs, viewSubgraphSettings, addSubgraph, viewSupergraphSchema, editSupergraphOperation, newDesign, createWorkbenchFromSupergraph, exportSupergraphSchema, exportSupergraphApiSchema, viewSupergraphApiSchema, updateSubgraphSchemaFromURL, viewSubgraphCustomMocks, exportSubgraphSchema, exportSubgraphResolvers, createWorkbenchFromSupergraphVariant } from './commands/local-supergraph-designs';
 
 export const compositionDiagnostics: DiagnosticCollection = languages.createDiagnosticCollection("composition-errors");
 export const operationDiagnostics: DiagnosticCollection = languages.createDiagnosticCollection("operation-errors");
@@ -42,9 +41,7 @@ export async function activate(context: ExtensionContext) {
 	languages.registerCodeActionsProvider({ language: 'graphql' }, new FederationCodeActionProvider());
 
 	//Register Tree Data Providers
-	window.registerTreeDataProvider('local-workbench-files', StateManager.instance.localWorkbenchFilesProvider);
-	window.registerTreeDataProvider('current-workbench-schemas', StateManager.instance.currentWorkbenchSchemasProvider);
-	window.registerTreeDataProvider('current-workbench-operations', StateManager.instance.currentWorkbenchOperationsProvider);
+	window.registerTreeDataProvider('local-supergraph-designs', StateManager.instance.localSupergraphTreeDataProvider);
 	window.registerTreeDataProvider('studio-graphs', StateManager.instance.apolloStudioGraphsProvider);
 	window.registerTreeDataProvider('studio-operations', StateManager.instance.apolloStudioGraphOpsProvider);
 
@@ -53,52 +50,47 @@ export async function activate(context: ExtensionContext) {
 	commands.registerCommand('extension.ensureFolderIsOpen', ensureFolderIsOpen);
 	commands.registerCommand('extension.openFolder', openFolder);
 	//Global Extension Commands
-	commands.registerCommand('extension.newWorkbench', newWorkbench);
 	commands.registerCommand('extension.enterStudioApiKey', enterStudioApiKey);
 	commands.registerCommand('extension.deleteStudioApiKey', enterStudioApiKey);
-	commands.registerCommand('extension.startMocks', startMocks);
-	commands.registerCommand('extension.stopMocks', stopMocks);
 	commands.registerCommand('extension.gettingStarted', gettingStarted);
-	//Current Loaded Workbench Schemas Commands
-	commands.registerCommand('current-workbench-schemas.addSchema', addSchema);
-	commands.registerCommand("current-workbench-schemas.editSchema", editSchema);
-	commands.registerCommand("current-workbench-schemas.renameSchema", renameSchema);
-	commands.registerCommand("current-workbench-schemas.deleteSchema", deleteSchema);
-	commands.registerCommand('current-workbench-schemas.refreshSchemas', refreshSchemas);
-	commands.registerCommand('current-workbench-schemas.viewCsdl', viewCsdl);
-	//Schema Mocking Commands
-	commands.registerCommand('current-workbench-schemas.shouldMockSchema', shouldMockSchema);
-	commands.registerCommand('current-workbench-schemas.disableMockSchema', disableMockSchema);
-	commands.registerCommand('current-workbench-schemas.setUrlForService', setUrlForService);
-	commands.registerCommand('current-workbench-schemas.updateSchemaFromUrl', updateSchemaFromUrl);
-	commands.registerCommand('current-workbench-schemas.viewSettings', viewSettings);
-	commands.registerCommand('current-workbench-schemas.viewCustomMocks', viewCustomMocks);
-	commands.registerCommand('current-workbench-schemas.deleteSchemaDocTextRange', deleteSchemaDocTextRange);
-	commands.registerCommand('current-workbench-schemas.makeSchemaDocTextRangeArray', makeSchemaDocTextRangeArray);
-	commands.registerCommand('current-workbench-schemas.exportSchema', exportSchema);
-	commands.registerCommand('current-workbench-schemas.exportResolvers', exportResolvers);
-	commands.registerCommand('current-workbench-schemas.exportGraphSchema', exportGraphSchema);
-	commands.registerCommand('current-workbench-schemas.exportGraphCoreSchema', exportGraphCoreSchema);
-	//Current Loaded Workbench Operations Commands
-	commands.registerCommand('current-workbench-operations.addOperation', addOperation);
-	commands.registerCommand("current-workbench-operations.editOperation", editOperation);
-	commands.registerCommand("current-workbench-operations.deleteOperation", deleteOperation);
-	commands.registerCommand('current-workbench-operations.refreshOperations', refreshOperations);
-	commands.registerCommand('current-workbench-operations.openQueryPlan', openQueryPlan);
-	//Local Workbench Files Commands
-	commands.registerCommand("local-workbench-files.loadFile", loadFile);
-	commands.registerCommand("local-workbench-files.renameGraph", renameGraph);
-	commands.registerCommand("local-workbench-files.duplicateFile", duplicateFile);
-	commands.registerCommand("local-workbench-files.deleteFile", deleteFile);
-	commands.registerCommand('local-workbench-files.refresh', refresh);
-	commands.registerCommand('local-workbench-files.exportProject', exportProject);
-	//TODO: Build has only been tested locally, to be added back in
-	// commands.registerCommand('local-workbench-files.dockerize', async (item: WorkbenchFileTreeItem) => DockerImageManager.create(item.filePath));
+
+	//*Local Supergraph Designs TreeView
+	//**Navigation Menu Commands
+	commands.registerCommand('local-supergraph-designs.newDesign', newDesign);
+	commands.registerCommand('local-supergraph-designs.refresh', refreshSupergraphs);
+	//***Supergraph Commands
+	// commands.registerCommand('local-supergraph-designs.exportProject', exportProject);//right-click
+	// commands.registerCommand('local-supergraph-designs.dockerize', async (item: WorkbenchFileTreeItem) => DockerImageManager.create(item.filePath));//right-click
+	//***Supergraph Schema Commands
+	commands.registerCommand('local-supergraph-designs.viewSupergraphSchema', viewSupergraphSchema);//on-click
+	commands.registerCommand('local-supergraph-designs.viewSupergraphApiSchema', viewSupergraphApiSchema);//on-click
+	commands.registerCommand('local-supergraph-designs.exportSupergraphSchema', exportSupergraphSchema);//right-click
+	commands.registerCommand('local-supergraph-designs.exportSupergraphApiSchema', exportSupergraphApiSchema);//right-click
+	//****Subgraph Summary Commands 
+	commands.registerCommand('local-supergraph-designs.startMocks', startMocks);
+	commands.registerCommand('local-supergraph-designs.stopMocks', stopMocks);
+	commands.registerCommand('local-supergraph-designs.addSubgraph', addSubgraph);
+	//****Subgraph Commands 
+	commands.registerCommand('local-supergraph-designs.editSubgraph', editSubgraph);//on-click
+	commands.registerCommand('local-supergraph-designs.updateSubgraphSchemaFromURL', updateSubgraphSchemaFromURL);//right-click
+	commands.registerCommand('local-supergraph-designs.exportSubgraphResolvers', exportSubgraphResolvers);//right-click
+	commands.registerCommand('local-supergraph-designs.exportSubgraphSchema', exportSubgraphSchema);//right-click
+	commands.registerCommand('local-supergraph-designs.viewSubgraphCustomMocks', viewSubgraphCustomMocks);//right-click
+	commands.registerCommand('local-supergraph-designs.deleteSubgraph', deleteSubgraph);
+	commands.registerCommand('local-supergraph-designs.viewSettings', viewSubgraphSettings);//inline
+
+	commands.registerCommand('local-supergraph-designs.editOperation', editSupergraphOperation);
+	commands.registerCommand('local-supergraph-designs.addOperation', addOperation);
+	commands.registerCommand('local-supergraph-designs.deleteOperation', deleteOperation);
+	commands.registerCommand('local-supergraph-designs.viewQueryPlan', viewQueryPlan);
+	// commands.registerCommand('current-workbench-schemas.deleteSchemaDocTextRange', deleteSchemaDocTextRange);
+	// commands.registerCommand('current-workbench-schemas.makeSchemaDocTextRangeArray', makeSchemaDocTextRangeArray);
+
 	//Apollo Studio Graphs Commands
 	commands.registerCommand('studio-graphs.refresh', refreshStudioGraphs);
-	commands.registerCommand('studio-graphs.createWorkbenchFromGraph', createWorkbenchFromGraph);
+	commands.registerCommand('studio-graphs.createWorkbenchFromGraph', createWorkbenchFromSupergraph);
+	commands.registerCommand('studio-graphs.createWorkbenchFromSupergraphVariant', createWorkbenchFromSupergraphVariant);
 	commands.registerCommand('studio-graphs.createWorkbenchFromPreloaded', createWorkbenchFromPreloaded);
-	commands.registerCommand('studio-graphs.createWorkbenchFromGraphWithVariant', createWorkbenchFromGraphWithVariant);
 	commands.registerCommand('studio-graphs.loadOperations', loadOperations);
 	commands.registerCommand('studio-graphs.viewStudioOperation', viewStudioOperation);
 	commands.registerCommand('studio-graphs.switchOrg', switchOrg);
@@ -108,16 +100,6 @@ export async function activate(context: ExtensionContext) {
 	//Workspace - Register Providers and Events
 	workspace.registerTextDocumentContentProvider(GettingStartedDocProvider.scheme, new GettingStartedDocProvider());
 	workspace.registerTextDocumentContentProvider(ApolloStudioOperationsProvider.scheme, new ApolloStudioOperationsProvider());
-	workspace.onDidSaveTextDocument(e => {
-		let uri = e.uri;
-		if (uri.fsPath.includes('mocks.js') && FileProvider.instance.currrentWorkbench) {
-			let mocksText = e.getText();
-			let serviceName = uri.fsPath.split('-mocks.js')[0].split('/mocks/')[1];
-
-			FileProvider.instance.currrentWorkbenchSchemas[serviceName].customMocks = mocksText;
-			FileProvider.instance.saveCurrentWorkbench();
-		}
-	})
 	workspace.onDidChangeTextDocument(e => {
 		let uri = e.document.uri;
 		let document = new GraphQLDocument(new Source(e.document.getText()));
