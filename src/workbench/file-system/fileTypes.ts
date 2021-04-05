@@ -17,7 +17,7 @@ export class ApolloWorkbenchFile {
     operations: { [opName: string]: string } = {};
     queryPlans: { [opName: string]: string } = {};
     schemas: { [serviceName: string]: WorkbenchSchema } = {};
-    composedSchema: string = "";
+    supergraphSdl: string = "";
 
     constructor(public graphName: string) { }
 }

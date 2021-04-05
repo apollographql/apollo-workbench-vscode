@@ -1,11 +1,15 @@
-import { getQueryPlan, getQueryPlanner, prettyFormatQueryPlan } from '@apollo/query-planner';
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'fs';
 import path, { join, resolve } from 'path';
 import { commands, Disposable, EventEmitter, FileChangeEvent, FileStat, FileSystemProvider, FileType, Uri, window, ProgressLocation } from 'vscode';
 import { StateManager } from '../stateManager';
-import { getComposedSchemaLogCompositionErrorsForWbFile } from '../../graphql/composition';
+import { getComposedSchemaLogCompositionErrorsForWbFile, superSchemaToSchema } from '../../graphql/composition';
 import { ApolloWorkbenchFile, WorkbenchSettings } from './fileTypes';
 import { parse, GraphQLSchema, extendSchema, printSchema } from 'graphql';
+
+// import { getQueryPlan, getQueryPlanner, prettyFormatQueryPlan } from '@apollo/query-planner';
+
+import { buildQueryPlan, buildOperationContext, buildComposedSchema, QueryPlanner } from '@apollo/query-planner';
+import { serializeQueryPlan } from '@apollo/query-planner';
 
 export class FileProvider implements FileSystemProvider {
     //Singleton implementation
@@ -98,7 +102,13 @@ export class FileProvider implements FileSystemProvider {
         } else if (uri.path.includes('/queryplans')) {
             const wbFilePath = uri.fsPath.split('/queryplans')[0];
             const wbFile = this.workbenchFiles.get(wbFilePath);
-            return Buffer.from(wbFile?.queryPlans[name] ?? "");
+            //If we don't have a queryplan and we have a supergraphSdl, try generating query plan
+            if (wbFile?.supergraphSdl && !wbFile?.queryPlans[name]) {
+                wbFile.queryPlans[name] = this.generateQueryPlan(name, wbFile);
+                this.saveWorkbenchFile(wbFile, wbFilePath, false);
+            }
+
+            return Buffer.from(wbFile?.queryPlans[name] ? wbFile?.queryPlans[name] : "Unable to generate Query Plan, do you have a supergraph schema available?");
         } else if (uri.path.includes('/subgraph-settings')) {
             const wbFilePath = uri.fsPath.split('/subgraph-settings')[0];
             const wbFile = this.workbenchFiles.get(wbFilePath);
@@ -118,14 +128,14 @@ export class FileProvider implements FileSystemProvider {
         } else if (uri.path.includes('/supergraph-schema')) {
             const wbFilePath = uri.fsPath.split('/supergraph-schema')[0];
             const wbFile = this.workbenchFiles.get(wbFilePath);
-            return Buffer.from(wbFile?.composedSchema ?? "");
+            return Buffer.from(wbFile?.supergraphSdl ?? "");
         } else if (uri.path.includes('/supergraph-api-schema')) {
             const wbFilePath = uri.fsPath.split('/supergraph-api-schema')[0];
             const wbFile = this.workbenchFiles.get(wbFilePath);
             const schema = new GraphQLSchema({
                 query: undefined,
             });
-            const parsed = parse(wbFile?.composedSchema ?? "");
+            const parsed = parse(wbFile?.supergraphSdl ?? "");
             const finalSchema = extendSchema(schema, parsed, { assumeValidSDL: true });
 
             return Buffer.from(printSchema(finalSchema));
@@ -147,7 +157,20 @@ export class FileProvider implements FileSystemProvider {
         }
         throw new Error('Unknown path type')
     }
+    generateQueryPlan(operationName: string, wbFile: ApolloWorkbenchFile) {
+        try {
+            const operation = wbFile.operations[operationName];
+            const schema = buildComposedSchema(parse(wbFile.supergraphSdl))
+            const operationContext = buildOperationContext(schema, parse(operation), operationName)
+            const queryPlan = buildQueryPlan(operationContext, { autoFragmentization: true });
+            const queryPlanString = serializeQueryPlan(queryPlan);
 
+            return queryPlanString;
+        } catch (err) {
+            console.log(err);
+            return "";
+        }
+    }
     writeFile(uri: Uri, content: Uint8Array, options: { create: boolean; overwrite: boolean; }): void | Thenable<void> {
         //Supergraph schema and queryplans are read-only
         if (uri.fsPath.includes('supergraph-schema') || uri.fsPath.includes('supergraph-api-schema') || uri.fsPath.includes('queryplans')) return;
@@ -167,14 +190,18 @@ export class FileProvider implements FileSystemProvider {
             } else if (uri.path.includes('/queries')) {
                 wbFile.operations[name] = stringContent;
 
-                if (wbFile.composedSchema) {
+                if (wbFile.supergraphSdl) {
                     try {
-                        const operation = wbFile.operations[name];
-                        const queryPlanPointer = getQueryPlanner(wbFile.composedSchema);
-                        const queryPlan = getQueryPlan(queryPlanPointer, operation, { autoFragmentization: false });
+                        // const operation = wbFile.operations[name];
+                        const queryPlanString = this.generateQueryPlan(name, wbFile)
+                        // const schema = buildComposedSchema(parse(wbFile.supergraphSdl))
+                        // const operationContext = buildOperationContext(schema, parse(operation), name)
+                        // const queryPlan = buildQueryPlan(operationContext, { autoFragmentization: true });
+                        // const queryPlanString = serializeQueryPlan(queryPlan);
 
-                        wbFile.queryPlans[name] = prettyFormatQueryPlan(queryPlan);
+                        wbFile.queryPlans[name] = queryPlanString;
                     } catch (err) {
+                        console.log(err);
                     }
                 }
             } else if (uri.path.includes('/subgraph-settings')) {
@@ -186,9 +213,7 @@ export class FileProvider implements FileSystemProvider {
             } else if (uri.path.includes('/mocks')) {
                 wbFile.schemas[name].customMocks = stringContent;
             } else if (uri.path.includes('/supergraph-schema')) {
-                wbFile.composedSchema = stringContent;
-            } else if (uri.path.includes('/queryplans')) {
-                wbFile.queryPlans[name] = stringContent;
+                wbFile.supergraphSdl = stringContent;
             }
 
             this.saveWorkbenchFile(wbFile, wbFilePath);
