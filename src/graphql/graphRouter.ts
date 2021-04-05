@@ -52,7 +52,7 @@ export class OverrideApolloGateway extends ApolloGateway {
                         newDefinitions.push({ name: serviceName, url: service.url, typeDefs: parse(typeDefs) });
 
                         if (service.autoUpdateSchemaFromUrl)
-                            FileProvider.instance.writeFile(WorkbenchUri.parse(serviceName, WorkbenchUriType.SCHEMAS), Buffer.from(typeDefs), { create: true, overwrite: true })
+                            FileProvider.instance.writeFile(WorkbenchUri.supergraph(FileProvider.instance.loadedWorbenchFilePath, serviceName, WorkbenchUriType.SCHEMAS), Buffer.from(typeDefs), { create: true, overwrite: true })
                     } else {
                         log("Falling back to schema defined in workbench");
                         newDefinitions.push({ name: serviceName, url: service.url, typeDefs: parse(service.sdl) });

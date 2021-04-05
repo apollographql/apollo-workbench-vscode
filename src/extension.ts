@@ -12,7 +12,7 @@ import { federationCompletionProvider } from './workbench/federationCompletionPr
 import { FederationCodeActionProvider } from './workbench/federationCodeActionProvider';
 import { ApolloStudioOperationsProvider, GettingStartedDocProvider } from './workbench/docProviders';
 import { addToWorkbench } from './commands/studio-operations';
-import { ensureFolderIsOpen, openFolder, enterStudioApiKey, gettingStarted } from './commands/extension';
+import { ensureFolderIsOpen, openFolder, enterStudioApiKey, gettingStarted, deleteStudioApiKey } from './commands/extension';
 import { refreshStudioGraphs, loadOperations, viewStudioOperation, switchOrg } from './commands/studio-graphs';
 import { createWorkbenchFromPreloaded, startMocks, stopMocks, deleteOperation, addOperation, viewQueryPlan, editSubgraph, deleteSubgraph, refreshSupergraphs, viewSubgraphSettings, addSubgraph, viewSupergraphSchema, editSupergraphOperation, newDesign, createWorkbenchFromSupergraph, exportSupergraphSchema, exportSupergraphApiSchema, viewSupergraphApiSchema, updateSubgraphSchemaFromURL, viewSubgraphCustomMocks, exportSubgraphSchema, exportSubgraphResolvers, createWorkbenchFromSupergraphVariant } from './commands/local-supergraph-designs';
 
@@ -51,7 +51,7 @@ export async function activate(context: ExtensionContext) {
 	commands.registerCommand('extension.openFolder', openFolder);
 	//Global Extension Commands
 	commands.registerCommand('extension.enterStudioApiKey', enterStudioApiKey);
-	commands.registerCommand('extension.deleteStudioApiKey', enterStudioApiKey);
+	commands.registerCommand('extension.deleteStudioApiKey', deleteStudioApiKey);
 	commands.registerCommand('extension.gettingStarted', gettingStarted);
 
 	//*Local Supergraph Designs TreeView

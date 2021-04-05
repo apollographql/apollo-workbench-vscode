@@ -29,6 +29,7 @@ export async function editSubgraph(item: SubgraphTreeItem) {
 }
 export async function editSupergraphOperation(item: OperationTreeItem) {
     await window.showTextDocument(WorkbenchUri.supergraph(item.filePath, item.operationName, WorkbenchUriType.QUERIES));
+    FileProvider.instance.loadWorkbenchForComposition(item.filePath);
 }
 export async function viewSubgraphSettings(item: SubgraphTreeItem) {
     await window.showTextDocument(WorkbenchUri.supergraph(item.wbFilePath, item.subgraphName, WorkbenchUriType.SCHEMAS_SETTINGS));
@@ -201,28 +202,28 @@ export async function updateSubgraphSchemaFromURL(item: SubgraphTreeItem) {
         } else {
             wbFile.schemas[item.subgraphName].url = routingURL;
         }
+    }
+    if (wbFile?.schemas[item.subgraphName].url) {
+        const sdl = await OverrideApolloGateway.getTypeDefs(wbFile.schemas[item.subgraphName].url ?? "", item.subgraphName);
+        if (sdl) {
+            wbFile.schemas[item.subgraphName].sdl = sdl;
 
-        if (wbFile?.schemas[item.subgraphName].url) {
-            const sdl = await OverrideApolloGateway.getTypeDefs(wbFile.schemas[item.subgraphName].url ?? "", item.subgraphName);
-            if (sdl) {
-                wbFile.schemas[item.subgraphName].sdl = sdl;
-
-                let editor = await window.showTextDocument(WorkbenchUri.supergraph(item.wbFilePath, item.subgraphName, WorkbenchUriType.SCHEMAS));
-                if (editor) {
-                    const document = editor.document;
-                    await editor.edit((editor) => {
-                        editor.replace(new Range(0, 0, document.lineCount, 0), sdl);
-                    });
-                    await document.save();
-                }
+            let editor = await window.showTextDocument(WorkbenchUri.supergraph(item.wbFilePath, item.subgraphName, WorkbenchUriType.SCHEMAS));
+            if (editor) {
+                const document = editor.document;
+                await editor.edit((editor) => {
+                    editor.replace(new Range(0, 0, document.lineCount, 0), sdl);
+                });
+                await document.save();
             }
-
-            FileProvider.instance.saveWorkbenchFile(wbFile, item.wbFilePath, false);
-        } else {//No URL entered for schema
-            window.showErrorMessage("You must set a url for the service if you want to update the schema from it.");
         }
+
+        FileProvider.instance.saveWorkbenchFile(wbFile, item.wbFilePath, false);
+    } else {//No URL entered for schema
+        window.showErrorMessage("You must set a url for the service if you want to update the schema from it.");
     }
 }
+
 
 export async function viewSubgraphCustomMocks(item: SubgraphTreeItem) {
     const subgraphMocksUri = WorkbenchUri.supergraph(item.wbFilePath, item.subgraphName, WorkbenchUriType.MOCKS);

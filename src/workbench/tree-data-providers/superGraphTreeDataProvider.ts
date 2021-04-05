@@ -42,6 +42,11 @@ export class LocalSupergraphTreeDataProvider implements TreeDataProvider<TreeIte
                 case 'supergraphTreeItem':
                     const supergraphItem = element as SupergraphTreeItem;
                     let subgraphItem = element as SupergraphTreeItem;
+
+                    //Support legacy composition in workbench files
+                    if ((supergraphItem.wbFile as any)?.composedSchema)
+                        subgraphItem.wbFile.supergraphSdl = (supergraphItem.wbFile as any)?.composedSchema;
+
                     if (subgraphItem.wbFile.supergraphSdl) {
                         return Promise.resolve([
                             new SupergraphSchemaTreeItem(supergraphItem.wbFile, supergraphItem.filePath),
