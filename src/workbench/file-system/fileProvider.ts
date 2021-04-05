@@ -103,10 +103,12 @@ export class FileProvider implements FileSystemProvider {
             const wbFilePath = uri.fsPath.split('/queryplans')[0];
             const wbFile = this.workbenchFiles.get(wbFilePath);
             //If we don't have a queryplan and we have a supergraphSdl, try generating query plan
-            if (wbFile?.supergraphSdl && !wbFile?.queryPlans[name]) {
-                wbFile.queryPlans[name] = this.generateQueryPlan(name, wbFile);
-                this.saveWorkbenchFile(wbFile, wbFilePath, false);
-            }
+            if (wbFile?.supergraphSdl) {
+                if (!wbFile?.queryPlans[name]) {
+                    wbFile.queryPlans[name] = this.generateQueryPlan(name, wbFile);
+                    this.saveWorkbenchFile(wbFile, wbFilePath, false);
+                }
+            } else window.showInformationMessage(`No valid Superschema SDL available, unable to generate a query plan.`)
 
             return Buffer.from(wbFile?.queryPlans[name] ? wbFile?.queryPlans[name] : "Unable to generate Query Plan, do you have a supergraph schema available?");
         } else if (uri.path.includes('/subgraph-settings')) {

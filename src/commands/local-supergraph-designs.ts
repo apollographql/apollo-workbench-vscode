@@ -29,6 +29,7 @@ export async function editSubgraph(item: SubgraphTreeItem) {
 }
 export async function editSupergraphOperation(item: OperationTreeItem) {
     await window.showTextDocument(WorkbenchUri.supergraph(item.filePath, item.operationName, WorkbenchUriType.QUERIES));
+    FileProvider.instance.loadWorkbenchForComposition(item.filePath);
 }
 export async function viewSubgraphSettings(item: SubgraphTreeItem) {
     await window.showTextDocument(WorkbenchUri.supergraph(item.wbFilePath, item.subgraphName, WorkbenchUriType.SCHEMAS_SETTINGS));
