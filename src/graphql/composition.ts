@@ -5,7 +5,7 @@ import { compositionDiagnostics } from "../extension";
 import { StateManager } from "../workbench/stateManager";
 import { extractDefinedEntitiesByService } from "./parsers/csdlParser";
 import { FileProvider } from "../workbench/file-system/fileProvider";
-import { WorkbenchUri } from "../workbench/file-system/WorkbenchUri";
+import { WorkbenchUri, WorkbenchUriType } from "../workbench/file-system/WorkbenchUri";
 import { ApolloWorkbenchFile } from "../workbench/file-system/fileTypes";
 import { CompositionResult, CompositionFailure } from "@apollo/federation/dist/composition/utils";
 
@@ -31,7 +31,7 @@ export async function getComposedSchemaLogCompositionErrorsForWbFile(wbFilePath:
                 console.log(compositionDiagnostics.name);
                 let diagnosticsGroups = handleErrors(workbenchFile, errors);
                 for (var sn in diagnosticsGroups) {
-                    compositionDiagnostics.set(WorkbenchUri.parse(sn), diagnosticsGroups[sn]);
+                    compositionDiagnostics.set(WorkbenchUri.supergraph(wbFilePath, sn, WorkbenchUriType.SCHEMAS), diagnosticsGroups[sn]);
                 }
             }
 

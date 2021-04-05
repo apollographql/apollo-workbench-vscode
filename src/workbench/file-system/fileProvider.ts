@@ -44,7 +44,7 @@ export class FileProvider implements FileSystemProvider {
         return this.workbenchFiles;
     }
 
-    private loadedWorbenchFilePath = '';
+    loadedWorbenchFilePath = '';
     loadedWorkbenchFile?: ApolloWorkbenchFile;
     loadWorkbenchForComposition(wbFilePath: string, forceCompose: boolean = false) {
         if (this.loadedWorbenchFilePath != wbFilePath) {

@@ -13,22 +13,6 @@ export enum WorkbenchUriType {
     SUPERGRAPH_API_SCHEMA
 }
 export class WorkbenchUri {
-    static parse(name: string, type: WorkbenchUriType = WorkbenchUriType.SCHEMAS): Uri {
-        switch (type) {
-            case WorkbenchUriType.SCHEMAS:
-                return Uri.parse(`workbench:/schemas/${name}.graphql?${name}`);
-            case WorkbenchUriType.SCHEMAS_SETTINGS:
-                return Uri.parse(`workbench:/settings-schemas/${name}-settings.json?${name}`);
-            case WorkbenchUriType.QUERIES:
-                return Uri.parse(`workbench:/queries/${name}.graphql?${name}`);
-            case WorkbenchUriType.QUERY_PLANS:
-                return Uri.parse(`workbench:/queryplans/${name}.queryplan?${name}`);
-            case WorkbenchUriType.MOCKS:
-                return Uri.parse(resolve(StateManager.instance.extensionGlobalStoragePath ?? '', 'mocks', `${name}-mocks.js`));
-            default:
-                throw new Error();
-        }
-    }
     static supergraph(path: string, name?: string, type: WorkbenchUriType = WorkbenchUriType.SUPERGRAPH_SCHEMA): Uri {
         switch (type) {
             case WorkbenchUriType.SCHEMAS:
