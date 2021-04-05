@@ -10,9 +10,9 @@ export async function extractDefinedEntitiesByService(wbFilePath: string) {
     try {
         const wbFile = FileProvider.instance.workbenchFiles.get(wbFilePath);
         if (wbFile) {
-            let lines = wbFile?.composedSchema.split('\n');
+            let lines = wbFile?.supergraphSdl.split('\n');
 
-            runOnlineParser(wbFile.composedSchema, (state, range, tokens) => {
+            runOnlineParser(wbFile.supergraphSdl, (state, range, tokens) => {
                 switch (state.kind) {
                     case "StringValue" as any:
                         let argument = state?.prevState?.prevState;

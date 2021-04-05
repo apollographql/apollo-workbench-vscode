@@ -1,5 +1,5 @@
 import { composeAndValidate, ServiceDefinition } from "@apollo/federation";
-import { GraphQLError, parse } from "graphql";
+import { GraphQLError, parse, extendSchema, GraphQLSchema } from "graphql";
 import { Diagnostic, DiagnosticSeverity, Range, } from "vscode";
 import { compositionDiagnostics } from "../extension";
 import { StateManager } from "../workbench/stateManager";
@@ -7,13 +7,24 @@ import { extractDefinedEntitiesByService } from "./parsers/csdlParser";
 import { FileProvider } from "../workbench/file-system/fileProvider";
 import { WorkbenchUri } from "../workbench/file-system/WorkbenchUri";
 import { ApolloWorkbenchFile } from "../workbench/file-system/fileTypes";
+import { CompositionResult, CompositionFailure } from "@apollo/federation/dist/composition/utils";
+
+export function superSchemaToSchema(supergraphSchema: string) {
+    const schema = new GraphQLSchema({
+        query: undefined,
+    });
+    const parsed = parse(supergraphSchema);
+    const finalSchema = extendSchema(schema, parsed, { assumeValidSDL: true });
+
+    return finalSchema;
+}
 
 export async function getComposedSchemaLogCompositionErrorsForWbFile(wbFilePath: string) {
     let workbenchFile = FileProvider.instance.workbenchFiles.get(wbFilePath);
     if (workbenchFile) {
         compositionDiagnostics.clear();
         try {
-            const { errors, composedSdl, schema } = await getComposedSchema(workbenchFile);
+            const { errors, supergraphSdl, schema } = await getComposedSchema(workbenchFile);
             if (errors && errors.length > 0) {
                 console.log('Composition Errors Found:');
 
@@ -24,13 +35,13 @@ export async function getComposedSchemaLogCompositionErrorsForWbFile(wbFilePath:
                 }
             }
 
-            if (composedSdl) {
-                workbenchFile.composedSchema = composedSdl ?? "";
+            if (supergraphSdl) {
+                workbenchFile.supergraphSdl = supergraphSdl ?? "";
                 await extractDefinedEntitiesByService(wbFilePath);
-            } else if (workbenchFile.composedSchema)
-                workbenchFile.composedSchema = "";
+            } else if (workbenchFile.supergraphSdl)
+                workbenchFile.supergraphSdl = "";
 
-            if (!workbenchFile.composedSchema) StateManager.instance.workspaceState_selectedWorkbenchAvailableEntities = {};
+            if (!workbenchFile.supergraphSdl) StateManager.instance.workspaceState_selectedWorkbenchAvailableEntities = {};
 
             FileProvider.instance.saveWorkbenchFile(workbenchFile, wbFilePath);
 
@@ -45,7 +56,7 @@ export async function getComposedSchemaLogCompositionErrorsForWbFile(wbFilePath:
     }
 }
 
-export function getComposedSchema(workbenchFile: ApolloWorkbenchFile) {
+export function getComposedSchema(workbenchFile: ApolloWorkbenchFile): CompositionResult {
     let sdls: ServiceDefinition[] = [];
     let errors: GraphQLError[] = [];
     for (var key in workbenchFile.schemas) {
@@ -88,14 +99,14 @@ export function getComposedSchema(workbenchFile: ApolloWorkbenchFile) {
         }
     }
     if (errors.length > 0) {
-        return { errors, composedSdl: undefined, schema: undefined };
+        return { errors } as CompositionFailure;
     } else {
         //This blocks UI thread, why I have no clue but it is overworking VS Code
         let compositionResults = composeAndValidate(sdls);
 
         if (Object.keys(workbenchFile.schemas).length == 0)
             compositionResults.errors = [new GraphQLError("No schemas defined in workbench yet", undefined, undefined, undefined, undefined, undefined, { noServicesDefined: true })];
-        return { ...compositionResults };
+        return { ...compositionResults } as CompositionResult;
     }
 }
 

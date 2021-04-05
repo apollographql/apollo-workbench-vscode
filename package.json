@@ -43,9 +43,9 @@
   },
   "dependencies": {
     "@apollo/client": "^3.2.5",
-    "@apollo/federation": "^0.22.0",
+    "@apollo/federation": "^0.23.0",
     "@apollo/gateway": "^0.25.0",
-    "@apollo/query-planner": "0.0.13",
+    "@apollo/query-planner": "https://8147-252760990-gh.circle-artifacts.com/0/storage/%40apollo/query-planner/query-planner-0.1.0.tgz",
     "@apollographql/graphql-language-service-interface": "^2.0.2",
     "@types/archiver": "^5.1.0",
     "apollo-language-server": "^1.24.1",

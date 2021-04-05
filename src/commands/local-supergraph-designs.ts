@@ -15,7 +15,7 @@ import { TextEncoder } from "util";
 import { GraphQLSchema, parse, extendSchema, printSchema } from "graphql";
 import { OverrideApolloGateway } from "../graphql/graphRouter";
 import { generateJsFederatedResolvers } from "../utils/exportFiles";
-import { getComposedSchema } from "../graphql/composition";
+import { getComposedSchema, superSchemaToSchema } from "../graphql/composition";
 
 export function startMocks(item: SubgraphSummaryTreeItem) {
     ServerManager.instance.startSupergraphMocks(item.filePath);
@@ -158,8 +158,8 @@ async function createWorkbench(graphId: string, selectedVariant: string) {
             implementingServices?.services?.map(service => workbenchFile.schemas[service.name] = { sdl: service.activePartialSchema.sdl, url: service.url ?? "", shouldMock: true, autoUpdateSchemaFromUrl: false });
         }
 
-        const { composedSdl } = await getComposedSchema(workbenchFile);
-        if (composedSdl) workbenchFile.composedSchema = composedSdl;
+        const { supergraphSdl } = await getComposedSchema(workbenchFile);
+        if (supergraphSdl) workbenchFile.supergraphSdl = supergraphSdl;
 
         FileProvider.instance.createWorkbenchFileLocally(workbenchFile);
     } else {
@@ -168,23 +168,19 @@ async function createWorkbench(graphId: string, selectedVariant: string) {
 }
 const txtEncoder = new TextEncoder();
 export async function exportSupergraphSchema(item: SupergraphSchemaTreeItem) {
-    if (item.wbFile.composedSchema && StateManager.workspaceRoot) {
+    if (item.wbFile.supergraphSdl && StateManager.workspaceRoot) {
         const exportPath = `${StateManager.workspaceRoot}/${item.wbFile.graphName}-supergraph-schema.graphql`;
 
-        workspace.fs.writeFile(Uri.parse(exportPath), txtEncoder.encode(item.wbFile.composedSchema));
+        workspace.fs.writeFile(Uri.parse(exportPath), txtEncoder.encode(item.wbFile.supergraphSdl));
         window.showInformationMessage(`Supergraph Schema was exported to ${exportPath}`);
     }
 }
 
 export async function exportSupergraphApiSchema(item: SupergraphApiSchemaTreeItem) {
-    const supergraphSchema = item.wbFile.composedSchema;
+    const supergraphSchema = item.wbFile.supergraphSdl;
     if (supergraphSchema && StateManager.workspaceRoot) {
         const exportPath = `${StateManager.workspaceRoot}/${item.wbFile.graphName}-api-schema.graphql`;
-        const schema = new GraphQLSchema({
-            query: undefined,
-        });
-        const parsed = parse(supergraphSchema);
-        const finalSchema = extendSchema(schema, parsed, { assumeValidSDL: true });
+        const finalSchema = superSchemaToSchema(supergraphSchema);
 
         workspace.fs.writeFile(Uri.parse(exportPath), txtEncoder.encode(printSchema(finalSchema)));
         window.showInformationMessage(`Graph Core Schema was exported to ${exportPath}`);
