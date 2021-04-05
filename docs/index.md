@@ -2,32 +2,6 @@
 
 Workbench is a tool built by the Apollo Solutions Team to help design schemas using Apollo Federation and work with the composed results. This need was driven by working countless number of migrations from an existing GraphQL infrastructure (monolith or schema stitched) to an [Apollo Federated architecture](https://www.apollographql.com/docs/federation/).
 
-## Getting Started
-
-### Setup
-
-- [Install VS Code](https://code.visualstudio.com/download)
-- Download the latest [Apollo Workbench Release](https://github.com/apollographql/apollo-workbench-vscode/releases)
-- Open VS Code and click on the Extension icon
-- Click on the three dots at the top of the Extension view and select "Install from VSIX"
-  - Select the downlaoded Apollo Workbench Release
-
-### Logging in
-
-1. Open VS Code with any folder (a dialog will display if you don't have a folder open)
-
-![No folder open](https://storage.googleapis.com/apollo-workbench-vscode/workbench-no-folder-open.png)
-
-2. Go to your [personal settings in Apollo Studio](https://studio.apollographql.com/user-settings) and copy your user api key. Paste your api key into the extension (which will be saved to your VS Code global state)
-
-![Enter Apollo User API Key](https://storage.googleapis.com/apollo-workbench-vscode/workbench-add-api-key.png)
-
-### Supported Workflows
-
-- [Design a New Supergraph](./new-supergraph.md)
-- [Migrating from Monolith to a New Supergraph](./migration-monolith-to-supergraph.md)
-- [Migrating from Multiple GraphQL Serers to a Supergraph](./migration-gql-microservices-to-supergraph.md)
-
 ## Apollo Solutions Team
 
 The Apollo Solutions Team is considered Apollo's first customer. We work with our customers on their graph implementations and every organization has unique challenges (along with a lot of [common ones](https://www.apollographql.com/guide)). When these challenges surface, we sometimes build some tooling or example to solve that unique challenge. This could incorporate many elements of the various Apollo OSS libraries. If you're interested in learning more about the Apollo Solutions Team and an Enterprise relationship with Apollo, please [reach out through our website](https://www.apollographql.com/contact-sales).
@@ -53,3 +27,29 @@ The Apollo Workbench extension for VS Code brings an all-in-one tooling experien
 - **Apollo Studio Integration**
   - Create a `.apollo-workbench` file from a graph that has been pushed into the schema registry (i.e. `apollo service:push`)
   - Load GraphQL operations from a graph and add them to the loaded `.apollo-workbench` file.
+
+## Getting Started
+
+### Setup
+
+- [Install VS Code](https://code.visualstudio.com/download)
+- Download the latest [Apollo Workbench Release](https://github.com/apollographql/apollo-workbench-vscode/releases)
+- Open VS Code and click on the Extension icon
+- Click on the three dots at the top of the Extension view and select "Install from VSIX"
+  - Select the downlaoded Apollo Workbench Release
+
+### Logging in
+
+1. Open VS Code with any folder (a dialog will display if you don't have a folder open)
+
+![No folder open](https://storage.googleapis.com/apollo-workbench-vscode/workbench-no-folder-open.png)
+
+2. Go to your [personal settings in Apollo Studio](https://studio.apollographql.com/user-settings) and copy your user api key. Paste your api key into the extension (which will be saved to your VS Code global state)
+
+![Enter Apollo User API Key](https://storage.googleapis.com/apollo-workbench-vscode/workbench-add-api-key.png)
+
+### Supported Workflows
+
+- [Design a New Supergraph](./new-supergraph.md)
+- [Migrating from Monolith to a New Supergraph](./migration-monolith-to-supergraph.md)
+- [Migrating from Multiple GraphQL Serers to a Supergraph](./migration-gql-microservices-to-supergraph.md)
