@@ -102,7 +102,7 @@ export class SupergraphSchemaTreeItem extends TreeItem {
             title: "View Supergraph Schema",
             arguments: [this]
         };
-        this.iconPath = path.join(__filename, '..', '..', '..', '..', 'media', 'supergraph.svg');
+        this.iconPath = path.join(__filename, '..', '..', '..', '..', 'media', 'supergraph.png');
     }
 }
 export class SupergraphApiSchemaTreeItem extends TreeItem {
@@ -139,8 +139,8 @@ export class SubgraphSummaryTreeItem extends TreeItem {
             this.subgraphs.push(new SubgraphTreeItem(subgraphName, wbFile.schemas[subgraphName], filePath))
         })
         this.iconPath = {
-            light: path.join(__filename, '..', '..', '..', '..', 'media', 'subgraph.svg'),
-            dark: path.join(__filename, '..', '..', '..', '..', 'media', 'subgraph.svg')
+            light: path.join(__filename, '..', '..', '..', '..', 'media', 'subgraph.png'),
+            dark: path.join(__filename, '..', '..', '..', '..', 'media', 'subgraph.png')
         };
     }
 
@@ -205,13 +205,13 @@ export class OperationTreeItem extends TreeItem {
 
         if (this.operationString.includes('mutation'))
             this.iconPath = {
-                light: path.join(__filename, '..', '..', '..', '..', 'media', 'm.svg'),
-                dark: path.join(__filename, '..', '..', '..', '..', 'media', 'm.svg')
+                light: path.join(__filename, '..', '..', '..', '..', 'media', 'm.png'),
+                dark: path.join(__filename, '..', '..', '..', '..', 'media', 'm.png')
             };
         else
             this.iconPath = {
-                light: path.join(__filename, '..', '..', '..', '..', 'media', 'q.svg'),
-                dark: path.join(__filename, '..', '..', '..', '..', 'media', 'q.svg')
+                light: path.join(__filename, '..', '..', '..', '..', 'media', 'q.png'),
+                dark: path.join(__filename, '..', '..', '..', '..', 'media', 'q.png')
             };
     }
 }
