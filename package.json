@@ -1,9 +1,13 @@
 {
-  "name": "apollo-workbench-vscode",
+  "name": "apollo-workbench",
   "displayName": "Apollo Workbench",
   "description": "Tooling to help you develop and mock federated schemas using Apollo Federation",
   "icon": "media/workbench.png",
-  "version": "1.0.7",
+  "repository": {
+    "url": "https://github.com/apollographql/apollo-workbench-vscode"
+  },
+  "license": "MIT",
+  "version": "1.0.11",
   "publisher": "ApolloGraphQL",
   "engines": {
     "vscode": "^1.34.0"

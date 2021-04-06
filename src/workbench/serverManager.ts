@@ -29,15 +29,6 @@ export class ServerManager {
     private serversState: { [port: string]: any } = {};
 
     startSupergraphMocks(wbFilePath: string) {
-        //Setting up the mocks project folder - need to isolate to mocks running
-        if (StateManager.instance.extensionGlobalStoragePath) {
-            const mocksPath = resolve(StateManager.instance.extensionGlobalStoragePath, `mocks`);
-            const packageJsonPath = resolve(mocksPath, `package.json`);
-            mkdirSync(mocksPath, { recursive: true });
-            writeFileSync(packageJsonPath, '{"name":"mocks", "version":"1.0"}', { encoding: 'utf-8' });
-            execSync(`npm i faker`, { cwd: mocksPath });
-        }
-
         if (StateManager.settings_tlsRejectUnauthorized) process.env.NODE_TLS_REJECT_UNAUTHORIZED = '';
         else process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 

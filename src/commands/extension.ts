@@ -1,7 +1,6 @@
 import { StateManager } from "../workbench/stateManager";
 import { workspace, window, commands } from "vscode";
 import { isValidKey } from "../graphql/graphClient";
-import { GettingStartedTreeItem } from "../workbench/tree-data-providers/superGraphTreeDataProvider";
 
 export function deleteStudioApiKey() {
     StateManager.instance.globalState_userApiKey = ""
@@ -26,7 +25,7 @@ export async function enterStudioApiKey() {
     }
 }
 
-export async function gettingStarted(item: GettingStartedTreeItem) {
+export async function gettingStarted(item) {
     window.showTextDocument(item.uri)
         .then(() => commands.executeCommand('markdown.showPreviewToSide'))
         .then(() => commands.executeCommand('workbench.action.closeEditorsInOtherGroups'))

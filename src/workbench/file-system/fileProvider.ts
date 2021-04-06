@@ -1,13 +1,10 @@
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'fs';
 import path, { join, resolve } from 'path';
-import { commands, Disposable, EventEmitter, FileChangeEvent, FileStat, FileSystemProvider, FileType, Uri, window, ProgressLocation, workspace } from 'vscode';
+import { commands, Disposable, EventEmitter, FileChangeEvent, FileStat, FileSystemProvider, FileType, Uri, window, workspace } from 'vscode';
 import { StateManager } from '../stateManager';
-import { getComposedSchemaLogCompositionErrorsForWbFile, superSchemaToSchema } from '../../graphql/composition';
+import { getComposedSchemaLogCompositionErrorsForWbFile } from '../../graphql/composition';
 import { ApolloWorkbenchFile, WorkbenchSettings } from './fileTypes';
 import { parse, GraphQLSchema, extendSchema, printSchema } from 'graphql';
-
-// import { getQueryPlan, getQueryPlanner, prettyFormatQueryPlan } from '@apollo/query-planner';
-
 import { buildOperationContext, buildComposedSchema, QueryPlanner } from '@apollo/query-planner';
 import { serializeQueryPlan } from '@apollo/query-planner';
 
@@ -181,7 +178,7 @@ export class FileProvider implements FileSystemProvider {
             const schema = buildComposedSchema(parse(wbFile.supergraphSdl))
             const operationContext = buildOperationContext(schema, parse(operation), operationName)
             const queryPlanner = new QueryPlanner(schema);
-            const queryPlan = queryPlanner.buildQueryPlan(operationContext, { autoFragmentization: true });
+            const queryPlan = queryPlanner.buildQueryPlan(operationContext, { autoFragmentization: false });
             const queryPlanString = serializeQueryPlan(queryPlan);
 
             return queryPlanString;

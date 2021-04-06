@@ -38,10 +38,10 @@ export async function getComposedSchemaLogCompositionErrorsForWbFile(wbFilePath:
             if (supergraphSdl) {
                 workbenchFile.supergraphSdl = supergraphSdl ?? "";
                 await extractDefinedEntitiesByService(wbFilePath);
-            } else if (workbenchFile.supergraphSdl)
+            } else {
                 workbenchFile.supergraphSdl = "";
-
-            if (!workbenchFile.supergraphSdl) StateManager.instance.workspaceState_selectedWorkbenchAvailableEntities = {};
+                StateManager.instance.workspaceState_selectedWorkbenchAvailableEntities = {};
+            }
 
             FileProvider.instance.saveWorkbenchFile(workbenchFile, wbFilePath);
 
