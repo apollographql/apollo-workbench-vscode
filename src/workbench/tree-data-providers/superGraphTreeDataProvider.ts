@@ -46,7 +46,7 @@ export class LocalSupergraphTreeDataProvider implements TreeDataProvider<TreeIte
                     let subgraphItem = element as SupergraphTreeItem;
 
                     //Support legacy composition in workbench files
-                    if ((supergraphItem.wbFile as any)?.composedSchema)
+                    if ((supergraphItem.wbFile as any)?.composedSchema && !subgraphItem.wbFile.supergraphSdl)
                         subgraphItem.wbFile.supergraphSdl = (supergraphItem.wbFile as any)?.composedSchema;
 
                     if (subgraphItem.wbFile.supergraphSdl) {
