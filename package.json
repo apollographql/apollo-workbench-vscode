@@ -1,5 +1,5 @@
 {
-  "name": "apollo-workbench",
+  "name": "apollo-workbench-vscode",
   "displayName": "Apollo Workbench",
   "description": "Tooling to help you develop and mock federated schemas using Apollo Federation",
   "icon": "media/workbench.png",
@@ -307,7 +307,7 @@
         {
           "id": "apollo-workbench",
           "title": "Apollo Workbench",
-          "icon": "media/workbench.png"
+          "icon": "media/workbench.svg"
         }
       ]
     },
