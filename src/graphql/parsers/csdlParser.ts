@@ -8,7 +8,7 @@ export async function extractDefinedEntitiesByService(wbFilePath: string) {
     let directivesState: { serviceName?: string, keys: { [key: string]: FieldWithType[] } } = { keys: {} };
 
     try {
-        const wbFile = FileProvider.instance.workbenchFiles.get(wbFilePath);
+        const wbFile = FileProvider.instance.workbenchFileFromPath(wbFilePath);
         if (wbFile) {
             let lines = wbFile?.supergraphSdl.split('\n');
 

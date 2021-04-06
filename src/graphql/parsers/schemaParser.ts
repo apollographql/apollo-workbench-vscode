@@ -11,7 +11,7 @@ export function getServiceAvailableTypes(serviceName: string, wbFilePath: string
     let scalars: string[] = [];
 
     try {
-        let localSchema = FileProvider.instance.workbenchFiles.get(wbFilePath)?.schemas[serviceName];
+        let localSchema = FileProvider.instance.workbenchFileFromPath(wbFilePath)?.schemas[serviceName];
         if (localSchema) {
             let doc = parse(localSchema.sdl);
 

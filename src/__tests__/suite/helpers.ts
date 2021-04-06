@@ -24,7 +24,7 @@ export function cleanupWorkbenchFiles() {
     } catch (err) {
         console.log(`Cleanup Error: ${err}`);
     }
-    FileProvider.instance.workbenchFiles.clear();
+    FileProvider.instance.clearWorkbenchFiles();
 }
 
 
