@@ -23,7 +23,9 @@ export class LocalSupergraphTreeDataProvider implements TreeDataProvider<TreeIte
         if (element == undefined) {
             let items = new Array<TreeItem>();
             const workbenchFiles = FileProvider.instance.refreshLocalWorkbenchFiles();
-            workbenchFiles.forEach((wbFile, wbFilePath) => items.push(new SupergraphTreeItem(wbFile, wbFilePath)));
+            workbenchFiles.forEach((wbFile, wbFilePath) => {
+                items.push(new SupergraphTreeItem(wbFile, wbFilePath));
+            });
 
             if (items.length == 0) {
                 window.showInformationMessage("No workspace files found in current directory", "Create New Workbench").then((value) => {

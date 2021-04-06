@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'fs';
 import path, { join, resolve } from 'path';
-import { commands, Disposable, EventEmitter, FileChangeEvent, FileStat, FileSystemProvider, FileType, Uri, window, ProgressLocation } from 'vscode';
+import { commands, Disposable, EventEmitter, FileChangeEvent, FileStat, FileSystemProvider, FileType, Uri, window, ProgressLocation, workspace } from 'vscode';
 import { StateManager } from '../stateManager';
 import { getComposedSchemaLogCompositionErrorsForWbFile, superSchemaToSchema } from '../../graphql/composition';
 import { ApolloWorkbenchFile, WorkbenchSettings } from './fileTypes';
@@ -8,7 +8,7 @@ import { parse, GraphQLSchema, extendSchema, printSchema } from 'graphql';
 
 // import { getQueryPlan, getQueryPlanner, prettyFormatQueryPlan } from '@apollo/query-planner';
 
-import { buildQueryPlan, buildOperationContext, buildComposedSchema, QueryPlanner } from '@apollo/query-planner';
+import { buildOperationContext, buildComposedSchema, QueryPlanner } from '@apollo/query-planner';
 import { serializeQueryPlan } from '@apollo/query-planner';
 
 export class FileProvider implements FileSystemProvider {
@@ -25,7 +25,7 @@ export class FileProvider implements FileSystemProvider {
     }
 
     //All workbench files in opened VS Code folder
-    workbenchFiles: Map<string, ApolloWorkbenchFile> = new Map();
+    private workbenchFiles: Map<string, ApolloWorkbenchFile> = new Map();
     refreshLocalWorkbenchFiles() {
         this.workbenchFiles.clear();
         const workspaceRoot = StateManager.workspaceRoot;
@@ -33,8 +33,8 @@ export class FileProvider implements FileSystemProvider {
             let workbenchFiles = this.getWorkbenchFilesInDirectory(workspaceRoot);
             workbenchFiles.forEach(workbenchFile => {
                 try {
-                    const wbFile = JSON.parse(readFileSync(workbenchFile.fsPath, { encoding: 'utf-8' })) as ApolloWorkbenchFile;
-                    this.workbenchFiles.set(workbenchFile.fsPath, wbFile);
+                    const wbFile = JSON.parse(readFileSync(workbenchFile.path, { encoding: 'utf-8' })) as ApolloWorkbenchFile;
+                    this.workbenchFiles.set(workbenchFile.path, wbFile);
                 } catch (err) {
                     window.showErrorMessage(`Workbench file was not in the correct format. File located at ${workbenchFile.fsPath}`);
                 }
@@ -43,13 +43,19 @@ export class FileProvider implements FileSystemProvider {
 
         return this.workbenchFiles;
     }
+    clearWorkbenchFiles() {
+        this.workbenchFiles.clear();
+    }
+    getWorkbenchFiles() {
+        return this.workbenchFiles;
+    }
 
     loadedWorbenchFilePath = '';
     loadedWorkbenchFile?: ApolloWorkbenchFile;
     loadWorkbenchForComposition(wbFilePath: string, forceCompose: boolean = false) {
         if (this.loadedWorbenchFilePath != wbFilePath) {
             this.loadedWorbenchFilePath = wbFilePath;
-            this.loadedWorkbenchFile = this.workbenchFiles.get(wbFilePath);
+            this.loadedWorkbenchFile = this.workbenchFileFromPath(wbFilePath);
             this.refreshComposition(wbFilePath);
         } else if (forceCompose) {
             this.refreshComposition(wbFilePath);
@@ -88,20 +94,30 @@ export class FileProvider implements FileSystemProvider {
         writeFileSync(wbFilePath, JSON.stringify(wbFile), { encoding: "utf8" });
         if (refreshTree) StateManager.instance.localSupergraphTreeDataProvider.refresh();
     }
+    workbenchFileFromPath(path: string) {
+        let wbFile = this.workbenchFiles.get(path);
+        if (!wbFile) //we're on Windows
+            wbFile = this.workbenchFiles.get(path.replace(/\//g, '\\'));
+
+        return wbFile;
+    }
+
     //FileSystemProvider Implementations
     //File chagnes are watched at the `vscode.workspace.onDidChangeTextDocument` level
     readFile(uri: Uri): Uint8Array | Thenable<Uint8Array> {
         const name = uri.query;
         if (uri.path.includes('/subgraphs')) {
-            const wbFile = this.workbenchFiles.get(uri.fsPath.split('/subgraphs')[0]);
+            const wbFilePath = uri.path.split('/subgraphs')[0]
+            const wbFile = this.workbenchFileFromPath(wbFilePath);
+
             return Buffer.from(wbFile?.schemas[name].sdl ?? "");
         } else if (uri.path.includes('/queries')) {
-            const wbFilePath = uri.fsPath.split('/queries')[0];
-            const wbFile = this.workbenchFiles.get(wbFilePath);
+            const wbFilePath = uri.path.split('/queries')[0];
+            const wbFile = this.workbenchFileFromPath(wbFilePath);
             return Buffer.from(wbFile?.operations[name] ?? "");
         } else if (uri.path.includes('/queryplans')) {
-            const wbFilePath = uri.fsPath.split('/queryplans')[0];
-            const wbFile = this.workbenchFiles.get(wbFilePath);
+            const wbFilePath = uri.path.split('/queryplans')[0];
+            const wbFile = this.workbenchFileFromPath(wbFilePath);
             //If we don't have a queryplan and we have a supergraphSdl, try generating query plan
             if (wbFile?.supergraphSdl) {
                 if (!wbFile?.queryPlans[name]) {
@@ -112,8 +128,8 @@ export class FileProvider implements FileSystemProvider {
 
             return Buffer.from(wbFile?.queryPlans[name] ? wbFile?.queryPlans[name] : "Unable to generate Query Plan, do you have a supergraph schema available?");
         } else if (uri.path.includes('/subgraph-settings')) {
-            const wbFilePath = uri.fsPath.split('/subgraph-settings')[0];
-            const wbFile = this.workbenchFiles.get(wbFilePath);
+            const wbFilePath = uri.path.split('/subgraph-settings')[0];
+            const wbFile = this.workbenchFileFromPath(wbFilePath);
             const subgraph = wbFile?.schemas[name];
             if (subgraph) {
                 let settings: WorkbenchSettings = {
@@ -128,12 +144,12 @@ export class FileProvider implements FileSystemProvider {
                 return Buffer.from(JSON.stringify(settings, null, 2));
             } else return Buffer.from(JSON.stringify(new WorkbenchSettings(), null, 2));
         } else if (uri.path.includes('/supergraph-schema')) {
-            const wbFilePath = uri.fsPath.split('/supergraph-schema')[0];
-            const wbFile = this.workbenchFiles.get(wbFilePath);
+            const wbFilePath = uri.path.split('/supergraph-schema')[0];
+            const wbFile = this.workbenchFileFromPath(wbFilePath);
             return Buffer.from(wbFile?.supergraphSdl ?? "");
         } else if (uri.path.includes('/supergraph-api-schema')) {
-            const wbFilePath = uri.fsPath.split('/supergraph-api-schema')[0];
-            const wbFile = this.workbenchFiles.get(wbFilePath);
+            const wbFilePath = uri.path.split('/supergraph-api-schema')[0];
+            const wbFile = this.workbenchFileFromPath(wbFilePath);
             const schema = new GraphQLSchema({
                 query: undefined,
             });
@@ -164,7 +180,8 @@ export class FileProvider implements FileSystemProvider {
             const operation = wbFile.operations[operationName];
             const schema = buildComposedSchema(parse(wbFile.supergraphSdl))
             const operationContext = buildOperationContext(schema, parse(operation), operationName)
-            const queryPlan = buildQueryPlan(operationContext, { autoFragmentization: true });
+            const queryPlanner = new QueryPlanner(schema);
+            const queryPlan = queryPlanner.buildQueryPlan(operationContext, { autoFragmentization: true });
             const queryPlanString = serializeQueryPlan(queryPlan);
 
             return queryPlanString;
@@ -175,11 +192,11 @@ export class FileProvider implements FileSystemProvider {
     }
     writeFile(uri: Uri, content: Uint8Array, options: { create: boolean; overwrite: boolean; }): void | Thenable<void> {
         //Supergraph schema and queryplans are read-only
-        if (uri.fsPath.includes('supergraph-schema') || uri.fsPath.includes('supergraph-api-schema') || uri.fsPath.includes('queryplans')) return;
+        if (uri.path.includes('supergraph-schema') || uri.path.includes('supergraph-api-schema') || uri.path.includes('queryplans')) return;
 
         const name = uri.query;
-        const wbFilePath = this.getPath(uri.fsPath);
-        const wbFile = this.workbenchFiles.get(wbFilePath);
+        const wbFilePath = this.getPath(uri.path);
+        const wbFile = this.workbenchFileFromPath(wbFilePath);
         const stringContent = content.toString();
 
         if (wbFile) {
@@ -194,12 +211,7 @@ export class FileProvider implements FileSystemProvider {
 
                 if (wbFile.supergraphSdl) {
                     try {
-                        // const operation = wbFile.operations[name];
                         const queryPlanString = this.generateQueryPlan(name, wbFile)
-                        // const schema = buildComposedSchema(parse(wbFile.supergraphSdl))
-                        // const operationContext = buildOperationContext(schema, parse(operation), name)
-                        // const queryPlan = buildQueryPlan(operationContext, { autoFragmentization: true });
-                        // const queryPlanString = serializeQueryPlan(queryPlan);
 
                         wbFile.queryPlans[name] = queryPlanString;
                     } catch (err) {

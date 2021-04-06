@@ -20,7 +20,7 @@ export function superSchemaToSchema(supergraphSchema: string) {
 }
 
 export async function getComposedSchemaLogCompositionErrorsForWbFile(wbFilePath: string) {
-    let workbenchFile = FileProvider.instance.workbenchFiles.get(wbFilePath);
+    let workbenchFile = FileProvider.instance.workbenchFileFromPath(wbFilePath);
     if (workbenchFile) {
         compositionDiagnostics.clear();
         try {

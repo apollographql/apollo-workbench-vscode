@@ -8,7 +8,7 @@ import { OverrideApolloGateway, GatewayForwardHeadersDataSource } from "../graph
 import { FileProvider } from "./file-system/fileProvider";
 import { extractEntityNames } from "../graphql/parsers/schemaParser";
 import { resolve } from "path";
-import { mkdirSync } from "fs";
+import { mkdirSync, writeFileSync } from "fs";
 import { workspace, Uri, window, StatusBarAlignment, tasks } from "vscode";
 import { execSync } from "child_process";
 import { Disposable } from "vscode-languageclient";
@@ -34,7 +34,7 @@ export class ServerManager {
             const mocksPath = resolve(StateManager.instance.extensionGlobalStoragePath, `mocks`);
             const packageJsonPath = resolve(mocksPath, `package.json`);
             mkdirSync(mocksPath, { recursive: true });
-            workspace.fs.writeFile(Uri.parse(packageJsonPath), Buffer.from('{"name":"mocks", "version":"1.0"}'));
+            writeFileSync(packageJsonPath, '{"name":"mocks", "version":"1.0"}', { encoding: 'utf-8' });
             execSync(`npm i faker`, { cwd: mocksPath });
         }
 
@@ -42,7 +42,7 @@ export class ServerManager {
         else process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
         console.log(`${name}:Setting up mocks`);
-        let workbenchFile = FileProvider.instance.workbenchFiles.get(wbFilePath);
+        let workbenchFile = FileProvider.instance.workbenchFileFromPath(wbFilePath);
         if (workbenchFile) {
             console.log(`${name}:Mocking workbench file: ${workbenchFile.graphName}`);
             FileProvider.instance.loadedWorkbenchFile = workbenchFile;

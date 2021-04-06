@@ -24,8 +24,13 @@ export async function stopMocks(item: SubgraphTreeItem) {
     ServerManager.instance.stopMocks();
 }
 export async function editSubgraph(item: SubgraphTreeItem) {
-    await window.showTextDocument(WorkbenchUri.supergraph(item.wbFilePath, item.subgraphName, WorkbenchUriType.SCHEMAS));
-    FileProvider.instance.loadWorkbenchForComposition(item.wbFilePath);
+    const uri = WorkbenchUri.supergraph(item.wbFilePath, item.subgraphName, WorkbenchUriType.SCHEMAS);
+    try {
+        await window.showTextDocument(uri);
+        FileProvider.instance.loadWorkbenchForComposition(item.wbFilePath);
+    } catch (err) {
+        console.log(err)
+    }
 }
 export async function editSupergraphOperation(item: OperationTreeItem) {
     await window.showTextDocument(WorkbenchUri.supergraph(item.filePath, item.operationName, WorkbenchUriType.QUERIES));
@@ -36,7 +41,7 @@ export async function viewSubgraphSettings(item: SubgraphTreeItem) {
 }
 export async function addOperation(item: OperationTreeItem) {
     let wbFilePath = item.filePath;
-    let wbFile = FileProvider.instance.workbenchFiles.get(wbFilePath);
+    let wbFile = FileProvider.instance.workbenchFileFromPath(wbFilePath);
     if (wbFile) {
         let operationName = await window.showInputBox({ placeHolder: "Enter a name for the operation" }) ?? "";
         if (!operationName) {
@@ -51,7 +56,7 @@ export async function addOperation(item: OperationTreeItem) {
 }
 export async function deleteOperation(item: OperationTreeItem) {
     let wbFilePath = item.filePath;
-    let wbFile = FileProvider.instance.workbenchFiles.get(wbFilePath);
+    let wbFile = FileProvider.instance.workbenchFileFromPath(wbFilePath);
     let operationName = item.operationName;
     if (wbFile) {
         delete wbFile.operations[operationName];
@@ -86,7 +91,7 @@ export async function addSubgraph(item: SubgraphSummaryTreeItem) {
 }
 export async function deleteSubgraph(item: SubgraphTreeItem) {
     let wbFilePath = item.wbFilePath;
-    let wbFile = FileProvider.instance.workbenchFiles.get(wbFilePath);
+    let wbFile = FileProvider.instance.workbenchFileFromPath(wbFilePath);
     let subgraphName = item.subgraphName;
     if (wbFile) {
         delete wbFile.schemas[subgraphName];
@@ -167,32 +172,12 @@ async function createWorkbench(graphId: string, selectedVariant: string) {
         window.showInformationMessage("You must provide a name to create a new workbench file")
     }
 }
-const txtEncoder = new TextEncoder();
-export async function exportSupergraphSchema(item: SupergraphSchemaTreeItem) {
-    if (item.wbFile.supergraphSdl && StateManager.workspaceRoot) {
-        const exportPath = `${StateManager.workspaceRoot}/${item.wbFile.graphName}-supergraph-schema.graphql`;
-
-        workspace.fs.writeFile(Uri.parse(exportPath), txtEncoder.encode(item.wbFile.supergraphSdl));
-        window.showInformationMessage(`Supergraph Schema was exported to ${exportPath}`);
-    }
-}
-
-export async function exportSupergraphApiSchema(item: SupergraphApiSchemaTreeItem) {
-    const supergraphSchema = item.wbFile.supergraphSdl;
-    if (supergraphSchema && StateManager.workspaceRoot) {
-        const exportPath = `${StateManager.workspaceRoot}/${item.wbFile.graphName}-api-schema.graphql`;
-        const finalSchema = superSchemaToSchema(supergraphSchema);
-
-        workspace.fs.writeFile(Uri.parse(exportPath), txtEncoder.encode(printSchema(finalSchema)));
-        window.showInformationMessage(`Graph Core Schema was exported to ${exportPath}`);
-    }
-}
 
 export async function updateSubgraphSchemaFromURL(item: SubgraphTreeItem) {
     if (StateManager.settings_tlsRejectUnauthorized) process.env.NODE_TLS_REJECT_UNAUTHORIZED = '';
     else process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
-    let wbFile = FileProvider.instance.workbenchFiles.get(item.wbFilePath);
+    let wbFile = FileProvider.instance.workbenchFileFromPath(item.wbFilePath);
     if (wbFile?.schemas[item.subgraphName] && !wbFile?.schemas[item.subgraphName].url) {
         let routingURL = await window.showInputBox({ placeHolder: "Enter a the url for the schema/service" }) ?? "";
         if (!routingURL) {
@@ -224,31 +209,53 @@ export async function updateSubgraphSchemaFromURL(item: SubgraphTreeItem) {
     }
 }
 
-
 export async function viewSubgraphCustomMocks(item: SubgraphTreeItem) {
     const subgraphMocksUri = WorkbenchUri.supergraph(item.wbFilePath, item.subgraphName, WorkbenchUriType.MOCKS);
     if (!existsSync(subgraphMocksUri.fsPath)) {
         const defaultMocks = "const faker = require('faker')\n\nconst mocks = {\n\n}\nmodule.exports = mocks;";
         writeFileSync(subgraphMocksUri.fsPath, defaultMocks, { encoding: "utf-8" });
     }
-    await window.showTextDocument(subgraphMocksUri);
+    try {
+        await window.showTextDocument(subgraphMocksUri);
+    } catch (err) {
+        console.log(err)
+    }
+}
+
+export async function exportSupergraphSchema(item: SupergraphSchemaTreeItem) {
+    if (item.wbFile.supergraphSdl && StateManager.workspaceRoot) {
+        const exportPath = resolve(StateManager.workspaceRoot, `${item.wbFile.graphName}-supergraph-schema.graphql`);
+        const exportUri = Uri.parse(exportPath);
+        writeFileSync(exportPath, item.wbFile.supergraphSdl, { encoding: 'utf-8' });
+        window.showInformationMessage(`Supergraph Schema was exported to ${exportPath}`);
+    }
+}
+
+export async function exportSupergraphApiSchema(item: SupergraphApiSchemaTreeItem) {
+    const supergraphSchema = item.wbFile.supergraphSdl;
+    if (supergraphSchema && StateManager.workspaceRoot) {
+        const exportPath = resolve(StateManager.workspaceRoot, `${item.wbFile.graphName}-api-schema.graphql`);
+        const finalSchema = superSchemaToSchema(supergraphSchema);
+        writeFileSync(exportPath, printSchema(finalSchema), { encoding: 'utf-8' });
+        window.showInformationMessage(`Graph Core Schema was exported to ${exportPath}`);
+    }
 }
 
 export async function exportSubgraphSchema(item: SubgraphTreeItem) {
-    const exportPath = StateManager.workspaceRoot ? `${StateManager.workspaceRoot}/${item.subgraphName}.graphql` : null;
+    const exportPath = StateManager.workspaceRoot ? resolve(StateManager.workspaceRoot, `${item.subgraphName}.graphql`) : null;
     if (exportPath) {
-        const schema = FileProvider.instance.workbenchFiles.get(item.wbFilePath)?.schemas[item.subgraphName]?.sdl;
-        workspace.fs.writeFile(Uri.parse(exportPath), txtEncoder.encode(schema));
+        const schema = FileProvider.instance.workbenchFileFromPath(item.wbFilePath)?.schemas[item.subgraphName]?.sdl ?? "";
+        writeFileSync(exportPath, schema, { encoding: 'utf-8' });
 
         window.showInformationMessage(`${item.subgraphName} schema was exported to ${exportPath}`);
     }
 }
 
 export async function exportSubgraphResolvers(item: SubgraphTreeItem) {
-    let exportPath = StateManager.workspaceRoot ? `${StateManager.workspaceRoot}/${item.subgraphName}-resolvers` : null;
+    let exportPath = StateManager.workspaceRoot ? resolve(StateManager.workspaceRoot, `${item.subgraphName}-resolvers`) : null;
     if (exportPath) {
         let resolvers = '';
-        const schema = FileProvider.instance.workbenchFiles.get(item.wbFilePath)?.schemas[item.subgraphName].sdl ?? "";
+        const schema = FileProvider.instance.workbenchFileFromPath(item.wbFilePath)?.schemas[item.subgraphName].sdl ?? "";
         resolvers = generateJsFederatedResolvers(schema);
         //TODO: Future Feature could have a more robust typescript generation version
         // let exportLanguage = await window.showQuickPick(["Javascript", "Typescript"], { canPickMany: false, placeHolder: "Would you like to use Javascript or Typescript for the exported project?" });
@@ -260,7 +267,7 @@ export async function exportSubgraphResolvers(item: SubgraphTreeItem) {
         //     exportPath += ".js";
         // }
 
-        workspace.fs.writeFile(Uri.parse(`${exportPath}.js`), txtEncoder.encode(resolvers));
+        writeFileSync(`${exportPath}.js`, resolvers, { encoding: 'utf-8' });
         window.showInformationMessage(`${item.subgraphName} resolvers was exported to ${exportPath}`);
     }
 }
