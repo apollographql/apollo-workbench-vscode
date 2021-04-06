@@ -15,6 +15,9 @@ import { addToWorkbench } from './commands/studio-operations';
 import { ensureFolderIsOpen, openFolder, enterStudioApiKey, gettingStarted, deleteStudioApiKey } from './commands/extension';
 import { refreshStudioGraphs, loadOperations, viewStudioOperation, switchOrg } from './commands/studio-graphs';
 import { createWorkbenchFromPreloaded, startMocks, stopMocks, deleteOperation, addOperation, viewQueryPlan, editSubgraph, deleteSubgraph, refreshSupergraphs, viewSubgraphSettings, addSubgraph, viewSupergraphSchema, editSupergraphOperation, newDesign, createWorkbenchFromSupergraph, exportSupergraphSchema, exportSupergraphApiSchema, viewSupergraphApiSchema, updateSubgraphSchemaFromURL, viewSubgraphCustomMocks, exportSubgraphSchema, exportSubgraphResolvers, createWorkbenchFromSupergraphVariant } from './commands/local-supergraph-designs';
+import { resolve } from 'path';
+import { mkdirSync, writeFileSync } from 'fs';
+import { execSync } from 'child_process';
 
 export const compositionDiagnostics: DiagnosticCollection = languages.createDiagnosticCollection("composition-errors");
 export const operationDiagnostics: DiagnosticCollection = languages.createDiagnosticCollection("operation-errors");
@@ -34,6 +37,14 @@ export async function activate(context: ExtensionContext) {
 	context.workspaceState.update("selectedWbFile", "");
 	context.globalState.update("APOLLO_SELCTED_GRAPH_ID", "");
 
+	//Setting up the mocks project folder - need to isolate to mocks running
+	if (StateManager.instance.extensionGlobalStoragePath) {
+		const mocksPath = resolve(StateManager.instance.extensionGlobalStoragePath, `mocks`);
+		const packageJsonPath = resolve(mocksPath, `package.json`);
+		mkdirSync(mocksPath, { recursive: true });
+		writeFileSync(packageJsonPath, '{"name":"mocks", "version":"1.0"}', { encoding: 'utf-8' });
+		execSync(`npm i faker`, { cwd: mocksPath });
+	}
 	context.subscriptions.push(compositionDiagnostics);
 	context.subscriptions.push(workspace.registerFileSystemProvider('workbench', FileProvider.instance, { isCaseSensitive: true }));
 

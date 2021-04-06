@@ -212,8 +212,10 @@ export async function updateSubgraphSchemaFromURL(item: SubgraphTreeItem) {
 export async function viewSubgraphCustomMocks(item: SubgraphTreeItem) {
     const subgraphMocksUri = WorkbenchUri.supergraph(item.wbFilePath, item.subgraphName, WorkbenchUriType.MOCKS);
     if (!existsSync(subgraphMocksUri.fsPath)) {
-        const defaultMocks = "const faker = require('faker')\n\nconst mocks = {\n\n}\nmodule.exports = mocks;";
-        writeFileSync(subgraphMocksUri.fsPath, defaultMocks, { encoding: "utf-8" });
+        const wbFile = FileProvider.instance.workbenchFileFromPath(item.wbFilePath);
+        const customMocks = wbFile?.schemas[item.subgraphName].customMocks;
+        if (customMocks) writeFileSync(subgraphMocksUri.fsPath, customMocks, { encoding: "utf-8" });
+        else writeFileSync(subgraphMocksUri.fsPath, "const faker = require('faker')\n\nconst mocks = {\n\n}\nmodule.exports = mocks;", { encoding: "utf-8" });
     }
     try {
         await window.showTextDocument(subgraphMocksUri);

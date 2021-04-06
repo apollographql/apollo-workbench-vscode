@@ -3,7 +3,6 @@ import * as assert from 'assert';
 import { activateExtension, cleanupWorkbenchFiles } from './helpers';
 import { StateManager } from '../../workbench/stateManager';
 import { NotLoggedInTreeItem } from '../../workbench/tree-data-providers/apolloStudioGraphsTreeDataProvider';
-import { GettingStartedTopLevel } from '../../workbench/tree-data-providers/superGraphTreeDataProvider';
 
 suite('Default Workbench Tests', () => {
     before(activateExtension);
