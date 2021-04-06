@@ -36,10 +36,6 @@ jobs:
       #Setup project and package extension
       - run: npm install
       - run: npm install vsce -g
-      
-      #This is a hotfix until the underlying packages are fixed
-      - run: mkdir node_modules/@apollo/query-planner-wasm/dist && touch node_modules/@apollo/query-planner-wasm/dist/index.js
-      
       - run: npm run vscode:package
       - id: set-version-number
         run: echo "::set-output name=VERSION::$(echo ${{ steps.version-bump.outputs.newTag }} | cut -c 2-)"
