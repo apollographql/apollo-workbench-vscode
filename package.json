@@ -230,12 +230,14 @@
       {
         "command": "local-supergraph-designs.startMocks",
         "title": "Start Supergraph Mocks",
-        "icon": "$(play)"
+        "icon": "$(play)",
+        "category": "Apollo Workbench"
       },
       {
         "command": "local-supergraph-designs.stopMocks",
         "title": "Stop Supergraph Mocks",
-        "icon": "$(debug-stop)"
+        "icon": "$(debug-stop)",
+        "category": "Apollo Workbench"
       },
       {
         "command": "local-supergraph-designs.updateSubgraphSchemaFromURL",

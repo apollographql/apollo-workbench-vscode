@@ -17,8 +17,27 @@ import { OverrideApolloGateway } from "../graphql/graphRouter";
 import { generateJsFederatedResolvers } from "../utils/exportFiles";
 import { getComposedSchema, superSchemaToSchema } from "../graphql/composition";
 
-export function startMocks(item: SubgraphSummaryTreeItem) {
-    ServerManager.instance.startSupergraphMocks(item.filePath);
+export async function startMocks(item: SubgraphSummaryTreeItem) {
+    if (item)
+        ServerManager.instance.startSupergraphMocks(item.filePath);
+    else {
+        let wbFiles: string[] = [];
+        FileProvider.instance.getWorkbenchFiles().forEach((value, key) => wbFiles.push(value.graphName));
+        let wbFileToStartMocks = await window.showQuickPick(wbFiles, { placeHolder: "Select which supergraph design file to mock" });
+        if (wbFileToStartMocks) {
+            let wbFilePath = '';
+            FileProvider.instance.getWorkbenchFiles().forEach((value, key) => {
+                if (value.graphName == wbFileToStartMocks)
+                    wbFilePath = key;
+            })
+
+            if (existsSync(wbFilePath))
+                ServerManager.instance.startSupergraphMocks(wbFilePath);
+            else
+                window.showInformationMessage('There was an error loading your workbench file for mocking, please file an issue on the repo with what happened and your workbench file');
+        } else
+            window.showInformationMessage('No supergraph was selected, cancelling mocks')
+    }
 }
 export async function stopMocks(item: SubgraphTreeItem) {
     ServerManager.instance.stopMocks();
