@@ -1,4 +1,4 @@
-import { addMockFunctionsToSchema, ApolloServer, gql, IMocks } from "apollo-server";
+import { addMockFunctionsToSchema, ApolloServer, gql, IMocks, CorsOptions } from "apollo-server";
 import plugin from 'apollo-server-plugin-operation-registry';
 import { buildFederatedSchema } from "@apollo/federation";
 import { ApolloServerPluginUsageReportingDisabled } from 'apollo-server-core';
@@ -27,6 +27,11 @@ export class ServerManager {
     portMapping: { [serviceName: string]: string } = {};
     //serverState will hold the ApolloServer/ApolloGateway instances based on the ports they are running on
     private serversState: { [port: string]: any } = {};
+
+    private corsConfiguration: CorsOptions = {
+      origin: '*',
+      credentials: true,
+    };
 
     startSupergraphMocks(wbFilePath: string) {
         if (StateManager.settings_tlsRejectUnauthorized) process.env.NODE_TLS_REJECT_UNAUTHORIZED = '';
@@ -117,6 +122,7 @@ export class ServerManager {
 
             //Create and start up server locally
             const server = new ApolloServer({
+                cors: this.corsConfiguration,
                 schema,
                 subscriptions: false
             });
@@ -173,6 +179,7 @@ export class ServerManager {
         }
 
         const server = new ApolloServer({
+            cors: this.corsConfiguration,
             gateway: new OverrideApolloGateway({
                 debug: true,
                 buildService({ url, name }) {
