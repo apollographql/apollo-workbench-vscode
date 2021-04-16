@@ -30,6 +30,7 @@ export class FileProvider implements FileSystemProvider {
             let workbenchFiles = this.getWorkbenchFilesInDirectory(workspaceRoot);
             workbenchFiles.forEach(workbenchFile => {
                 try {
+                    let test = JSON.parse(readFileSync(workbenchFile.path, { encoding: 'utf-8' }));
                     const wbFile = JSON.parse(readFileSync(workbenchFile.path, { encoding: 'utf-8' })) as ApolloWorkbenchFile;
                     this.workbenchFiles.set(workbenchFile.path, wbFile);
                 } catch (err) {
@@ -98,7 +99,21 @@ export class FileProvider implements FileSystemProvider {
 
         return wbFile;
     }
+    workbenchFileByGraphName(name: string) {
+        let path = '';
+        let wbFile: ApolloWorkbenchFile = new ApolloWorkbenchFile(name);
+        this.workbenchFiles.forEach((value, key) => {
+            if (value.graphName == name) {
+                path = key;
+                wbFile = value;
+            }
+        })
+        // let wbFile = this.workbenchFiles.get(path);
+        // if (!wbFile) //we're on Windows
+        //     wbFile = this.workbenchFiles.get(path.replace(/\//g, '\\'));
 
+        return { wbFile, path };
+    }
     //FileSystemProvider Implementations
     //File chagnes are watched at the `vscode.workspace.onDidChangeTextDocument` level
     readFile(uri: Uri): Uint8Array | Thenable<Uint8Array> {

@@ -132,7 +132,7 @@ export class SubgraphSummaryTreeItem extends TreeItem {
         this.contextValue = 'subgraphSummaryTreeItem';
 
         Object.keys(wbFile.schemas).forEach(subgraphName => {
-            this.subgraphs.push(new SubgraphTreeItem(subgraphName, wbFile.schemas[subgraphName], filePath))
+            this.subgraphs.push(new SubgraphTreeItem(wbFile.graphName, subgraphName, wbFile.schemas[subgraphName], filePath))
         })
         this.iconPath = {
             light: path.join(__filename, '..', '..', '..', '..', 'media', 'subgraph.svg'),
@@ -145,6 +145,7 @@ export class SubgraphTreeItem extends TreeItem {
     children: TreeItem[] = new Array<TreeItem>();
 
     constructor(
+        public readonly supergraphName: string,
         public readonly subgraphName: string,
         public readonly wbSchema: WorkbenchSchema,
         public readonly wbFilePath: string

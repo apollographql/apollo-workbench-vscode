@@ -229,7 +229,7 @@ export async function updateSubgraphSchemaFromURL(item: SubgraphTreeItem) {
 }
 
 export async function viewSubgraphCustomMocks(item: SubgraphTreeItem) {
-    const subgraphMocksUri = WorkbenchUri.supergraph(item.wbFilePath, item.subgraphName, WorkbenchUriType.MOCKS);
+    const subgraphMocksUri = WorkbenchUri.supergraph(item.supergraphName, item.subgraphName, WorkbenchUriType.MOCKS);
     if (!existsSync(subgraphMocksUri.fsPath)) {
         const wbFile = FileProvider.instance.workbenchFileFromPath(item.wbFilePath);
         const customMocks = wbFile?.schemas[item.subgraphName].customMocks;

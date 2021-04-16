@@ -18,6 +18,7 @@ import { createWorkbenchFromPreloaded, startMocks, stopMocks, deleteOperation, a
 import { resolve } from 'path';
 import { mkdirSync, writeFileSync } from 'fs';
 import { execSync } from 'child_process';
+import { WorkbenchUri } from './workbench/file-system/WorkbenchUri';
 
 export const compositionDiagnostics: DiagnosticCollection = languages.createDiagnosticCollection("composition-errors");
 export const operationDiagnostics: DiagnosticCollection = languages.createDiagnosticCollection("operation-errors");
@@ -144,6 +145,18 @@ export async function activate(context: ExtensionContext) {
 					operationDiagnostics.clear();
 					operationDiagnostics.set(uri, [new Diagnostic(new Range(0, 0, 0, 0), "No valid composed schema", DiagnosticSeverity.Warning)]);
 				}
+			}
+		}
+	})
+	workspace.onDidSaveTextDocument(async document => {
+		let uri = document.uri;
+		if (uri.path.includes('mocks')) {
+			const querySplit = uri.query.split(':');
+			const { wbFile, path } = FileProvider.instance.workbenchFileByGraphName(querySplit[0]);
+			const newMocksText = document.getText();
+			if (newMocksText != wbFile.schemas[querySplit[1]].customMocks) {
+				wbFile.schemas[querySplit[1]].customMocks = newMocksText;
+				FileProvider.instance.saveWorkbenchFile(wbFile, path);
 			}
 		}
 	})

@@ -8,10 +8,11 @@ import { OverrideApolloGateway, GatewayForwardHeadersDataSource } from "../graph
 import { FileProvider } from "./file-system/fileProvider";
 import { extractEntityNames } from "../graphql/parsers/schemaParser";
 import { resolve } from "path";
-import { mkdirSync, writeFileSync } from "fs";
+import { mkdirSync, writeFileSync, readFileSync } from "fs";
 import { workspace, Uri, window, StatusBarAlignment, tasks } from "vscode";
 import { execSync } from "child_process";
 import { Disposable } from "vscode-languageclient";
+import { WorkbenchUri, WorkbenchUriType } from "./file-system/WorkbenchUri";
 
 const { name } = require('../../package.json');
 
@@ -29,11 +30,11 @@ export class ServerManager {
     private serversState: { [port: string]: any } = {};
 
     private corsConfiguration: CorsOptions = {
-      origin: '*',
-      credentials: true,
+        origin: '*',
+        credentials: true,
     };
 
-    startSupergraphMocks(wbFilePath: string) {
+    async startSupergraphMocks(wbFilePath: string) {
         if (StateManager.settings_tlsRejectUnauthorized) process.env.NODE_TLS_REJECT_UNAUTHORIZED = '';
         else process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
@@ -124,6 +125,8 @@ export class ServerManager {
             const server = new ApolloServer({
                 cors: this.corsConfiguration,
                 schema,
+                // mocks,
+                // mockEntireSchema: false,
                 subscriptions: false
             });
             server.listen({ port }).then(({ url }) => console.log(`${name}:🚀 ${serviceName} mocked server ready at ${url}`));
