@@ -43,7 +43,7 @@ export class WorkbenchUri {
                 let subgarphMocksPath = resolve(StateManager.instance.extensionGlobalStoragePath ?? '', 'mocks', `${name}-mocks.js`);
                 if (subgarphMocksPath.toLowerCase().includes('c:')) subgarphMocksPath = subgarphMocksPath.slice(2).replace(/\\/g, '/');
 
-                return Uri.parse(subgarphMocksPath);
+                return Uri.parse(`${subgarphMocksPath}?${path}:${name}`);
         }
     }
 }
