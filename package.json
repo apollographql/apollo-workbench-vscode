@@ -7,7 +7,7 @@
     "url": "https://github.com/apollographql/apollo-workbench-vscode"
   },
   "license": "MIT",
-  "version": "1.0.14",
+  "version": "1.0.15",
   "publisher": "ApolloGraphQL",
   "engines": {
     "vscode": "^1.34.0"
