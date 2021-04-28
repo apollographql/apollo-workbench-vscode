@@ -35,20 +35,20 @@ export async function switchOrg() {
   if (!StateManager.instance.globalState_userApiKey) await enterStudioApiKey();
 
   let accountId = '';
-  let apiKey = StateManager.instance.globalState_userApiKey;
+  const apiKey = StateManager.instance.globalState_userApiKey;
 
   if (apiKey) {
     const myAccountIds = await getUserMemberships(apiKey);
     const memberships = (myAccountIds?.me as any)?.memberships;
     if (memberships?.length > 1) {
-      let accountMapping: { [key: string]: string } = {};
+      const accountMapping: { [key: string]: string } = {};
       memberships.map((membership) => {
-        let accountId = membership.account.id;
-        let accountName = membership.account.name;
+        const accountId = membership.account.id;
+        const accountName = membership.account.name;
         accountMapping[accountName] = accountId;
       });
 
-      let selectedOrgName =
+      const selectedOrgName =
         (await window.showQuickPick(Object.keys(accountMapping), {
           placeHolder: 'Select an account to load graphs from',
         })) ?? '';

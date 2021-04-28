@@ -33,7 +33,7 @@ export class FileProvider implements FileSystemProvider {
     return this._instance;
   }
 
-  constructor(workspaceRoot?: string) {}
+  constructor(private workspaceRoot?: string) {}
 
   //All workbench files in opened VS Code folder
   private workbenchFiles: Map<string, ApolloWorkbenchFile> = new Map();
@@ -41,10 +41,10 @@ export class FileProvider implements FileSystemProvider {
     this.workbenchFiles.clear();
     const workspaceRoot = StateManager.workspaceRoot;
     if (workspaceRoot) {
-      let workbenchFiles = this.getWorkbenchFilesInDirectory(workspaceRoot);
+      const workbenchFiles = this.getWorkbenchFilesInDirectory(workspaceRoot);
       workbenchFiles.forEach((workbenchFile) => {
         try {
-          let test = JSON.parse(
+          const test = JSON.parse(
             readFileSync(workbenchFile.path, { encoding: 'utf-8' }),
           );
           const wbFile = JSON.parse(
@@ -70,10 +70,7 @@ export class FileProvider implements FileSystemProvider {
 
   loadedWorbenchFilePath = '';
   loadedWorkbenchFile?: ApolloWorkbenchFile;
-  loadWorkbenchForComposition(
-    wbFilePath: string,
-    forceCompose: boolean = false,
-  ) {
+  loadWorkbenchForComposition(wbFilePath: string, forceCompose = false) {
     if (this.loadedWorbenchFilePath != wbFilePath) {
       this.loadedWorbenchFilePath = wbFilePath;
       this.loadedWorkbenchFile = this.workbenchFileFromPath(wbFilePath);
@@ -90,8 +87,8 @@ export class FileProvider implements FileSystemProvider {
   }
 
   async promptOpenFolder() {
-    let openFolder = 'Open Folder';
-    let response = await window.showErrorMessage(
+    const openFolder = 'Open Folder';
+    const response = await window.showErrorMessage(
       'You must open a folder to create Apollo Workbench files',
       openFolder,
     );
@@ -133,7 +130,7 @@ export class FileProvider implements FileSystemProvider {
   saveWorkbenchFile(
     wbFile: ApolloWorkbenchFile,
     wbFilePath: string,
-    refreshTree: boolean = true,
+    refreshTree = true,
   ) {
     writeFileSync(wbFilePath, JSON.stringify(wbFile), { encoding: 'utf8' });
     if (refreshTree)
@@ -199,7 +196,7 @@ export class FileProvider implements FileSystemProvider {
       const wbFile = this.workbenchFileFromPath(wbFilePath);
       const subgraph = wbFile?.schemas[name];
       if (subgraph) {
-        let settings: WorkbenchSettings = {
+        const settings: WorkbenchSettings = {
           url: subgraph?.url ?? '',
           requiredHeaders: subgraph?.requiredHeaders ?? [],
           mocks: {
@@ -361,7 +358,7 @@ export class FileProvider implements FileSystemProvider {
     uri: Uri,
     options: { recursive: boolean; excludes: string[] },
   ): Disposable {
-    return new Disposable(() => {});
+    return new Disposable(() => undefined);
   }
   stat(uri: Uri): FileStat | Thenable<FileStat> {
     const now = Date.now();
@@ -386,12 +383,12 @@ export class FileProvider implements FileSystemProvider {
   private getWorkbenchFilesInDirectory(dirPath: string) {
     if (!dirPath || dirPath == '.') return [];
 
-    let workbenchFiles = new Array<Uri>();
-    let directories = new Array<string>();
+    const workbenchFiles = new Array<Uri>();
+    const directories = new Array<string>();
     directories.push(dirPath);
 
     while (directories.length > 0) {
-      let directory = directories[0];
+      const directory = directories[0];
       const dirents = readdirSync(directory, { withFileTypes: true });
       for (const dirent of dirents) {
         const directoryPath = path.resolve(directory, dirent.name);
@@ -410,8 +407,8 @@ export class FileProvider implements FileSystemProvider {
   }
 
   getPreloadedWorkbenchFiles() {
-    let items: { fileName: string; path: string }[] = [];
-    let preloadFileDir = join(
+    const items: { fileName: string; path: string }[] = [];
+    const preloadFileDir = join(
       __dirname,
       '..',
       '..',
@@ -420,7 +417,7 @@ export class FileProvider implements FileSystemProvider {
       `preloaded-files`,
     );
     if (existsSync(preloadFileDir)) {
-      let preloadedDirectory = readdirSync(preloadFileDir, {
+      const preloadedDirectory = readdirSync(preloadFileDir, {
         encoding: 'utf-8',
       });
       preloadedDirectory.map((item) => {

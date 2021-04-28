@@ -20,20 +20,20 @@ export function generateTsConfig() {
 }
 
 export function generateCodeWorkspaceFile(serviceNames: string[]) {
-  let codeWorkspaceFile = {
-    folders: new Array(),
+  const codeWorkspaceFile = {
+    folders: [] as any[],
     launch: {
-      configurations: new Array(),
+      configurations: [] as any[],
       compounds: [
         {
           name: 'Launch All',
-          configurations: new Array(),
+          configurations: [] as any[],
         },
       ],
     },
     tasks: {
       version: '2.0.0',
-      tasks: new Array(),
+      tasks: [] as any[],
     },
   };
 
@@ -51,7 +51,7 @@ export function generateCodeWorkspaceFile(serviceNames: string[]) {
   codeWorkspaceFile.folders.push({ name: `Gateway`, path: `gateway` });
 
   serviceNames.map((serviceName) => {
-    let codeServiceName = `Service - ${serviceName}`;
+    const codeServiceName = `Service - ${serviceName}`;
     codeWorkspaceFile.tasks.tasks[0].dependsOn.push(`setup ${serviceName}`);
     codeWorkspaceFile.tasks.tasks.push({
       label: `setup ${serviceName}`,
@@ -74,7 +74,7 @@ export function generateCodeWorkspaceFile(serviceNames: string[]) {
   return JSON.stringify(codeWorkspaceFile);
 }
 
-let federatedServerPackageJson: any = {
+const federatedServerPackageJson: any = {
   scripts: {
     'local-schema-validation':
       "apollo service:check --variant=$(grep APOLLO_GRAPH_VARIANT .env | cut -d '=' -f2) --serviceName=${serviceName} --localSchemaFile=src/schema.graphql",
@@ -99,7 +99,7 @@ export function generateJsFederatedServerPackageJson(serviceName: string) {
 }
 
 export function generateTsFederatedServerPackageJson(serviceName: string) {
-  let base = federatedServerPackageJson;
+  const base = federatedServerPackageJson;
   base.name = serviceName;
   base.devDependencies = {
     '@types/node': 'latest',
@@ -122,7 +122,7 @@ export function generateTsFederatedServerPackageJson(serviceName: string) {
   return JSON.stringify(base);
 }
 
-let gatewayPackageJson: any = {
+const gatewayPackageJson: any = {
   name: 'graphql-gateway',
   scripts: {
     'list-services':
@@ -145,7 +145,7 @@ export function generateJsgatewayPackageJson() {
 }
 
 export function generateTsgatewayPackageJson() {
-  let base = gatewayPackageJson;
+  const base = gatewayPackageJson;
   base.devDependencies = {
     '@types/node': 'latest',
     '@types/node-fetch': 'latest',
@@ -166,7 +166,7 @@ export function generateTsgatewayPackageJson() {
 
 export function generateJsFederatedResolvers(schema: string) {
   let resolvers = 'const resolvers = {\n';
-  let entities = extractEntityNames(schema);
+  const entities = extractEntityNames(schema);
   entities.forEach(
     (entity) =>
       (resolvers += `\t${entity}: {\n\t\t__resolveReference(parent, args) {\n\t\t\treturn { ...parent }\n\t\t}\n\t}\n`),

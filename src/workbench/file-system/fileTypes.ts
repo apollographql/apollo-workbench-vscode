@@ -17,14 +17,14 @@ export class ApolloWorkbenchFile {
   operations: { [opName: string]: string } = {};
   queryPlans: { [opName: string]: string } = {};
   schemas: { [serviceName: string]: WorkbenchSchema } = {};
-  supergraphSdl: string = '';
+  supergraphSdl = '';
 
   constructor(public graphName: string) {}
 }
 
 ///This is the user facing settings displayed
 export class WorkbenchSettings {
-  url: string = '';
+  url = '';
   requiredHeaders?: [RequiredHeader?];
   mocks: {
     shouldMock: boolean;

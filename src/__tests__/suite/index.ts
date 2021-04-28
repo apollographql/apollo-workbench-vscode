@@ -10,7 +10,7 @@ export function run(): Promise<void> {
   });
 
   const testsRoot = path.resolve(__dirname, '..');
-  let isWorkbenchFolderLoaded = StateManager.workspaceRoot ? true : false;
+  const isWorkbenchFolderLoaded = StateManager.workspaceRoot ? true : false;
 
   return new Promise((c, e) => {
     glob('**/**.test.js', { cwd: testsRoot }, (err, files) => {

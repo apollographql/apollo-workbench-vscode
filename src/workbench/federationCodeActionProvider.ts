@@ -13,13 +13,13 @@ export class FederationCodeActionProvider implements CodeActionProvider {
     range: Range,
     context: CodeActionContext,
   ): CodeAction[] | undefined {
-    let code = context.diagnostics[0]?.code as string;
-    let selectors: CodeAction[] = [];
+    const code = context.diagnostics[0]?.code as string;
+    const selectors: CodeAction[] = [];
     if (code.includes('makeArray')) {
-      let line = document.lineAt(range.start.line);
-      let trimmedText = line.text.trim();
+      const line = document.lineAt(range.start.line);
+      const trimmedText = line.text.trim();
       if (trimmedText != '[' && trimmedText != '[]' && trimmedText != '[ ]') {
-        let selector = new CodeAction('Make array', CodeActionKind.QuickFix);
+        const selector = new CodeAction('Make array', CodeActionKind.QuickFix);
         selector.command = {
           command: 'current-workbench-schemas.makeSchemaDocTextRangeArray',
           title: 'Make into array',
@@ -30,7 +30,7 @@ export class FederationCodeActionProvider implements CodeActionProvider {
       }
     }
     if (code.includes('deleteRange')) {
-      let selector = new CodeAction(
+      const selector = new CodeAction(
         'Delete this selection',
         CodeActionKind.QuickFix,
       );

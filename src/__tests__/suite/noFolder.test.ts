@@ -9,5 +9,5 @@ import { ApolloWorkbenchFile } from '../../workbench/file-system/fileTypes';
 suite('No Folder Loaded in Workbnech', () => {
   vscode.window.showInformationMessage('Start all tests.');
   before(activateExtension);
-  after(() => {});
+  after(() => undefined);
 });

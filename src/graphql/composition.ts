@@ -28,7 +28,7 @@ export function superSchemaToSchema(supergraphSchema: string) {
 export async function getComposedSchemaLogCompositionErrorsForWbFile(
   wbFilePath: string,
 ) {
-  let workbenchFile = FileProvider.instance.workbenchFileFromPath(wbFilePath);
+  const workbenchFile = FileProvider.instance.workbenchFileFromPath(wbFilePath);
   if (workbenchFile) {
     compositionDiagnostics.clear();
     try {
@@ -39,8 +39,8 @@ export async function getComposedSchemaLogCompositionErrorsForWbFile(
         console.log('Composition Errors Found:');
 
         console.log(compositionDiagnostics.name);
-        let diagnosticsGroups = handleErrors(workbenchFile, errors);
-        for (var sn in diagnosticsGroups) {
+        const diagnosticsGroups = handleErrors(workbenchFile, errors);
+        for (const sn in diagnosticsGroups) {
           compositionDiagnostics.set(
             WorkbenchUri.supergraph(wbFilePath, sn, WorkbenchUriType.SCHEMAS),
             diagnosticsGroups[sn],
@@ -69,13 +69,13 @@ export async function getComposedSchemaLogCompositionErrorsForWbFile(
 export function getComposedSchema(
   workbenchFile: ApolloWorkbenchFile,
 ): CompositionResult {
-  let sdls: ServiceDefinition[] = [];
-  let errors: GraphQLError[] = [];
-  for (var key in workbenchFile.schemas) {
-    let localSchemaString = workbenchFile.schemas[key].sdl;
+  const sdls: ServiceDefinition[] = [];
+  const errors: GraphQLError[] = [];
+  for (const key in workbenchFile.schemas) {
+    const localSchemaString = workbenchFile.schemas[key].sdl;
     if (localSchemaString) {
       try {
-        let doc = parse(localSchemaString);
+        const doc = parse(localSchemaString);
         //TODO: use onlineParser to find validation
         sdls.push({
           name: key,
@@ -86,13 +86,13 @@ export function getComposedSchema(
         //Need to include any errors for invalid schema
         //TODO: consider using online parser when there is a gql error to get a better placement of the error
         let errorMessage = `Not valid GraphQL Schema: ${err.message}`;
-        let extensions: any = { invalidSchema: true, serviceName: key };
+        const extensions: any = { invalidSchema: true, serviceName: key };
 
         if (err.message.includes('Syntax Error: Unexpected Name ')) {
-          let quotedUnexpected = err.message.split(
+          const quotedUnexpected = err.message.split(
             'Syntax Error: Unexpected Name "',
           )[1];
-          let unexpectedName = quotedUnexpected.slice(
+          const unexpectedName = quotedUnexpected.slice(
             0,
             quotedUnexpected.length - 1,
           );
@@ -108,11 +108,11 @@ export function getComposedSchema(
           err.message.includes('Syntax Error: Expected Name, found ')
         ) {
           errorMessage = `You must define some fields: ${err.message}`;
-          let quotedUnexpected = err.message.split(
+          const quotedUnexpected = err.message.split(
             'Syntax Error: Expected Name, found ',
           )[1];
-          let offset = quotedUnexpected.length == 1 ? 0 : 1;
-          let unexpectedName = quotedUnexpected.slice(
+          const offset = quotedUnexpected.length == 1 ? 0 : 1;
+          const unexpectedName = quotedUnexpected.slice(
             0,
             quotedUnexpected.length - offset,
           );
@@ -134,7 +134,7 @@ export function getComposedSchema(
         );
       }
     } else {
-      let err = 'No schema defined for service';
+      const err = 'No schema defined for service';
       errors.push(
         new GraphQLError(
           err,
@@ -152,7 +152,7 @@ export function getComposedSchema(
     return { errors } as CompositionFailure;
   } else {
     //This blocks UI thread, why I have no clue but it is overworking VS Code
-    let compositionResults = composeAndValidate(sdls);
+    const compositionResults = composeAndValidate(sdls);
 
     if (Object.keys(workbenchFile.schemas).length == 0)
       compositionResults.errors = [
@@ -171,12 +171,12 @@ export function getComposedSchema(
 }
 
 export function handleErrors(wb: ApolloWorkbenchFile, errors: GraphQLError[]) {
-  let schemas = wb.schemas;
-  let diagnosticsGroups: { [key: string]: Diagnostic[] } = {};
+  const schemas = wb.schemas;
+  const diagnosticsGroups: { [key: string]: Diagnostic[] } = {};
 
-  for (var i = 0; i < errors.length; i++) {
-    let error = errors[i];
-    let errorMessage = error.message;
+  for (let i = 0; i < errors.length; i++) {
+    const error = errors[i];
+    const errorMessage = error.message;
     let diagnosticCode = '';
     let typeToIgnore = '';
     let range = new Range(0, 0, 0, 1);
@@ -184,8 +184,8 @@ export function handleErrors(wb: ApolloWorkbenchFile, errors: GraphQLError[]) {
 
     if (error.extensions) {
       if (error.extensions?.noServicesDefined) {
-        let emptySchemas = `"schemas":{}`;
-        let schemasIndex = 0;
+        const emptySchemas = `"schemas":{}`;
+        const schemasIndex = 0;
         range = new Range(
           0,
           schemasIndex,
@@ -197,10 +197,10 @@ export function handleErrors(wb: ApolloWorkbenchFile, errors: GraphQLError[]) {
         error.extensions?.invalidSchema
       ) {
         if (error.extensions.unexpectedName) {
-          let unexpectedName = error.extensions.unexpectedName;
-          let location = error.extensions.locations[0];
-          let lineNumber = location.line - 1;
-          let textIndex = location.column - 1;
+          const unexpectedName = error.extensions.unexpectedName;
+          const location = error.extensions.locations[0];
+          const lineNumber = location.line - 1;
+          const textIndex = location.column - 1;
 
           if (unexpectedName == '[') diagnosticCode = 'makeArray:deleteRange';
           else diagnosticCode = 'deleteRange';
@@ -212,8 +212,8 @@ export function handleErrors(wb: ApolloWorkbenchFile, errors: GraphQLError[]) {
             textIndex + unexpectedName.length,
           );
         } else if (error.extensions.noFieldsDefined) {
-          let location = error.extensions.locations[0];
-          let lineNumber = location.line - 1;
+          const location = error.extensions.locations[0];
+          const lineNumber = location.line - 1;
 
           range = new Range(lineNumber - 1, 0, lineNumber, 0);
         } else {
@@ -223,7 +223,7 @@ export function handleErrors(wb: ApolloWorkbenchFile, errors: GraphQLError[]) {
         }
       } else if (error.extensions?.code) {
         //We have a federation error with code
-        let errSplit = error.message.split('] ');
+        const errSplit = error.message.split('] ');
         serviceName = errSplit[0].substring(1);
 
         switch (error.extensions.code) {
@@ -232,12 +232,12 @@ export function handleErrors(wb: ApolloWorkbenchFile, errors: GraphQLError[]) {
             typeToIgnore = errSplit[1].split(' ->')[0];
             break;
 
-          case 'EXECUTABLE_DIRECTIVES_IN_ALL_SERVICES':
+          case 'EXECUTABLE_DIRECTIVES_IN_ALL_SERVICES': {
             serviceName = '';
-            let services = error.message.split(':')[1].split(',');
+            const services = error.message.split(':')[1].split(',');
             if (services.length > 1)
               services.map((service) => {
-                let sn = service.includes('.')
+                const sn = service.includes('.')
                   ? service.substring(1, service.length - 1)
                   : service.substring(1, service.length);
                 serviceName += `${sn}-:-`;
@@ -246,12 +246,13 @@ export function handleErrors(wb: ApolloWorkbenchFile, errors: GraphQLError[]) {
 
             typeToIgnore = serviceName;
             break;
+          }
         }
       }
     } else if (
       errorMessage.includes('Type Query must define one or more fields')
     ) {
-      let serviceNames = Object.keys(schemas);
+      const serviceNames = Object.keys(schemas);
       if (serviceNames.length >= 1) {
         serviceName = serviceNames[0];
       }
@@ -259,18 +260,18 @@ export function handleErrors(wb: ApolloWorkbenchFile, errors: GraphQLError[]) {
       errorMessage.includes('Field "Query.') ||
       errorMessage.includes('Field "Mutation.')
     ) {
-      let errorNodes = error.nodes ?? [];
-      let fieldName = errorNodes[0].kind;
+      const errorNodes = error.nodes ?? [];
+      const fieldName = errorNodes[0].kind;
       serviceName = '';
-      for (var sn in schemas)
+      for (const sn in schemas)
         if (schemas[sn].sdl.includes(fieldName))
           if (serviceName) serviceName += `${sn}-:-`;
           else serviceName = sn;
     } else if (errorMessage.includes('There can be only one type named')) {
-      let nameNode = error.nodes?.find((n) => n.kind == 'Name') as any;
+      const nameNode = error.nodes?.find((n) => n.kind == 'Name') as any;
       serviceName = '';
 
-      for (var sn in schemas)
+      for (const sn in schemas)
         if (schemas[sn].sdl.includes(nameNode.value)) serviceName += `${sn}-:-`;
 
       typeToIgnore = nameNode.value;
@@ -278,13 +279,13 @@ export function handleErrors(wb: ApolloWorkbenchFile, errors: GraphQLError[]) {
       errorMessage.includes('Field') &&
       errorMessage.includes('can only be defined once')
     ) {
-      let splitMessage = errorMessage.split('.');
+      const splitMessage = errorMessage.split('.');
       typeToIgnore = splitMessage[0].split('"')[1];
     } else if (errorMessage.includes('Unknown type: ')) {
-      let splitMessage = errorMessage.split('"');
-      let fieldType = splitMessage[1];
+      const splitMessage = errorMessage.split('"');
+      const fieldType = splitMessage[1];
 
-      for (var sn in schemas)
+      for (const sn in schemas)
         if (schemas[sn].sdl.includes(typeToIgnore)) serviceName = sn;
 
       // let typeRange = getRangeForFieldNamedType(fieldType, schemas[serviceName].sdl);
@@ -294,7 +295,7 @@ export function handleErrors(wb: ApolloWorkbenchFile, errors: GraphQLError[]) {
     //If we have a typeToIgnore, try getting a valid range for it
     if (typeToIgnore) {
       if (serviceName == 'workbench') {
-        for (var sn in schemas)
+        for (const sn in schemas)
           if (schemas[sn].sdl.includes(typeToIgnore)) serviceName = sn;
       }
 
@@ -306,11 +307,11 @@ export function handleErrors(wb: ApolloWorkbenchFile, errors: GraphQLError[]) {
 
     //If we have multiple services, we'll need to create multiple diagnostics
     if (serviceName.includes('-:-')) {
-      let services = serviceName.split('-:-');
+      const services = serviceName.split('-:-');
       services.map((s) => {
         if (s) {
-          let schema = schemas[s].sdl;
-          let diagnostic = new Diagnostic(
+          const schema = schemas[s].sdl;
+          const diagnostic = new Diagnostic(
             range,
             errorMessage,
             DiagnosticSeverity.Error,
@@ -329,7 +330,7 @@ export function handleErrors(wb: ApolloWorkbenchFile, errors: GraphQLError[]) {
         }
       });
     } else {
-      let diagnostic = new Diagnostic(
+      const diagnostic = new Diagnostic(
         range,
         errorMessage,
         DiagnosticSeverity.Error,

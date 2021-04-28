@@ -45,11 +45,11 @@ import { getComposedSchema, superSchemaToSchema } from '../graphql/composition';
 export async function startMocks(item: SubgraphSummaryTreeItem) {
   if (item) ServerManager.instance.startSupergraphMocks(item.filePath);
   else {
-    let wbFiles: string[] = [];
+    const wbFiles: string[] = [];
     FileProvider.instance
       .getWorkbenchFiles()
       .forEach((value, key) => wbFiles.push(value.graphName));
-    let wbFileToStartMocks = await window.showQuickPick(wbFiles, {
+    const wbFileToStartMocks = await window.showQuickPick(wbFiles, {
       placeHolder: 'Select which supergraph design file to mock',
     });
     if (wbFileToStartMocks) {
@@ -106,10 +106,10 @@ export async function viewSubgraphSettings(item: SubgraphTreeItem) {
   );
 }
 export async function addOperation(item: OperationTreeItem) {
-  let wbFilePath = item.filePath;
-  let wbFile = FileProvider.instance.workbenchFileFromPath(wbFilePath);
+  const wbFilePath = item.filePath;
+  const wbFile = FileProvider.instance.workbenchFileFromPath(wbFilePath);
   if (wbFile) {
-    let operationName =
+    const operationName =
       (await window.showInputBox({
         placeHolder: 'Enter a name for the operation',
       })) ?? '';
@@ -124,9 +124,9 @@ export async function addOperation(item: OperationTreeItem) {
   }
 }
 export async function deleteOperation(item: OperationTreeItem) {
-  let wbFilePath = item.filePath;
-  let wbFile = FileProvider.instance.workbenchFileFromPath(wbFilePath);
-  let operationName = item.operationName;
+  const wbFilePath = item.filePath;
+  const wbFile = FileProvider.instance.workbenchFileFromPath(wbFilePath);
+  const operationName = item.operationName;
   if (wbFile) {
     delete wbFile.operations[operationName];
     FileProvider.instance.saveWorkbenchFile(wbFile, item.filePath);
@@ -167,8 +167,8 @@ export function refreshSupergraphs() {
   StateManager.instance.localSupergraphTreeDataProvider.refresh();
 }
 export async function addSubgraph(item: SubgraphSummaryTreeItem) {
-  let wbFile = item.wbFile;
-  let serviceName =
+  const wbFile = item.wbFile;
+  const serviceName =
     (await window.showInputBox({
       placeHolder: 'Enter a unique name for the subgraph',
     })) ?? '';
@@ -186,9 +186,9 @@ export async function addSubgraph(item: SubgraphSummaryTreeItem) {
   }
 }
 export async function deleteSubgraph(item: SubgraphTreeItem) {
-  let wbFilePath = item.wbFilePath;
-  let wbFile = FileProvider.instance.workbenchFileFromPath(wbFilePath);
-  let subgraphName = item.subgraphName;
+  const wbFilePath = item.wbFilePath;
+  const wbFile = FileProvider.instance.workbenchFileFromPath(wbFilePath);
+  const subgraphName = item.subgraphName;
   if (wbFile) {
     delete wbFile.schemas[subgraphName];
     FileProvider.instance.saveWorkbenchFile(wbFile, item.wbFilePath);
@@ -198,7 +198,7 @@ export async function newDesign() {
   if (!StateManager.workspaceRoot) {
     await FileProvider.instance.promptOpenFolder();
   } else {
-    let workbenchName = await window.showInputBox({
+    const workbenchName = await window.showInputBox({
       placeHolder: 'Enter name for workbench file',
     });
     if (!workbenchName) {
@@ -256,14 +256,16 @@ export async function createWorkbenchFromSupergraph(
   }
 }
 async function createWorkbench(graphId: string, selectedVariant: string) {
-  let defaultGraphName = `${graphId}-${selectedVariant}-`;
-  let graphName = await window.showInputBox({
+  const defaultGraphName = `${graphId}-${selectedVariant}-`;
+  const graphName = await window.showInputBox({
     prompt: 'Enter a name for your new workbench file',
     placeHolder: defaultGraphName,
     value: defaultGraphName,
   });
   if (graphName) {
-    let workbenchFile: ApolloWorkbenchFile = new ApolloWorkbenchFile(graphName);
+    const workbenchFile: ApolloWorkbenchFile = new ApolloWorkbenchFile(
+      graphName,
+    );
     workbenchFile.graphName = graphName;
 
     const results = await getGraphSchemasByVariant(
@@ -309,12 +311,12 @@ export async function updateSubgraphSchemaFromURL(item: SubgraphTreeItem) {
     process.env.NODE_TLS_REJECT_UNAUTHORIZED = '';
   else process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
-  let wbFile = FileProvider.instance.workbenchFileFromPath(item.wbFilePath);
+  const wbFile = FileProvider.instance.workbenchFileFromPath(item.wbFilePath);
   if (
     wbFile?.schemas[item.subgraphName] &&
     !wbFile?.schemas[item.subgraphName].url
   ) {
-    let routingURL =
+    const routingURL =
       (await window.showInputBox({
         placeHolder: 'Enter a the url for the schema/service',
       })) ?? '';
@@ -334,7 +336,7 @@ export async function updateSubgraphSchemaFromURL(item: SubgraphTreeItem) {
     if (sdl) {
       wbFile.schemas[item.subgraphName].sdl = sdl;
 
-      let editor = await window.showTextDocument(
+      const editor = await window.showTextDocument(
         WorkbenchUri.supergraph(
           item.wbFilePath,
           item.subgraphName,
@@ -435,7 +437,7 @@ export async function exportSubgraphSchema(item: SubgraphTreeItem) {
 }
 
 export async function exportSubgraphResolvers(item: SubgraphTreeItem) {
-  let exportPath = StateManager.workspaceRoot
+  const exportPath = StateManager.workspaceRoot
     ? resolve(StateManager.workspaceRoot, `${item.subgraphName}-resolvers`)
     : null;
   if (exportPath) {

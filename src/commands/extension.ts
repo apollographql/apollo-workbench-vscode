@@ -11,8 +11,8 @@ export async function ensureFolderIsOpen() {
     !workspace.workspaceFolders ||
     (workspace.workspaceFolders && !workspace.workspaceFolders[0])
   ) {
-    let openFolder = 'Open Folder';
-    let response = await window.showErrorMessage(
+    const openFolder = 'Open Folder';
+    const response = await window.showErrorMessage(
       'You must open a folder to create Apollo Workbench files',
       openFolder,
     );
@@ -22,7 +22,7 @@ export async function ensureFolderIsOpen() {
 }
 
 export async function enterStudioApiKey() {
-  let apiKey = await window.showInputBox({
+  const apiKey = await window.showInputBox({
     placeHolder: 'Enter User API Key - user:gh.michael-watson:023jr324tj....',
   });
   if (apiKey && (await isValidKey(apiKey))) {
@@ -42,13 +42,13 @@ export async function gettingStarted(item) {
       commands.executeCommand('workbench.action.closeEditorsInOtherGroups'),
     )
     .then(
-      () => {},
+      () => undefined,
       (e) => console.error(e),
     );
 }
 
 export async function openFolder() {
-  let folder = await window.showOpenDialog({
+  const folder = await window.showOpenDialog({
     canSelectFiles: false,
     canSelectFolders: true,
     canSelectMany: false,

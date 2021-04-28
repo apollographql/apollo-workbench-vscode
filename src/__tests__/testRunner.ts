@@ -5,7 +5,7 @@ import { runTests } from 'vscode-test';
 //Function for running the tests
 //  @param `loadFolder` will load the testing folder and run the associated tests
 //      default: No folder will be opened and default tests will be ran
-export async function testRunner(loadFolder: boolean = false) {
+export async function testRunner(loadFolder = false) {
   try {
     const extensionDevelopmentPath = path.resolve(__dirname, '../../');
     const extensionTestsPath = path.resolve(__dirname, './suite/index');

@@ -16,15 +16,15 @@ export function createJavascriptTemplate(workbenchFile: ApolloWorkbenchFile) {
   let port = StateManager.settings_startingServerPort;
   const archive = create('zip', { zlib: { level: 9 } });
 
-  const fileName = workbenchFile.graphName.replace(/[\/|\\:*?"<>]/g, ' ');
+  const fileName = workbenchFile.graphName.replace(/[/|\\:*?"<>]/g, ' ');
   archive.append(generateJsVsCodeLaunch('Gateway'), { name: 'launch.json' });
   archive.append(generateJsgatewayPackageJson(), { name: 'package.json' });
   archive.append(generateJsGatewayTempalte(), { name: 'index.js' });
 
-  for (var serviceName in workbenchFile.schemas) {
-    let serviceFolder = `services/${serviceName}`;
-    let serviceVsCodeFolder = `${serviceFolder}/.vscode`;
-    let serviceSrcFolder = `${serviceFolder}/src`;
+  for (const serviceName in workbenchFile.schemas) {
+    const serviceFolder = `services/${serviceName}`;
+    const serviceVsCodeFolder = `${serviceFolder}/.vscode`;
+    const serviceSrcFolder = `${serviceFolder}/src`;
 
     archive.append(generateJsFederatedServerPackageJson(serviceName), {
       name: `${serviceFolder}/package.json`,

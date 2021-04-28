@@ -6,15 +6,18 @@ import { parse } from 'graphql';
 import { print } from 'graphql';
 
 export async function addToWorkbench(op: StudioOperationTreeItem) {
-  let supergraphs = FileProvider.instance.getWorkbenchFiles();
-  let supergraphNames: string[] = [];
+  const supergraphs = FileProvider.instance.getWorkbenchFiles();
+  const supergraphNames: string[] = [];
   supergraphs.forEach((wbFile) => supergraphNames.push(wbFile.graphName));
 
-  let supergraphToAddOperationTo = await window.showQuickPick(supergraphNames, {
-    placeHolder: 'Select the Supergraph to add the operation to',
-  });
+  const supergraphToAddOperationTo = await window.showQuickPick(
+    supergraphNames,
+    {
+      placeHolder: 'Select the Supergraph to add the operation to',
+    },
+  );
   if (supergraphToAddOperationTo) {
-    let wbFile = Array.from(supergraphs.values()).find(
+    const wbFile = Array.from(supergraphs.values()).find(
       (wb) => wb.graphName == supergraphToAddOperationTo,
     );
     if (wbFile) {

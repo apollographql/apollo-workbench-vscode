@@ -23,21 +23,21 @@ export class ApolloStudioGraphOpsTreeDataProvider
     if (element) return element.versions ?? element.operations;
 
     let noOperationsFoundMessage = '';
-    let items: {
+    const items: {
       [operationName: string]: {
         operationId: string;
         operationSignature: string;
       };
     } = {};
-    let apiKey = StateManager.instance.globalState_userApiKey;
+    const apiKey = StateManager.instance.globalState_userApiKey;
     if (!apiKey) return [new NotLoggedInTreeItem()];
 
-    let selectedGraphId = StateManager.instance.globalState_selectedGraph;
-    let graphVariant = StateManager.instance.globalState_selectedGraphVariant;
+    const selectedGraphId = StateManager.instance.globalState_selectedGraph;
+    const graphVariant = StateManager.instance.globalState_selectedGraphVariant;
     if (selectedGraphId) {
       //Create objects for next for loop
       //  Return A specific account with all graphs
-      let graphOps = await getGraphOps(apiKey, selectedGraphId, graphVariant);
+      const graphOps = await getGraphOps(apiKey, selectedGraphId, graphVariant);
 
       noOperationsFoundMessage = graphVariant
         ? `No operations found for ${graphOps.service?.title}@${graphVariant}`
@@ -64,10 +64,10 @@ export class ApolloStudioGraphOpsTreeDataProvider
         ),
       ];
 
-    let itemsToReturn: vscode.TreeItem[] = new Array<vscode.TreeItem>();
+    const itemsToReturn: vscode.TreeItem[] = new Array<vscode.TreeItem>();
 
-    for (var operationName in items) {
-      let op = items[operationName];
+    for (const operationName in items) {
+      const op = items[operationName];
       itemsToReturn.push(
         new StudioOperationTreeItem(
           op.operationId,

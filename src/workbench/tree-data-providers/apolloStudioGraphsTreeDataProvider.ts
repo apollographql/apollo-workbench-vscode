@@ -35,16 +35,16 @@ export class ApolloStudioGraphsTreeDataProvider
 
   async getChildren(element?: StudioAccountTreeItem): Promise<TreeItem[]> {
     if (element) return element.children;
-    let items: TreeItem[] = new Array<TreeItem>();
+    const items: TreeItem[] = new Array<TreeItem>();
 
-    let apiKey = StateManager.instance.globalState_userApiKey;
+    const apiKey = StateManager.instance.globalState_userApiKey;
     if (apiKey) {
       let accountId = StateManager.instance.globalState_selectedApolloAccount;
       if (!accountId) {
         const myAccountIds = await getUserMemberships(apiKey);
         const memberships = (myAccountIds?.me as any)?.memberships;
         if (memberships?.length > 1) {
-          let accountIds: string[] = new Array<string>();
+          const accountIds: string[] = new Array<string>();
           memberships.map((membership) =>
             accountIds.push(membership.account.id),
           );
@@ -63,33 +63,36 @@ export class ApolloStudioGraphsTreeDataProvider
 
         //Create objects for next for loop
         //  Return A specific account with all graphs
-        let services = await getAccountGraphs(apiKey, accountId);
-        let accountTreeItem = new StudioAccountTreeItem(
+        const services = await getAccountGraphs(apiKey, accountId);
+        const accountTreeItem = new StudioAccountTreeItem(
           accountId,
           services?.account?.name,
         );
 
         if (services?.account?.services) {
-          let accountServiceTreeItems = new Array<StudioGraphTreeItem>();
+          const accountServiceTreeItems = new Array<StudioGraphTreeItem>();
 
-          for (var j = 0; j < services?.account?.services.length ?? 0; j++) {
+          for (let j = 0; j < services?.account?.services.length ?? 0; j++) {
             //Cast graph
-            let graph = services?.account?.services[j];
+            const graph = services?.account?.services[j];
             if (graph.devGraphOwner?.id) {
               continue;
             }
             //Create objects for next for loop
             //  Return A specific Graph with all variants
-            let graphTreeItem = new StudioGraphTreeItem(graph.id, graph.title);
-            let graphVariantTreeItems = new Array<StudioGraphVariantTreeItem>();
+            const graphTreeItem = new StudioGraphTreeItem(
+              graph.id,
+              graph.title,
+            );
+            const graphVariantTreeItems = new Array<StudioGraphVariantTreeItem>();
 
             //Loop through graph variants and add to return objects
-            for (var k = 0; k < graph.variants.length; k++) {
+            for (let k = 0; k < graph.variants.length; k++) {
               //Cast graph variant
-              let graphVariant = graph.variants[k];
+              const graphVariant = graph.variants[k];
               graphTreeItem.variants.push(graphVariant.name);
 
-              let accountgraphVariantTreeItem = new StudioGraphVariantTreeItem(
+              const accountgraphVariantTreeItem = new StudioGraphVariantTreeItem(
                 graph.id,
                 graphVariant.name,
               );
@@ -128,7 +131,7 @@ export class ApolloStudioGraphsTreeDataProvider
 }
 
 export class NotLoggedInTreeItem extends TreeItem {
-  constructor(message: string = 'Click here to login with your user api key') {
+  constructor(message = 'Click here to login with your user api key') {
     super(message, TreeItemCollapsibleState.None);
     this.command = {
       title: 'Login to Apollo',
@@ -229,7 +232,7 @@ export class PreloadedWorkbenchTopLevel extends TreeItem {
   constructor() {
     super('Example Graphs', TreeItemCollapsibleState.Collapsed);
 
-    let preloadedFiles = FileProvider.instance?.getPreloadedWorkbenchFiles();
+    const preloadedFiles = FileProvider.instance?.getPreloadedWorkbenchFiles();
     preloadedFiles.map((preloadedFile) => {
       this.children.push(new PreloadedWorkbenchFile(preloadedFile.fileName));
     });
