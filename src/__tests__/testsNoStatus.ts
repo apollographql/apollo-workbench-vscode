@@ -1,9 +1,9 @@
-import { testRunner } from "./testRunner";
+import { testRunner } from './testRunner';
 
 (async () => {
-    let result = 1;
-    result = await testRunner();
-    result = await testRunner(true);
+  let result = 1;
+  result = await testRunner();
+  result = await testRunner(true);
 
-    process.exit(result);
-})()
+  process.exit(result);
+})();

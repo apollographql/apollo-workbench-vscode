@@ -8,14 +8,14 @@
 // ====================================================
 
 export interface GraphOperations_service_stats_queryStats_groupBy {
-  __typename: "ServiceQueryStatsDimensions";
+  __typename: 'ServiceQueryStatsDimensions';
   queryName: string | null;
   queryId: string | null;
   querySignature: string | null;
 }
 
 export interface GraphOperations_service_stats_queryStats {
-  __typename: "ServiceQueryStatsRecord";
+  __typename: 'ServiceQueryStatsRecord';
   /**
    * Dimensions of ServiceQueryStats that can be grouped by.
    */
@@ -23,12 +23,12 @@ export interface GraphOperations_service_stats_queryStats {
 }
 
 export interface GraphOperations_service_stats {
-  __typename: "ServiceStatsWindow";
+  __typename: 'ServiceStatsWindow';
   queryStats: GraphOperations_service_stats_queryStats[];
 }
 
 export interface GraphOperations_service {
-  __typename: "Service";
+  __typename: 'Service';
   title: string;
   stats: GraphOperations_service_stats;
 }

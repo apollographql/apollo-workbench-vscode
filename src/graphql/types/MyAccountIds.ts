@@ -8,25 +8,27 @@
 // ====================================================
 
 export interface MyAccountIds_me_InternalIdentity {
-  __typename: "InternalIdentity" | "Service";
+  __typename: 'InternalIdentity' | 'Service';
 }
 
 export interface MyAccountIds_me_User_memberships_account {
-  __typename: "Account";
+  __typename: 'Account';
   id: string;
 }
 
 export interface MyAccountIds_me_User_memberships {
-  __typename: "UserMembership";
+  __typename: 'UserMembership';
   account: MyAccountIds_me_User_memberships_account;
 }
 
 export interface MyAccountIds_me_User {
-  __typename: "User";
+  __typename: 'User';
   memberships: MyAccountIds_me_User_memberships[];
 }
 
-export type MyAccountIds_me = MyAccountIds_me_InternalIdentity | MyAccountIds_me_User;
+export type MyAccountIds_me =
+  | MyAccountIds_me_InternalIdentity
+  | MyAccountIds_me_User;
 
 export interface MyAccountIds {
   /**

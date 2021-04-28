@@ -7,9 +7,7 @@ import { StateManager } from '../../workbench/stateManager';
 import { ApolloWorkbenchFile } from '../../workbench/file-system/fileTypes';
 
 suite('No Folder Loaded in Workbnech', () => {
-    vscode.window.showInformationMessage('Start all tests.');
-    before(activateExtension);
-    after(() => {
-
-    })
+  vscode.window.showInformationMessage('Start all tests.');
+  before(activateExtension);
+  after(() => {});
 });
