@@ -10,16 +10,24 @@
       "type": "extensionHost",
       "request": "launch",
       "runtimeExecutable": "${execPath}",
-      "args": ["--extensionDevelopmentPath=${workspaceFolder}"],
-      "outFiles": ["${workspaceFolder}/out/**/*.js"],
-      "preLaunchTask": "npm: watch"
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}"
+      ],
+      "outFiles": [
+        "${workspaceFolder}/out/**/*.js"
+      ],
+      "preLaunchTask": "npm: watch",
     },
     {
       "name": "Test - CI",
       "program": "${workspaceFolder}/src/__tests__/githubCheckTests.ts",
-      "outFiles": ["${workspaceFolder}/out/**/*.js"],
+      "outFiles": [
+        "${workspaceFolder}/out/**/*.js"
+      ],
       "request": "launch",
-      "skipFiles": ["<node_internals>/**"],
+      "skipFiles": [
+        "<node_internals>/**"
+      ],
       "type": "node",
       "runtimeVersion": "14.10.1",
       "env": {
@@ -41,7 +49,9 @@
       "env": {
         "loadWorkbench": "loadWorkbench"
       },
-      "outFiles": ["${workspaceFolder}/out/__tests__/**/*.js"],
+      "outFiles": [
+        "${workspaceFolder}/out/__tests__/**/*.js"
+      ],
       "preLaunchTask": "npm: compile"
     },
     {
@@ -54,7 +64,9 @@
         "--extensionTestsPath=${workspaceFolder}/out/__tests__/suite/index",
         "--disable-extensions"
       ],
-      "outFiles": ["${workspaceFolder}/out/__tests__/**/*.js"],
+      "outFiles": [
+        "${workspaceFolder}/out/__tests__/**/*.js"
+      ],
       "preLaunchTask": "npm: compile"
     }
   ]

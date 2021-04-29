@@ -14,7 +14,7 @@ import { ApolloStudioOperationsProvider, GettingStartedDocProvider } from './wor
 import { addToWorkbench } from './commands/studio-operations';
 import { ensureFolderIsOpen, openFolder, enterStudioApiKey, gettingStarted, deleteStudioApiKey } from './commands/extension';
 import { refreshStudioGraphs, loadOperations, viewStudioOperation, switchOrg } from './commands/studio-graphs';
-import { createWorkbenchFromPreloaded, startMocks, stopMocks, deleteOperation, addOperation, viewQueryPlan, editSubgraph, deleteSubgraph, refreshSupergraphs, viewSubgraphSettings, addSubgraph, viewSupergraphSchema, editSupergraphOperation, newDesign, createWorkbenchFromSupergraph, exportSupergraphSchema, exportSupergraphApiSchema, viewSupergraphApiSchema, updateSubgraphSchemaFromURL, viewSubgraphCustomMocks, exportSubgraphSchema, exportSubgraphResolvers, createWorkbenchFromSupergraphVariant } from './commands/local-supergraph-designs';
+import { createWorkbenchFromPreloaded, startMocks, stopMocks, deleteOperation, addOperation, viewQueryPlan, editSubgraph, deleteSubgraph, refreshSupergraphs, viewSubgraphSettings, addSubgraph, viewSupergraphSchema, editSupergraphOperation, newDesign, createWorkbenchFromSupergraph, exportSupergraphSchema, exportSupergraphApiSchema, viewSupergraphApiSchema, updateSubgraphSchemaFromURL, viewSubgraphCustomMocks, exportSubgraphSchema, exportSubgraphResolvers, createWorkbenchFromSupergraphVariant, exportRoverYAML } from './commands/local-supergraph-designs';
 import { resolve } from 'path';
 import { mkdirSync, writeFileSync } from 'fs';
 import { execSync } from 'child_process';
@@ -76,6 +76,7 @@ export async function activate(context: ExtensionContext) {
 	//***Supergraph Schema Commands
 	commands.registerCommand('local-supergraph-designs.viewSupergraphSchema', viewSupergraphSchema);//on-click
 	commands.registerCommand('local-supergraph-designs.viewSupergraphApiSchema', viewSupergraphApiSchema);//on-click
+	commands.registerCommand('local-supergraph-designs.exportRoverYAML', exportRoverYAML);//right-click
 	commands.registerCommand('local-supergraph-designs.exportSupergraphSchema', exportSupergraphSchema);//right-click
 	commands.registerCommand('local-supergraph-designs.exportSupergraphApiSchema', exportSupergraphApiSchema);//right-click
 	//****Subgraph Summary Commands 

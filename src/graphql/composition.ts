@@ -119,7 +119,11 @@ export function handleErrors(wb: ApolloWorkbenchFile, errors: GraphQLError[]) {
         let errorMessage = error.message;
         let diagnosticCode = '';
         let typeToIgnore = "";
-        let range = new Range(0, 0, 0, 1);
+        let nodes = error?.nodes?.[0] as any;
+        let loc = nodes.loc;
+        let length = loc.end - loc.start;
+        let line = error?.locations?.[0]?.line ?? 0;
+        let range = new Range(line, error?.locations?.[0]?.column ?? 0, line, length);
         let serviceName = error.extensions?.serviceName ?? 'workbench';
 
         if (error.extensions) {

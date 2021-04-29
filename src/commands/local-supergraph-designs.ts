@@ -2,7 +2,7 @@ import { FileProvider } from "../workbench/file-system/fileProvider";
 import { window, ProgressLocation, Uri, workspace, Range, StatusBarAlignment, tasks, Task } from "vscode";
 import { StateManager } from "../workbench/stateManager";
 import { createTypescriptTemplate } from "../utils/createTypescriptTemplate";
-import { SubgraphTreeItem, OperationTreeItem, SubgraphSummaryTreeItem, SupergraphSchemaTreeItem, SupergraphApiSchemaTreeItem } from "../workbench/tree-data-providers/superGraphTreeDataProvider";
+import { SubgraphTreeItem, OperationTreeItem, SubgraphSummaryTreeItem, SupergraphSchemaTreeItem, SupergraphApiSchemaTreeItem, SupergraphTreeItem } from "../workbench/tree-data-providers/superGraphTreeDataProvider";
 import { WorkbenchUri, WorkbenchUriType } from "../workbench/file-system/WorkbenchUri";
 import { ServerManager } from "../workbench/serverManager";
 import { StudioGraphVariantTreeItem, StudioGraphTreeItem, PreloadedWorkbenchFile } from "../workbench/tree-data-providers/apolloStudioGraphsTreeDataProvider";
@@ -10,7 +10,9 @@ import { ApolloWorkbenchFile } from "../workbench/file-system/fileTypes";
 import { getGraphSchemasByVariant } from "../graphql/graphClient";
 import { GetGraphSchemas_service_implementingServices_NonFederatedImplementingService, GetGraphSchemas_service_implementingServices_FederatedImplementingServices } from "../graphql/types/GetGraphSchemas";
 import { resolve } from "path";
-import { writeFileSync, existsSync } from "fs";
+//TODO: Look into supporting this NODE 14 only
+// import { writeFile, mkdir } from "fs/promises";
+import { existsSync, writeFileSync, mkdirSync } from "fs";
 import { TextEncoder } from "util";
 import { GraphQLSchema, parse, extendSchema, printSchema } from "graphql";
 import { OverrideApolloGateway } from "../graphql/graphRouter";
@@ -240,6 +242,32 @@ export async function viewSubgraphCustomMocks(item: SubgraphTreeItem) {
         await window.showTextDocument(subgraphMocksUri);
     } catch (err) {
         console.log(err)
+    }
+}
+
+import { dump, load } from "js-yaml";
+
+// exportRoverYAML
+export async function exportRoverYAML(item: SupergraphTreeItem) {
+    if (StateManager.workspaceRoot) {
+        let yaml = { subgraphs: {} };
+        let workspaceRoot = StateManager.workspaceRoot;
+        let roverYAMLFolder = resolve(workspaceRoot, `${item.label}-rover`);
+        mkdirSync(roverYAMLFolder);
+        await Promise.all(Object.keys(item.wbFile.schemas).map(async subgraphName => {
+            yaml.subgraphs[subgraphName] = {
+                routing_url: item.wbFile.schemas[subgraphName].url ?? "http://localhost:4001",
+                schema: {
+                    file: `./${subgraphName}.graphql`
+                }
+            }
+
+            const exportPath = resolve(roverYAMLFolder, `${subgraphName}.graphql`);
+            writeFileSync(exportPath, item.wbFile.schemas[subgraphName].sdl, { encoding: 'utf-8' });
+        }));
+
+        writeFileSync(resolve(roverYAMLFolder, `supergraph.yaml`), dump(yaml), { encoding: 'utf-8' });
+        window.showInformationMessage(`Supergraph YAML was exported to ${roverYAMLFolder}`);
     }
 }
 
