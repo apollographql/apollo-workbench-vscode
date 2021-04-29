@@ -2,18 +2,21 @@ const fetch = require('node-fetch');
 import { testRunner } from './testRunner';
 
 async function setStatus(state, description) {
-  return fetch(`https://api.github.com/repos/apollographql/apollo-workbench-vscode/statuses/${process.env.GITHUB_SHA}`, {
-    method: 'POST',
-    body: JSON.stringify({
-      state,
-      description,
-      context: "VSCode Extension Tests",
-    }),
-    headers: {
-      Authorization: `Bearer ${process.env.GITHUB_TOKEN}`,
-      'Content-Type': 'application/json',
+  return fetch(
+    `https://api.github.com/repos/apollographql/apollo-workbench-vscode/statuses/${process.env.GITHUB_SHA}`,
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        state,
+        description,
+        context: 'VSCode Extension Tests',
+      }),
+      headers: {
+        Authorization: `Bearer ${process.env.GITHUB_TOKEN}`,
+        'Content-Type': 'application/json',
+      },
     },
-  });
+  );
 }
 
 async function githubActionTests() {
@@ -30,8 +33,15 @@ async function githubActionTests() {
     await setStatus('success', 'Tests for workbench folder open passed');
     process.exit(result);
   } catch (err) {
-    console.log(err?.message ? `Failed to run tests: ${err.message}` : `Failed to run tests: ${err}`);
-    await setStatus('error', err?.message ? err.message : `Failed to run tests: ${err}`);
+    console.log(
+      err?.message
+        ? `Failed to run tests: ${err.message}`
+        : `Failed to run tests: ${err}`,
+    );
+    await setStatus(
+      'error',
+      err?.message ? err.message : `Failed to run tests: ${err}`,
+    );
     process.exit(1);
   }
 }
