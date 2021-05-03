@@ -24,9 +24,9 @@ Head over to the [docs](https://apollographql.github.io/apollo-workbench-vscode/
 
 ### Supported Workflows
 
-- [Design a New Supergraph](./new-supergraph.md)
-- [Migrating from Monolith to a New Supergraph](./migration-monolith-to-supergraph.md)
-- [Designing a change to an existing graph in Apollo Studio](./apollo-studio-supergraph-designs)
+- [Design a New Supergraph](./docs/new-supergraph.md)
+- [Migrating from Monolith to a New Supergraph](./docs/migration-monolith-to-supergraph.md)
+- [Designing a change to an existing graph in Apollo Studio](./docs/apollo-studio-supergraph-designs.md)
 
 ## What is Apollo Workbench for VS Code?
 
