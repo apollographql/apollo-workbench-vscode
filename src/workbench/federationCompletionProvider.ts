@@ -27,31 +27,31 @@ export const federationCompletionProvider = {
     token: CancellationToken,
   ) {
     //Only provide completion items for schemas open in workbench
-    let uri = document.uri;
-    let completionItems = new Array<CompletionItem>();
+    const uri = document.uri;
+    const completionItems = new Array<CompletionItem>();
 
     if (uri.scheme == 'workbench' && uri.path.includes('/subgraphs')) {
-      let line = document.lineAt(position.line);
-      let lineText = line.text;
-      let serviceName = document.uri.query;
+      const line = document.lineAt(position.line);
+      const lineText = line.text;
+      const serviceName = document.uri.query;
 
       if (lineText && serviceName) {
         //If not undefined, we're inside a word/something and shouldn't return anything
-        let trimmedText = lineText.trim();
-        let character = trimmedText.charAt(trimmedText.length - 1);
+        const trimmedText = lineText.trim();
+        const character = trimmedText.charAt(trimmedText.length - 1);
         if (character == ':') {
-          let completionTypes = await getServiceAvailableTypes(
+          const completionTypes = await getServiceAvailableTypes(
             serviceName,
             uri.path.split('/subgraphs')[0],
           );
-          for (var i = 0; i < completionTypes.length; i++) {
+          for (let i = 0; i < completionTypes.length; i++) {
             let typeName = completionTypes[i];
             let details = '';
-            let documentation = new MarkdownString();
+            const documentation = new MarkdownString();
             let completionKind = CompletionItemKind.Value;
 
             if (typeName.includes(':')) {
-              let typeSplit = typeName.split(':');
+              const typeSplit = typeName.split(':');
               if (typeSplit[0] == 'I') {
                 details = `Interface ${typeSplit[1]}`;
                 completionKind = CompletionItemKind.Interface;
@@ -85,7 +85,7 @@ export const federationCompletionProvider = {
               );
             }
 
-            let completionItem = new CompletionItem(typeName, completionKind);
+            const completionItem = new CompletionItem(typeName, completionKind);
             completionItem.insertText = typeName;
             completionItem.detail = details;
             completionItem.documentation = documentation;
@@ -95,12 +95,12 @@ export const federationCompletionProvider = {
       } else {
         //Add federation items that can be extended
 
-        let extendableTypes =
+        const extendableTypes =
           StateManager.instance
             .workspaceState_selectedWorkbenchAvailableEntities;
         // await extractDefinedEntitiesByService();
 
-        for (var sn in extendableTypes)
+        for (const sn in extendableTypes)
           if (sn != serviceName)
             extendableTypes[sn].map(({ type, keys }) => {
               Object.keys(keys).forEach((key) => {
@@ -116,10 +116,10 @@ export const federationCompletionProvider = {
         completionItems.push(new EntityObjectTypeCompletionItem());
       }
     } else if (uri.scheme == 'workbench' && uri.path.includes('/queries/')) {
-      let schema = StateManager.instance.workspaceState_schema;
+      const schema = StateManager.instance.workspaceState_schema;
       if (schema) {
-        let query = document.getText();
-        let suggestions = getAutocompleteSuggestions(schema, query, position);
+        const query = document.getText();
+        const suggestions = getAutocompleteSuggestions(schema, query, position);
         if (suggestions.length > 0) {
           suggestions.forEach((ci) =>
             completionItems.push(new QueryCompletionItem(ci)),
@@ -155,8 +155,8 @@ export class EntityObjectTypeCompletionItem extends CompletionItem {
     super('Entity Object type', CompletionItemKind.Snippet);
     this.sortText = 'b';
 
-    let comments = `"""\nThis is an Entity, docs:https://www.apollographql.com/docs/federation/entities/\nYou will need to define a __resolveReference resolver for the type you define, docs: https://www.apollographql.com/docs/federation/entities/#resolving\n"""`;
-    let insertSnippet = new SnippetString(`${comments}\ntype `);
+    const comments = `"""\nThis is an Entity, docs:https://www.apollographql.com/docs/federation/entities/\nYou will need to define a __resolveReference resolver for the type you define, docs: https://www.apollographql.com/docs/federation/entities/#resolving\n"""`;
+    const insertSnippet = new SnippetString(`${comments}\ntype `);
     insertSnippet.appendTabstop(1);
     insertSnippet.appendText(` @key(fields:"id") {\n\tid:ID!\n}`);
 
@@ -173,7 +173,7 @@ export class ObjectTypeCompletionItem extends CompletionItem {
     super('Object type', CompletionItemKind.Snippet);
     this.sortText = 'b';
 
-    let insertSnippet = new SnippetString(
+    const insertSnippet = new SnippetString(
       '"""\nHere are some helpful details about your type\n"""\ntype ',
     );
     insertSnippet.appendTabstop(1);
@@ -192,7 +192,7 @@ export class InterfaceCompletionItem extends CompletionItem {
     super('Interface', CompletionItemKind.Snippet);
     this.sortText = 'b';
 
-    let insertSnippet = new SnippetString('interface ');
+    const insertSnippet = new SnippetString('interface ');
     insertSnippet.appendTabstop(1);
     insertSnippet.appendText(
       ` {\nHere are some helpful details about your interface\n}`,
@@ -216,7 +216,7 @@ export class FederationEntityExtensionItem extends CompletionItem {
     super(`extend ${typeToExtend} by "${key}"`, CompletionItemKind.Reference);
     this.sortText = 'a';
 
-    let insertSnippet = new SnippetString(`extend type `);
+    const insertSnippet = new SnippetString(`extend type `);
     let typeExtensionCodeBlock = `extend type ${typeToExtend} @key(fields:"${key}") {\n`;
 
     insertSnippet.appendVariable('typeToExtend', typeToExtend);
@@ -224,9 +224,9 @@ export class FederationEntityExtensionItem extends CompletionItem {
     insertSnippet.appendVariable('key', key);
     insertSnippet.appendText('") {\n');
 
-    for (var i = 0; i < keyFields.length; i++) {
-      let keyField = keyFields[i];
-      let fieldLine = `\t${keyField.field}: ${keyField.type} @external\n`;
+    for (let i = 0; i < keyFields.length; i++) {
+      const keyField = keyFields[i];
+      const fieldLine = `\t${keyField.field}: ${keyField.type} @external\n`;
       typeExtensionCodeBlock += fieldLine;
       insertSnippet.appendText(fieldLine);
     }
@@ -236,7 +236,7 @@ export class FederationEntityExtensionItem extends CompletionItem {
     typeExtensionCodeBlock += '}';
     insertSnippet.appendText(`\n}`);
 
-    let mkdDocs = new MarkdownString();
+    const mkdDocs = new MarkdownString();
     mkdDocs.appendCodeblock(typeExtensionCodeBlock, 'graphql');
     mkdDocs.appendText(`Owning Service: ${owningServiceName}\n`);
     mkdDocs.appendMarkdown(

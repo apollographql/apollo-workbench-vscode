@@ -255,8 +255,8 @@ export async function activate(context: ExtensionContext) {
     new ApolloStudioOperationsProvider(),
   );
   workspace.onDidChangeTextDocument((e) => {
-    let uri = e.document.uri;
-    let document = new GraphQLDocument(new Source(e.document.getText()));
+    const uri = e.document.uri;
+    const document = new GraphQLDocument(new Source(e.document.getText()));
     if (uri.scheme == 'workbench') {
       if (uri.path.includes('queries')) {
         const schema = StateManager.instance.workspaceState_schema;
@@ -269,7 +269,7 @@ export async function activate(context: ExtensionContext) {
               }
             }
           }
-          let opDiagnostics = collectExecutableDefinitionDiagnositics(
+          const opDiagnostics = collectExecutableDefinitionDiagnositics(
             schema,
             document,
             fragments,
@@ -277,11 +277,11 @@ export async function activate(context: ExtensionContext) {
           );
           if (opDiagnostics.length > 0) {
             operationDiagnostics.clear();
-            let diagnostics = new Array<Diagnostic>();
+            const diagnostics = new Array<Diagnostic>();
             opDiagnostics.forEach((opDiag) => {
-              let start = opDiag.range.start;
-              let end = opDiag.range.end;
-              let range = new Range(
+              const start = opDiag.range.start;
+              const end = opDiag.range.end;
+              const range = new Range(
                 new Position(start.line, start.character),
                 new Position(end.line, end.character),
               );
@@ -307,7 +307,7 @@ export async function activate(context: ExtensionContext) {
     }
   });
   workspace.onDidSaveTextDocument(async (document) => {
-    let uri = document.uri;
+    const uri = document.uri;
     if (uri.path.includes('mocks')) {
       const querySplit = uri.query.split(':');
       const { wbFile, path } = FileProvider.instance.workbenchFileByGraphName(

@@ -15,42 +15,42 @@ export function getServiceAvailableTypes(
   serviceName: string,
   wbFilePath: string,
 ): string[] {
-  let types: string[] = [];
-  let interfaces: string[] = [];
-  let objectTypes: string[] = [];
-  let enums: string[] = [];
-  let scalars: string[] = [];
+  const types: string[] = [];
+  const interfaces: string[] = [];
+  const objectTypes: string[] = [];
+  const enums: string[] = [];
+  const scalars: string[] = [];
 
   try {
-    let localSchema = FileProvider.instance.workbenchFileFromPath(wbFilePath)
+    const localSchema = FileProvider.instance.workbenchFileFromPath(wbFilePath)
       ?.schemas[serviceName];
     if (localSchema) {
-      let doc = parse(localSchema.sdl);
+      const doc = parse(localSchema.sdl);
 
       visit(doc, {
         ObjectTypeDefinition(objectTypeNode: ObjectTypeDefinitionNode) {
-          let typeNode = `O:${objectTypeNode.name.value}`;
+          const typeNode = `O:${objectTypeNode.name.value}`;
           if (!interfaces.includes(typeNode)) {
             interfaces.push(typeNode);
             interfaces.push(`[${typeNode}]`);
           }
         },
         InterfaceTypeDefinition(interfaceNode: InterfaceTypeDefinitionNode) {
-          let typeNode = `I:${interfaceNode.name.value}`;
+          const typeNode = `I:${interfaceNode.name.value}`;
           if (!objectTypes.includes(typeNode)) {
             objectTypes.push(typeNode);
             objectTypes.push(`[${typeNode}]`);
           }
         },
         EnumTypeDefinition(enumNode: EnumTypeDefinitionNode) {
-          let typeNode = `E:${enumNode.name.value}`;
+          const typeNode = `E:${enumNode.name.value}`;
           if (!enums.includes(typeNode)) {
             enums.push(typeNode);
             enums.push(`[${typeNode}]`);
           }
         },
         ScalarTypeDefinition(scalarNode: ScalarTypeDefinitionNode) {
-          let typeNode = `S:${scalarNode.name.value}`;
+          const typeNode = `S:${scalarNode.name.value}`;
           if (!scalars.includes(typeNode)) {
             scalars.push(typeNode);
             scalars.push(`[${typeNode}]`);
@@ -83,15 +83,15 @@ export function getServiceAvailableTypes(
 }
 
 export function extractEntityNames(schema: string): string[] {
-  let entityName: string[] = [];
+  const entityName: string[] = [];
   try {
     runOnlineParser(schema, (state, range, tokens) => {
       switch (state.kind) {
-        case 'StringValue' as any:
-          let argument = state?.prevState?.prevState;
-          let directive = argument?.prevState?.prevState;
-          let objectType = directive?.prevState;
-          let definitionType = objectType?.prevState;
+        case 'StringValue' as any: {
+          const argument = state?.prevState?.prevState;
+          const directive = argument?.prevState?.prevState;
+          const objectType = directive?.prevState;
+          const definitionType = objectType?.prevState;
 
           if (
             objectType?.name &&
@@ -106,6 +106,7 @@ export function extractEntityNames(schema: string): string[] {
               entityName.push(objectType.name);
           }
           break;
+        }
       }
     });
   } catch (err) {

@@ -23,6 +23,7 @@ import { execSync } from 'child_process';
 import { Disposable } from 'vscode-languageclient';
 import { WorkbenchUri, WorkbenchUriType } from './file-system/WorkbenchUri';
 
+// eslint-disable-next-line @typescript-eslint/no-var-requires
 const { name } = require('../../package.json');
 
 export class ServerManager {
@@ -48,11 +49,13 @@ export class ServerManager {
     else process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
     console.log(`${name}:Setting up mocks`);
-    let workbenchFile = FileProvider.instance.workbenchFileFromPath(wbFilePath);
+    const workbenchFile = FileProvider.instance.workbenchFileFromPath(
+      wbFilePath,
+    );
     if (workbenchFile) {
       console.log(`${name}:Mocking workbench file: ${workbenchFile.graphName}`);
       FileProvider.instance.loadedWorkbenchFile = workbenchFile;
-      for (var serviceName in workbenchFile.schemas) {
+      for (const serviceName in workbenchFile.schemas) {
         //Check if we should be mocking this service
         if (workbenchFile.schemas[serviceName].shouldMock) {
           //Check if Custom Mocks are defined in workbench
@@ -63,7 +66,7 @@ export class ServerManager {
               customMocks = customMocks.concat('\nmodule.exports = mocks');
 
             try {
-              let mocks = eval(customMocks);
+              const mocks = eval(customMocks);
               this.startServer(
                 serviceName,
                 workbenchFile.schemas[serviceName].sdl,
@@ -92,7 +95,7 @@ export class ServerManager {
     if (this.serversState?.gateway)
       this.serversState.gateway.experimental_pollInterval = 10000000;
 
-    for (var port in this.serversState) {
+    for (const port in this.serversState) {
       if (port != 'gateway') {
         console.log(`${name}:Stopping server running at port ${port}...`);
         this.stopServerOnPort(port);
@@ -141,8 +144,8 @@ export class ServerManager {
       }
 
       //Dynamically create __resolveReference resolvers based on defined entites in Graph
-      let resolvers = {};
-      let entities = extractEntityNames(schemaString);
+      const resolvers = {};
+      const entities = extractEntityNames(schemaString);
       entities.forEach(
         (entity) =>
           (resolvers[entity] = {
@@ -189,7 +192,7 @@ export class ServerManager {
   }
   private stopServerOnPort(port: string) {
     let serviceName = '';
-    for (var sn in this.portMapping)
+    for (const sn in this.portMapping)
       if (this.portMapping[sn] == port) serviceName = sn;
 
     this.stopServer(port);
@@ -198,7 +201,7 @@ export class ServerManager {
   }
   statusBarMessage: Disposable = window.setStatusBarMessage('');
   private stopGateway() {
-    let gatewayPort = StateManager.settings_gatewayServerPort;
+    const gatewayPort = StateManager.settings_gatewayServerPort;
     if (this.serversState[gatewayPort]) {
       console.log(`${name}:Stopping previous running gateway`);
       this.serversState[gatewayPort].stop();
@@ -207,7 +210,7 @@ export class ServerManager {
     if (this.statusBarMessage) this.statusBarMessage.dispose();
   }
   private startGateway() {
-    let gatewayPort = StateManager.settings_gatewayServerPort;
+    const gatewayPort = StateManager.settings_gatewayServerPort;
     if (this.serversState[gatewayPort]) {
       console.log(`${name}:Stopping previous running gateway`);
       this.serversState[gatewayPort].stop();
@@ -228,7 +231,7 @@ export class ServerManager {
       gateway: new OverrideApolloGateway({
         debug: true,
         buildService({ url, name }) {
-          let source = new GatewayForwardHeadersDataSource({ url });
+          const source = new GatewayForwardHeadersDataSource({ url });
           source.serviceName = name;
           return source;
         },

@@ -25,37 +25,38 @@ function getFieldTypeString(field): string {
         case 'NamedType':
           return `${field.type.name.value}!`;
       }
+      return '';
     default:
       return '';
   }
 }
 
 export async function extractDefinedEntitiesByService(wbFilePath: string) {
-  let extendables: {
+  const extendables: {
     [serviceName: string]: {
       type: string;
       keys: { [key: string]: FieldWithType[] };
     }[];
   } = {};
-  let joinGraphEnumValues: { [joinGraphEnum: string]: string } = {};
+  const joinGraphEnumValues: { [joinGraphEnum: string]: string } = {};
 
   try {
     const wbFile = FileProvider.instance.workbenchFileFromPath(wbFilePath);
     if (wbFile) {
       visit(parse(wbFile.supergraphSdl), {
         ObjectTypeDefinition(node) {
-          let joinOwnerDirective = node.directives?.find(
+          const joinOwnerDirective = node.directives?.find(
             (d) => d.name.value == 'join__owner',
           );
           if (joinOwnerDirective && joinOwnerDirective.arguments) {
-            let joinGraphEnumValue = ((joinOwnerDirective
+            const joinGraphEnumValue = ((joinOwnerDirective
               .arguments[0] as ArgumentNode).value as EnumValueNode).value;
-            let entity: {
+            const entity: {
               type: string;
               keys: { [key: string]: FieldWithType[] };
             } = { type: node.name.value, keys: {} };
 
-            let joinKeyDirectives = node.directives?.filter(
+            const joinKeyDirectives = node.directives?.filter(
               (d) =>
                 d.name.value == 'join__type' &&
                 (d.arguments?.find(
@@ -66,15 +67,15 @@ export async function extractDefinedEntitiesByService(wbFilePath: string) {
             );
             if (joinKeyDirectives) {
               joinKeyDirectives?.forEach((jkd) => {
-                let keyBlock = (jkd.arguments?.find(
+                const keyBlock = (jkd.arguments?.find(
                   (a) => a.name.value == 'key',
                 )?.value as StringValueNode).value;
-                let parsedFields: string[] = [];
+                const parsedFields: string[] = [];
                 let startIndex = -1;
                 let notComposite = true;
-                for (var i = 0; i < keyBlock.length; i++) {
+                for (let i = 0; i < keyBlock.length; i++) {
                   let lastParsedField = '';
-                  let char = keyBlock[i];
+                  const char = keyBlock[i];
                   switch (char) {
                     case ' ':
                       if (startIndex != -1 && notComposite) {
@@ -101,8 +102,8 @@ export async function extractDefinedEntitiesByService(wbFilePath: string) {
                 }
 
                 parsedFields.forEach((parsedField) => {
-                  let finalKey = keyBlock.trim();
-                  let field = node.fields?.find(
+                  const finalKey = keyBlock.trim();
+                  const field = node.fields?.find(
                     (f) => f.name.value == parsedField,
                   );
                   let fieldType = '';

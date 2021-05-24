@@ -95,23 +95,23 @@ const getGraphOperations = gql`
 `;
 
 export async function isValidKey(apiKey: string) {
-  let result = await toPromise(
+  const result = await toPromise(
     execute(createLink({ apiKey }), { query: keyCheck }),
   );
-  let data = result.data as CheckUserApiKey;
+  const data = result.data as CheckUserApiKey;
   if ((data.me as CheckUserApiKey_me_User)?.id) return true;
   return false;
 }
 
 export async function getUserMemberships(apiKey: string) {
-  let result = await toPromise(
+  const result = await toPromise(
     execute(createLink({ apiKey }), { query: userMemberships }),
   );
   return result.data as UserMemberships;
 }
 
 export async function getAccountGraphs(apiKey: string, accountId: string) {
-  let result = await toPromise(
+  const result = await toPromise(
     execute(createLink({ apiKey, accountId }), {
       query: accountServiceVariants,
       variables: {
@@ -127,8 +127,8 @@ export async function getGraphOps(
   graphId: string,
   graphVariant: string,
 ) {
-  let days = StateManager.settings_daysOfOperationsToFetch;
-  let result = await toPromise(
+  const days = StateManager.settings_daysOfOperationsToFetch;
+  const result = await toPromise(
     execute(createLink({ apiKey, graphId, graphVariant }), {
       query: getGraphOperations,
       variables: {
@@ -146,7 +146,7 @@ export async function getGraphSchemasByVariant(
   graphId: string,
   graphVariant: string,
 ) {
-  let result = await toPromise(
+  const result = await toPromise(
     execute(createLink({ apiKey, graphId, graphVariant }), {
       query: getGraphSchemas,
       variables: {
@@ -158,6 +158,7 @@ export async function getGraphSchemasByVariant(
   return result.data as GetGraphSchemas;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-var-requires
 const { version } = require('../../package.json');
 interface CreateLinkOptions {
   apiKey: string;
@@ -166,8 +167,8 @@ interface CreateLinkOptions {
   graphVariant?: string;
 }
 function createLink(options: CreateLinkOptions) {
-  let userId = options.apiKey.split(':')[1];
-  let headers = {
+  const userId = options.apiKey.split(':')[1];
+  const headers = {
     'x-api-key': options.apiKey,
     'studio-user-id': userId,
     'apollographql-client-name': 'Apollo Workbench',

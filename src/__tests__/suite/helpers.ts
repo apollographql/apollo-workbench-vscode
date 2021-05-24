@@ -4,14 +4,15 @@ import { readdirSync, unlinkSync } from 'fs';
 import { FileProvider } from '../../workbench/file-system/fileProvider';
 
 export const activateExtension = async () => {
-  return new Promise<void>(async (resolve) => {
-    let extension = vscode.extensions.getExtension(
+  return new Promise<void>((resolve) => {
+    const extension = vscode.extensions.getExtension(
       'ApolloGraphQL.apollo-workbench-vscode',
     );
     if (extension) {
-      await extension.activate();
+      extension.activate().then(resolve);
+    } else {
+      resolve();
     }
-    resolve();
   });
 };
 

@@ -16,8 +16,6 @@ import { StateManager } from '../stateManager';
 
 export class LocalSupergraphTreeDataProvider
   implements TreeDataProvider<TreeItem> {
-  constructor() {}
-
   private _onDidChangeTreeData: EventEmitter<undefined> = new EventEmitter<undefined>();
   readonly onDidChangeTreeData: Event<undefined> = this._onDidChangeTreeData
     .event;
@@ -32,7 +30,7 @@ export class LocalSupergraphTreeDataProvider
 
   getChildren(element?: TreeItem): Thenable<TreeItem[]> {
     if (element == undefined) {
-      let items = new Array<TreeItem>();
+      const items = new Array<TreeItem>();
       const workbenchFiles = FileProvider.instance.refreshLocalWorkbenchFiles();
       workbenchFiles.forEach((wbFile, wbFilePath) => {
         items.push(new SupergraphTreeItem(wbFile, wbFilePath));
@@ -52,9 +50,9 @@ export class LocalSupergraphTreeDataProvider
       return Promise.resolve(items);
     } else {
       switch (element.contextValue) {
-        case 'supergraphTreeItem':
+        case 'supergraphTreeItem': {
           const supergraphItem = element as SupergraphTreeItem;
-          let subgraphItem = element as SupergraphTreeItem;
+          const subgraphItem = element as SupergraphTreeItem;
 
           //Support legacy composition in workbench files
           if (
@@ -79,7 +77,7 @@ export class LocalSupergraphTreeDataProvider
               supergraphItem.operationsChild,
             ]);
           } else {
-            let invalidCompositionItem = new TreeItem(
+            const invalidCompositionItem = new TreeItem(
               'INVALID COMPOSITION',
               TreeItemCollapsibleState.None,
             );
@@ -92,6 +90,7 @@ export class LocalSupergraphTreeDataProvider
               subgraphItem.operationsChild,
             ]);
           }
+        }
         case 'subgraphSummaryTreeItem':
           return Promise.resolve(
             (element as SubgraphSummaryTreeItem).subgraphs,

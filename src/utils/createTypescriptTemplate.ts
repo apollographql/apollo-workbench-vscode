@@ -17,16 +17,16 @@ export function createTypescriptTemplate(workbenchFile: ApolloWorkbenchFile) {
   let port = StateManager.settings_startingServerPort;
   const archive = create('zip', { zlib: { level: 9 } });
 
-  const fileName = workbenchFile.graphName.replace(/[\/|\\:*?"<>]/g, ' ');
+  const fileName = workbenchFile.graphName.replace(/[/|\\:*?"<>]/g, ' ');
   archive.append(generateTsVsCodeLaunch('Gateway'), { name: 'launch.json' });
   archive.append(generateTsConfig(), { name: 'tsconfig.json' });
   archive.append(generateTsgatewayPackageJson(), { name: 'package.json' });
   archive.append(generateTsGatewayTempalte(), { name: 'index.ts' });
 
-  for (var serviceName in workbenchFile.schemas) {
-    let serviceFolder = `services/${serviceName}`;
-    let serviceVsCodeFolder = `${serviceFolder}/.vscode`;
-    let serviceSrcFolder = `${serviceFolder}/src`;
+  for (const serviceName in workbenchFile.schemas) {
+    const serviceFolder = `services/${serviceName}`;
+    const serviceVsCodeFolder = `${serviceFolder}/.vscode`;
+    const serviceSrcFolder = `${serviceFolder}/src`;
 
     archive.append(generateTsConfig(), {
       name: `${serviceFolder}/tsconfig.json`,

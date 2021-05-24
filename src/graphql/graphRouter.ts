@@ -28,7 +28,7 @@ function log(message: string) {
 }
 
 export class GatewayForwardHeadersDataSource extends RemoteGraphQLDataSource {
-  serviceName: string = '';
+  serviceName = '';
   willSendRequest({ request, context }) {
     StateManager.settings_headersToForwardFromGateway.forEach((key) => {
       if (context.incomingHeaders[key])
@@ -39,7 +39,7 @@ export class GatewayForwardHeadersDataSource extends RemoteGraphQLDataSource {
         );
     });
 
-    let service =
+    const service =
       FileProvider.instance.loadedWorkbenchFile?.schemas[this.serviceName];
     if (service) {
       service.requiredHeaders?.forEach((requiredHeader) => {
@@ -63,19 +63,19 @@ export class OverrideApolloGateway extends ApolloGateway {
       process.env.NODE_TLS_REJECT_UNAUTHORIZED = '';
     else process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
-    let newDefinitions: Array<ServiceDefinition> = [];
+    const newDefinitions: Array<ServiceDefinition> = [];
 
-    let wb = FileProvider.instance.loadedWorkbenchFile;
+    const wb = FileProvider.instance.loadedWorkbenchFile;
     if (wb) {
-      for (var serviceName in wb.schemas) {
+      for (const serviceName in wb.schemas) {
         const service = wb.schemas[serviceName];
 
         if (service.shouldMock) {
-          let typeDefs = parse(service.sdl);
-          let url = `http://localhost:${ServerManager.instance.portMapping[serviceName]}`;
+          const typeDefs = parse(service.sdl);
+          const url = `http://localhost:${ServerManager.instance.portMapping[serviceName]}`;
           newDefinitions.push({ name: serviceName, url, typeDefs });
         } else {
-          let typeDefs = await OverrideApolloGateway.getTypeDefs(
+          const typeDefs = await OverrideApolloGateway.getTypeDefs(
             service.url as string,
             serviceName,
           );
@@ -118,11 +118,11 @@ export class OverrideApolloGateway extends ApolloGateway {
     serviceURLOverride: string,
     serviceName: string,
   ) {
-    let source = new RemoteGraphQLDataSource({ url: serviceURLOverride });
-    let requiredHeaders =
+    const source = new RemoteGraphQLDataSource({ url: serviceURLOverride });
+    const requiredHeaders =
       FileProvider.instance.loadedWorkbenchFile?.schemas[serviceName]
         ?.requiredHeaders;
-    let headers = new Headers();
+    const headers = new Headers();
     requiredHeaders?.forEach((requiredHeader) => {
       if (requiredHeader && requiredHeader.value)
         headers.append(requiredHeader.key, requiredHeader.value);
@@ -138,7 +138,7 @@ export class OverrideApolloGateway extends ApolloGateway {
         },
       };
 
-      let { data, errors } = await source.process({ request, context: {} });
+      const { data, errors } = await source.process({ request, context: {} });
       if (data && !errors) {
         return data._service.sdl as string;
       } else if (errors) {
@@ -174,7 +174,7 @@ export class OverrideApolloGateway extends ApolloGateway {
     source: RemoteGraphQLDataSource,
     requiredHeaders: Headers,
   ) {
-    let introspectionQuery = getIntrospectionQuery();
+    const introspectionQuery = getIntrospectionQuery();
     const request = {
       query: introspectionQuery,
       http: {
@@ -184,7 +184,7 @@ export class OverrideApolloGateway extends ApolloGateway {
       },
     };
 
-    let { data, errors } = await source.process({ request, context: {} });
+    const { data, errors } = await source.process({ request, context: {} });
     if (data && !errors) {
       const schema = buildClientSchema(data as any);
 
