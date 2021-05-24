@@ -33,7 +33,7 @@ export class FileProvider implements FileSystemProvider {
     return this._instance;
   }
 
-  constructor(private workspaceRoot?: string) {}
+  constructor(private workspaceRoot?: string) { }
 
   //All workbench files in opened VS Code folder
   private workbenchFiles: Map<string, ApolloWorkbenchFile> = new Map();
@@ -171,7 +171,7 @@ export class FileProvider implements FileSystemProvider {
     } else if (uri.path.includes('/queries')) {
       const wbFilePath = uri.path.split('/queries')[0];
       const wbFile = this.workbenchFileFromPath(wbFilePath);
-      return Buffer.from(wbFile?.operations[name] ?? '');
+      return Buffer.from(wbFile?.operations[name]?.operation ?? '');
     } else if (uri.path.includes('/queryplans')) {
       const wbFilePath = uri.path.split('/queryplans')[0];
       const wbFile = this.workbenchFileFromPath(wbFilePath);
@@ -244,11 +244,10 @@ export class FileProvider implements FileSystemProvider {
   }
   generateQueryPlan(operationName: string, wbFile: ApolloWorkbenchFile) {
     try {
-      const operation = wbFile.operations[operationName];
       const schema = buildComposedSchema(parse(wbFile.supergraphSdl));
       const operationContext = buildOperationContext(
         schema,
-        parse(operation),
+        parse(wbFile.operations[operationName].operation),
         operationName,
       );
       const queryPlanner = new QueryPlanner(schema);
@@ -289,7 +288,7 @@ export class FileProvider implements FileSystemProvider {
           shouldRecompose = true;
         }
       } else if (uri.path.includes('/queries')) {
-        wbFile.operations[name] = stringContent;
+        wbFile.operations[name] = { operation: stringContent };
 
         if (wbFile.supergraphSdl) {
           try {

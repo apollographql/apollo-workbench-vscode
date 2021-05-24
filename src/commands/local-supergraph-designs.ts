@@ -118,7 +118,7 @@ export async function addOperation(item: OperationTreeItem) {
       console.log(message);
       window.setStatusBarMessage(message, 3000);
     } else {
-      wbFile.operations[operationName] = `query ${operationName} {\n\t\n}`;
+      wbFile.operations[operationName] = { operation: `query ${operationName} {\n\t\n}` };
       FileProvider.instance.saveWorkbenchFile(wbFile, item.filePath);
     }
   }

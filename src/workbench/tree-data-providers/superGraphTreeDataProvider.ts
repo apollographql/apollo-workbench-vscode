@@ -285,7 +285,7 @@ export class OperationSummaryTreeItem extends TreeItem {
       this.operations.push(
         new OperationTreeItem(
           operationName,
-          wbFile.operations[operationName],
+          wbFile.operations[operationName].operation,
           filePath,
         ),
       );

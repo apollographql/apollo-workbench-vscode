@@ -31,7 +31,7 @@ export async function addToWorkbench(op: StudioOperationTreeItem) {
           wbPath = path;
       });
 
-      wbFile.operations[op.operationName] = print(parse(op.operationSignature));
+      wbFile.operations[op.operationName] = { operation: print(parse(op.operationSignature)) };
       FileProvider.instance.saveWorkbenchFile(wbFile, wbPath);
     }
   }

@@ -13,13 +13,17 @@ export interface WorkbenchSchema {
   customMocks?: string;
 }
 
+export interface WorkbenchOperation {
+  operation: string;
+}
+
 export class ApolloWorkbenchFile {
-  operations: { [opName: string]: string } = {};
+  operations: { [opName: string]: WorkbenchOperation } = {};
   queryPlans: { [opName: string]: string } = {};
   schemas: { [serviceName: string]: WorkbenchSchema } = {};
   supergraphSdl = '';
 
-  constructor(public graphName: string) {}
+  constructor(public graphName: string) { }
 }
 
 ///This is the user facing settings displayed
