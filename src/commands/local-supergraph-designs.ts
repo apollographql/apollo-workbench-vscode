@@ -1,13 +1,14 @@
 import { FileProvider } from '../workbench/file-system/fileProvider';
 import {
   window,
-  ProgressLocation,
+  env,
   Uri,
   workspace,
   Range,
   StatusBarAlignment,
   tasks,
   Task,
+  ViewColumn,
 } from 'vscode';
 import { StateManager } from '../workbench/stateManager';
 import { createTypescriptTemplate } from '../utils/createTypescriptTemplate';
@@ -122,6 +123,38 @@ export async function addOperation(item: OperationTreeItem) {
       FileProvider.instance.saveWorkbenchFile(wbFile, item.filePath);
     }
   }
+}
+export async function setOperationDesignMock(item: OperationTreeItem) {
+  env.openExternal(Uri.parse('https://en.wikipedia.org/wiki/Visual_Studio_Code#/media/File:Visual_Studio_Code_Insiders_1.36_icon.svg'));
+  // const panel = window.createWebviewPanel(
+  //   "apolloWorkbenchDesign",
+  //   'UI Design',
+  //   ViewColumn.One,
+  //   {
+  //     // Enable javascript in the webview
+  //     enableScripts: true,
+  //     // And restrict the webview to only loading content from our extension's `media` directory.
+  //     // localResourceRoots: [vscode.Uri.joinPath(extensionUri, 'media')]
+  //   },
+  // );
+
+  // panel.webview.html = 
+  // const wbFilePath = item.filePath;
+  // const wbFile = FileProvider.instance.workbenchFileFromPath(wbFilePath);
+  // if (wbFile) {
+  //   const remoteURL =
+  //     (await window.showInputBox({
+  //       placeHolder: 'Enter a name for the operation',
+  //     })) ?? '';
+  //   if (!remoteURL) {
+  //     const message = `Create schema cancelled - No name entered.`;
+  //     console.log(message);
+  //     window.setStatusBarMessage(message, 3000);
+  //   } else {
+  //     wbFile.operations[remoteURL] = { operation: `query ${remoteURL} {\n\t\n}` };
+  //     FileProvider.instance.saveWorkbenchFile(wbFile, item.filePath);
+  //   }
+  // }
 }
 export async function deleteOperation(item: OperationTreeItem) {
   const wbFilePath = item.filePath;

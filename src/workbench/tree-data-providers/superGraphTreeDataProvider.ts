@@ -310,7 +310,7 @@ export class OperationTreeItem extends TreeItem {
       arguments: [this],
     };
 
-    if (this.operationString.includes('mutation'))
+    if (this.operationString && this.operationString.includes('mutation'))
       this.iconPath = {
         light: path.join(__filename, '..', '..', '..', '..', 'media', 'm.svg'),
         dark: path.join(__filename, '..', '..', '..', '..', 'media', 'm.svg'),

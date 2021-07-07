@@ -8,6 +8,7 @@ import {
   Range,
   Diagnostic,
   Position,
+  WebviewPanel,
 } from 'vscode';
 import { Kind, Source } from 'graphql';
 import { DiagnosticSeverity } from 'vscode-languageclient';
@@ -62,6 +63,7 @@ import {
   exportSubgraphSchema,
   exportSubgraphResolvers,
   createWorkbenchFromSupergraphVariant,
+  // setOperationDesignMock,
 } from './commands/local-supergraph-designs';
 import { resolve } from 'path';
 import { mkdirSync, writeFileSync } from 'fs';
@@ -219,6 +221,22 @@ export async function activate(context: ExtensionContext) {
     'local-supergraph-designs.viewQueryPlan',
     viewQueryPlan,
   );
+  //TODO: Need to implemnt loading image in a custom view, will come in following release
+  // commands.registerCommand(
+  //   'local-supergraph-designs.setOperationDesignMock',
+  //   setOperationDesignMock,
+  // );
+
+  if (window.registerWebviewPanelSerializer) {
+    // Make sure we register a serializer in activation event
+    window.registerWebviewPanelSerializer("apolloWorkbenchDesign", {
+      async deserializeWebviewPanel(webviewPanel: WebviewPanel, state: any) {
+        console.log(`Got state: ${state}`)
+        // Reset the webview options so we use latest uri for `localResourceRoots`.
+        // webviewPanel.webview.options = getWebviewOptions(context.extensionUri);
+      }
+    });
+  }
   // commands.registerCommand('current-workbench-schemas.deleteSchemaDocTextRange', deleteSchemaDocTextRange);
   // commands.registerCommand('current-workbench-schemas.makeSchemaDocTextRangeArray', makeSchemaDocTextRangeArray);
 
@@ -254,6 +272,18 @@ export async function activate(context: ExtensionContext) {
     ApolloStudioOperationsProvider.scheme,
     new ApolloStudioOperationsProvider(),
   );
+  //This ensures the visible text editor loads the correct design for composition errors 
+  window.onDidChangeActiveTextEditor((e) => {
+    if (e) {
+      const uri = e.document.uri;
+      const path = uri.path;
+      const updateComposition = (path.includes('subgraphs') || path.includes('queries'));
+      if (uri.scheme == 'workbench' && updateComposition) {
+        const designPath = path.split('/subgraphs')[0];
+        FileProvider.instance.loadWorkbenchForComposition(designPath);
+      }
+    }
+  })
   workspace.onDidChangeTextDocument((e) => {
     const uri = e.document.uri;
     const document = new GraphQLDocument(new Source(e.document.getText()));

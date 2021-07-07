@@ -15,6 +15,7 @@ export interface WorkbenchSchema {
 
 export interface WorkbenchOperation {
   operation: string;
+  remoteVisualDesignURL?: string
 }
 
 export class ApolloWorkbenchFile {

@@ -1,6 +1,6 @@
 import { composeAndValidate, ServiceDefinition } from '@apollo/federation';
 import { GraphQLError, parse, extendSchema, GraphQLSchema } from 'graphql';
-import { Diagnostic, DiagnosticSeverity, Range } from 'vscode';
+import { commands, Diagnostic, DiagnosticSeverity, Range } from 'vscode';
 import { compositionDiagnostics } from '../extension';
 import { StateManager } from '../workbench/stateManager';
 import { extractDefinedEntitiesByService } from './parsers/csdlParser';
@@ -46,6 +46,9 @@ export async function getComposedSchemaLogCompositionErrorsForWbFile(
             diagnosticsGroups[sn],
           );
         }
+
+        if (Object.keys(diagnosticsGroups).length > 0)
+          commands.executeCommand('workbench.action.problems.focus');
       }
 
       if (supergraphSdl) {
