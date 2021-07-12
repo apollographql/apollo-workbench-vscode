@@ -18,10 +18,11 @@ import { FileProvider } from './file-system/fileProvider';
 import { extractEntityNames } from '../graphql/parsers/schemaParser';
 import { resolve } from 'path';
 import { mkdirSync, writeFileSync, readFileSync } from 'fs';
-import { workspace, Uri, window, StatusBarAlignment, tasks } from 'vscode';
+import { workspace, Uri, window, StatusBarAlignment, tasks, extensions } from 'vscode';
 import { execSync } from 'child_process';
 import { Disposable } from 'vscode-languageclient';
 import { WorkbenchUri, WorkbenchUriType } from './file-system/WorkbenchUri';
+import { outputChannel } from '../extension';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { name } = require('../../package.json');
@@ -148,11 +149,11 @@ export class ServerManager {
       const entities = extractEntityNames(schemaString);
       entities.forEach(
         (entity) =>
-          (resolvers[entity] = {
-            __resolveReference(parent, args) {
-              return { ...parent };
-            },
-          }),
+        (resolvers[entity] = {
+          __resolveReference(parent, args) {
+            return { ...parent };
+          },
+        }),
       );
 
       //Build federated schema with resolvers and then add custom mocks to that schema
@@ -171,7 +172,7 @@ export class ServerManager {
         .listen({ port })
         .then(({ url }) =>
           console.log(
-            `${name}:🚀 ${serviceName} mocked server ready at ${url}`,
+            `${name}:🚀 ${serviceName} mocked server ready at https://studio.apollographql.com/sandbox/explorer?endpoint=http%3A%2F%2Flocalhost%3A${port}`,
           ),
         );
 
@@ -251,6 +252,7 @@ export class ServerManager {
       .listen({ port: gatewayPort })
       .then(({ url }) => {
         console.log(`${name}:🚀 Apollo Workbench gateway ready at ${url}`);
+        console.log(`Query your graph design through Apollo Sandbox: https://studio.apollographql.com/sandbox/explorer?endpoint=http%3A%2F%2Flocalhost%3A${gatewayPort}`);
         ServerManager.instance.statusBarMessage = window.setStatusBarMessage(
           'Apollo Workbench Mocks Running',
         );

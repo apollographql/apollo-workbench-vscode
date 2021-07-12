@@ -9,6 +9,7 @@ import {
   tasks,
   Task,
   ViewColumn,
+  commands,
 } from 'vscode';
 import { StateManager } from '../workbench/stateManager';
 import { createTypescriptTemplate } from '../utils/createTypescriptTemplate';
@@ -42,8 +43,10 @@ import { GraphQLSchema, parse, extendSchema, printSchema } from 'graphql';
 import { OverrideApolloGateway } from '../graphql/graphRouter';
 import { generateJsFederatedResolvers } from '../utils/exportFiles';
 import { getComposedSchema, superSchemaToSchema } from '../graphql/composition';
+import { outputChannel } from '../extension';
 
 export async function startMocks(item: SubgraphSummaryTreeItem) {
+  outputChannel.show();
   if (item) ServerManager.instance.startSupergraphMocks(item.filePath);
   else {
     const wbFiles: string[] = [];
@@ -59,9 +62,11 @@ export async function startMocks(item: SubgraphSummaryTreeItem) {
         if (value.graphName == wbFileToStartMocks) wbFilePath = key;
       });
 
-      if (existsSync(wbFilePath))
-        ServerManager.instance.startSupergraphMocks(wbFilePath);
-      else
+      if (existsSync(wbFilePath)) {
+        await ServerManager.instance.startSupergraphMocks(wbFilePath);
+        const gatewayPort = StateManager.settings_gatewayServerPort;
+        commands.executeCommand("workbench.action.url.openUrl", `https://studio.apollographql.com/sandbox/explorer?endpoint=http%3A%2F%2Flocalhost%3A${gatewayPort}`);
+      } else
         window.showInformationMessage(
           'There was an error loading your workbench file for mocking, please file an issue on the repo with what happened and your workbench file',
         );
@@ -319,12 +324,12 @@ async function createWorkbench(graphId: string, selectedVariant: string) {
         ?.implementingServices as GetGraphSchemas_service_implementingServices_FederatedImplementingServices;
       implementingServices?.services?.map(
         (service) =>
-          (workbenchFile.schemas[service.name] = {
-            sdl: service.activePartialSchema.sdl,
-            url: service.url ?? '',
-            shouldMock: true,
-            autoUpdateSchemaFromUrl: false,
-          }),
+        (workbenchFile.schemas[service.name] = {
+          sdl: service.activePartialSchema.sdl,
+          url: service.url ?? '',
+          shouldMock: true,
+          autoUpdateSchemaFromUrl: false,
+        }),
       );
     }
 
