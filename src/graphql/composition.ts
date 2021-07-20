@@ -1,7 +1,6 @@
 import { composeAndValidate, ServiceDefinition } from '@apollo/federation';
 import { GraphQLError, parse, extendSchema, GraphQLSchema } from 'graphql';
-import { commands, Diagnostic, DiagnosticSeverity, Range } from 'vscode';
-import { compositionDiagnostics } from '../extension';
+import { commands, Diagnostic, DiagnosticSeverity, Range, window } from 'vscode';
 import { StateManager } from '../workbench/stateManager';
 import { extractDefinedEntitiesByService } from './parsers/csdlParser';
 import { FileProvider } from '../workbench/file-system/fileProvider';
@@ -14,6 +13,8 @@ import {
   CompositionResult,
   CompositionFailure,
 } from '@apollo/federation/dist/composition/utils';
+import { diagnosticCollections } from '../extension';
+import { log } from '../utils/logger';
 
 export function superSchemaToSchema(supergraphSchema: string) {
   const schema = new GraphQLSchema({
@@ -29,16 +30,22 @@ export async function getComposedSchemaLogCompositionErrorsForWbFile(
   wbFilePath: string,
 ) {
   const workbenchFile = FileProvider.instance.workbenchFileFromPath(wbFilePath);
-  if (workbenchFile) {
+  const compositionDiagnostics = diagnosticCollections.get(wbFilePath)?.compositionDiagnostics;
+  if (workbenchFile && compositionDiagnostics) {
+    const compositionStatusBarItem = window.createStatusBarItem();
+    compositionStatusBarItem.text = `Composing ${workbenchFile.graphName}`;
+    compositionStatusBarItem.show();
+
     compositionDiagnostics.clear();
     try {
-      const { errors, supergraphSdl, schema } = await getComposedSchema(
-        workbenchFile,
-      );
-      if (errors && errors.length > 0) {
-        console.log('Composition Errors Found:');
+      const { errors, supergraphSdl, schema } = await getComposedSchema(workbenchFile);
+      //Deal with storing/clearing out the schema used for type completion
+      if (schema) StateManager.instance.workspaceState_schema = schema;
+      else StateManager.instance.clearWorkspaceSchema();
 
-        console.log(compositionDiagnostics.name);
+      if (errors && errors.length > 0) {
+        log(`${errors.length} composition errors found for ${workbenchFile.graphName}. See problems panel for details.`);
+
         const diagnosticsGroups = handleErrors(workbenchFile, errors);
         for (const sn in diagnosticsGroups) {
           compositionDiagnostics.set(
@@ -59,12 +66,11 @@ export async function getComposedSchemaLogCompositionErrorsForWbFile(
         StateManager.instance.workspaceState_selectedWorkbenchAvailableEntities = {};
       }
 
-      FileProvider.instance.saveWorkbenchFile(workbenchFile, wbFilePath);
-
-      if (schema) StateManager.instance.workspaceState_schema = schema;
-      else StateManager.instance.clearWorkspaceSchema();
+      FileProvider.instance.saveWorkbenchFile(workbenchFile, wbFilePath, false);
     } catch (err) {
-      console.log(`${err}`);
+      log(`${err}`);
+    } finally {
+      compositionStatusBarItem.dispose();
     }
   }
 }
@@ -271,13 +277,13 @@ export function handleErrors(wb: ApolloWorkbenchFile, errors: GraphQLError[]) {
           if (serviceName) serviceName += `${sn}-:-`;
           else serviceName = sn;
     } else if (errorMessage.includes('There can be only one type named')) {
-      const nameNode = error.nodes?.find((n) => n.kind == 'Name') as any;
-      serviceName = '';
+      // const nameNode = error.nodes?.find((n) => n.kind == 'Name') as any;
+      // serviceName = '';
 
-      for (const sn in schemas)
-        if (schemas[sn].sdl.includes(nameNode.value)) serviceName += `${sn}-:-`;
+      // for (const sn in schemas)
+      //   if (schemas[sn].sdl.includes(nameNode.value)) serviceName += `${sn}-:-`;
 
-      typeToIgnore = nameNode.value;
+      // typeToIgnore = nameNode.value;
     } else if (
       errorMessage.includes('Field') &&
       errorMessage.includes('can only be defined once')

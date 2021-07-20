@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import { readdirSync, unlinkSync } from 'fs';
 import { FileProvider } from '../../workbench/file-system/fileProvider';
+import { log } from 'util';
 
 export const activateExtension = async () => {
   return new Promise<void>((resolve) => {
@@ -25,7 +26,7 @@ export function cleanupWorkbenchFiles() {
         unlinkSync(path.resolve(directory, dirent.name));
     }
   } catch (err) {
-    console.log(`Cleanup Error: ${err}`);
+    log(`Cleanup Error: ${err}`);
   }
   FileProvider.instance.clearWorkbenchFiles();
 }

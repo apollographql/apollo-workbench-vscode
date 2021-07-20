@@ -8,6 +8,7 @@ import {
   EnumValueNode,
   StringValueNode,
 } from 'graphql';
+import { log } from '../../utils/logger';
 
 function getFieldTypeString(field): string {
   switch (field.kind) {
@@ -148,7 +149,7 @@ export async function extractDefinedEntitiesByService(wbFilePath: string) {
       });
     }
   } catch (err) {
-    console.log(err);
+    log(err);
   }
 
   StateManager.instance.workspaceState_selectedWorkbenchAvailableEntities = extendables;

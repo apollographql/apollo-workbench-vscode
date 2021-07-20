@@ -10,6 +10,7 @@ import {
   Task,
   ViewColumn,
   commands,
+  Progress,
 } from 'vscode';
 import { StateManager } from '../workbench/stateManager';
 import { createTypescriptTemplate } from '../utils/createTypescriptTemplate';
@@ -44,10 +45,34 @@ import { OverrideApolloGateway } from '../graphql/graphRouter';
 import { generateJsFederatedResolvers } from '../utils/exportFiles';
 import { getComposedSchema, superSchemaToSchema } from '../graphql/composition';
 import { outputChannel } from '../extension';
+import { log } from '../utils/logger';
 
-export async function startMocks(item: SubgraphSummaryTreeItem) {
+let startingMocks = false;
+
+export async function startMocksWithDialog(item: SubgraphSummaryTreeItem) {
+  if (startingMocks) return;
+  startingMocks = true;
+
+  await window.withProgress({ location: 15, title: `${item.wbFile.graphName}`, cancellable: false }, async (progress, token) => {
+    progress.report({ message: `Starting mocks` });
+    return new Promise(async (resolve) => {
+      await startMocks(item, progress);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      startingMocks = false;
+      resolve(100);
+    })
+  })
+}
+
+async function startMocks(item: SubgraphSummaryTreeItem, progress: Progress<{
+  message?: string | undefined;
+  increment?: number | undefined;
+}>) {
   outputChannel.show();
-  if (item) ServerManager.instance.startSupergraphMocks(item.filePath);
+  if (item) {
+    await ServerManager.instance.startSupergraphMocks(item.filePath, progress);
+
+  }
   else {
     const wbFiles: string[] = [];
     FileProvider.instance
@@ -63,9 +88,7 @@ export async function startMocks(item: SubgraphSummaryTreeItem) {
       });
 
       if (existsSync(wbFilePath)) {
-        await ServerManager.instance.startSupergraphMocks(wbFilePath);
-        const gatewayPort = StateManager.settings_gatewayServerPort;
-        commands.executeCommand("workbench.action.url.openUrl", `https://studio.apollographql.com/sandbox/explorer?endpoint=http%3A%2F%2Flocalhost%3A${gatewayPort}`);
+        await ServerManager.instance.startSupergraphMocks(wbFilePath, progress);
       } else
         window.showInformationMessage(
           'There was an error loading your workbench file for mocking, please file an issue on the repo with what happened and your workbench file',
@@ -89,7 +112,7 @@ export async function editSubgraph(item: SubgraphTreeItem) {
     await window.showTextDocument(uri);
     FileProvider.instance.loadWorkbenchForComposition(item.wbFilePath);
   } catch (err) {
-    console.log(err);
+    log(err);
   }
 }
 export async function editSupergraphOperation(item: OperationTreeItem) {
@@ -121,11 +144,14 @@ export async function addOperation(item: OperationTreeItem) {
       })) ?? '';
     if (!operationName) {
       const message = `Create schema cancelled - No name entered.`;
-      console.log(message);
+      log(message);
       window.setStatusBarMessage(message, 3000);
     } else {
       wbFile.operations[operationName] = { operation: `query ${operationName} {\n\t\n}` };
       FileProvider.instance.saveWorkbenchFile(wbFile, item.filePath);
+
+      const newOpDoc = await workspace.openTextDocument(WorkbenchUri.supergraph(item.filePath, operationName, WorkbenchUriType.QUERIES));
+      await window.showTextDocument(newOpDoc);
     }
   }
 }
@@ -153,7 +179,7 @@ export async function setOperationDesignMock(item: OperationTreeItem) {
   //     })) ?? '';
   //   if (!remoteURL) {
   //     const message = `Create schema cancelled - No name entered.`;
-  //     console.log(message);
+  //     log(message);
   //     window.setStatusBarMessage(message, 3000);
   //   } else {
   //     wbFile.operations[remoteURL] = { operation: `query ${remoteURL} {\n\t\n}` };
@@ -212,7 +238,7 @@ export async function addSubgraph(item: SubgraphSummaryTreeItem) {
     })) ?? '';
   if (!serviceName) {
     const message = `Create schema cancelled - No name entered.`;
-    console.log(message);
+    log(message);
     window.setStatusBarMessage(message, 3000);
   } else {
     wbFile.schemas[serviceName] = {
@@ -242,7 +268,7 @@ export async function newDesign() {
     if (!workbenchName) {
       const msg =
         'No name was provided for the file.\n Cancelling new workbench create';
-      console.log(msg);
+      log(msg);
       window.showErrorMessage(msg);
     } else {
       FileProvider.instance.createWorkbenchFileLocally(
@@ -360,7 +386,7 @@ export async function updateSubgraphSchemaFromURL(item: SubgraphTreeItem) {
       })) ?? '';
     if (!routingURL) {
       const message = `Set service URL cancelled for ${item.subgraphName} - No URL entered.`;
-      console.log(message);
+      log(message);
       window.setStatusBarMessage(message, 3000);
     } else {
       wbFile.schemas[item.subgraphName].url = routingURL;
@@ -422,7 +448,7 @@ export async function viewSubgraphCustomMocks(item: SubgraphTreeItem) {
   try {
     await window.showTextDocument(subgraphMocksUri);
   } catch (err) {
-    console.log(err);
+    log(err);
   }
 }
 

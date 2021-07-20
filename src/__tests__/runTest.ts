@@ -14,11 +14,11 @@ async function mainTestRunner(loadFolder = false) {
     const testWorkbenchFolder = path.resolve(__dirname, './test-workbench');
 
     // let shouldLoadWorkbenchFolder = process.argv[2];
-    // console.log('******shouldLoadWorkbenchFolder:' + shouldLoadWorkbenchFolder);
+    // log('******shouldLoadWorkbenchFolder:' + shouldLoadWorkbenchFolder);
 
-    // console.log('******extensionDevelopmentPath:' + extensionDevelopmentPath);
-    // console.log('******extensionTestsPath:' + extensionTestsPath);
-    // console.log('******testWorkbenchFolder:' + testWorkbenchFolder);
+    // log('******extensionDevelopmentPath:' + extensionDevelopmentPath);
+    // log('******extensionTestsPath:' + extensionTestsPath);
+    // log('******testWorkbenchFolder:' + testWorkbenchFolder);
 
     if (loadFolder)
       await runTests({

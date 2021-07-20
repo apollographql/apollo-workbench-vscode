@@ -22,9 +22,10 @@ import {
   WorkbenchUri,
   WorkbenchUriType,
 } from '../workbench/file-system/WorkbenchUri';
+import { log } from '../utils/logger';
 
-function log(message: string) {
-  console.log(`GATEWAY-${message}`);
+function gatewayLog(message: string) {
+  log(`GATEWAY-${message}`);
 }
 
 export class GatewayForwardHeadersDataSource extends RemoteGraphQLDataSource {
@@ -34,7 +35,7 @@ export class GatewayForwardHeadersDataSource extends RemoteGraphQLDataSource {
       if (context.incomingHeaders[key])
         request.http.headers.set(key, context.incomingHeaders[key]);
       else
-        log(
+        gatewayLog(
           `Header ${key} was not found on incoming request, did you forget to set it in your client application?`,
         );
     });
@@ -47,8 +48,8 @@ export class GatewayForwardHeadersDataSource extends RemoteGraphQLDataSource {
           request.http.headers.set(
             requiredHeader.key,
             context.incomingHeaders[requiredHeader.key] ??
-              requiredHeader.value ??
-              '',
+            requiredHeader.value ??
+            '',
           );
       });
     }
@@ -97,7 +98,7 @@ export class OverrideApolloGateway extends ApolloGateway {
                 { create: true, overwrite: true },
               );
           } else {
-            log('Falling back to schema defined in workbench');
+            gatewayLog('Falling back to schema defined in workbench');
             newDefinitions.push({
               name: serviceName,
               url: service.url,
@@ -142,7 +143,7 @@ export class OverrideApolloGateway extends ApolloGateway {
       if (data && !errors) {
         return data._service.sdl as string;
       } else if (errors) {
-        errors.map((error) => log(error.message));
+        errors.map((error) => gatewayLog(error.message));
         //If we got errors, it could be that the graphql server running at that url doesn't support Apollo Federation Spec
         //  In this case, we can try and get the server schema from introspection
         return await this.getSchemaByIntrospection(
@@ -153,11 +154,11 @@ export class OverrideApolloGateway extends ApolloGateway {
       }
     } catch (err) {
       if (err.code == 'ECONNREFUSED')
-        log(`Do you have service ${serviceName} running? \n\t${err.message}`);
+        gatewayLog(`Do you have service ${serviceName} running? \n\t${err.message}`);
       else if (err.code == 'ENOTFOUND')
-        log(`Do you have service ${serviceName} running? \n\t${err.message}`);
+        gatewayLog(`Do you have service ${serviceName} running? \n\t${err.message}`);
       else if (err.message == 'Only absolute URLs are supported')
-        log(`${serviceName}-${err.message}`);
+        gatewayLog(`${serviceName}-${err.message}`);
       else
         return await this.getSchemaByIntrospection(
           serviceURLOverride,
@@ -190,7 +191,7 @@ export class OverrideApolloGateway extends ApolloGateway {
 
       return printSchema(schema);
     } else if (errors) {
-      errors.map((error) => log(error.message));
+      errors.map((error) => gatewayLog(error.message));
       window.showErrorMessage(
         `Unable to get the schema from the underlying server running at ${serviceURLOverride}. Your GraphQL server must support the Apollo Federation specification or have introspection enabled`,
       );
