@@ -8,13 +8,14 @@ import {
   FileStat,
   FileSystemProvider,
   FileType,
+  languages,
   Uri,
   window,
   workspace,
 } from 'vscode';
 import { StateManager } from '../stateManager';
 import { getComposedSchemaLogCompositionErrorsForWbFile } from '../../graphql/composition';
-import { ApolloWorkbenchFile, WorkbenchSettings } from './fileTypes';
+import { ApolloWorkbenchFile, WorkbenchSettings, WorkbenchOperation } from './fileTypes';
 import { parse, GraphQLSchema, extendSchema, printSchema } from 'graphql';
 import {
   buildOperationContext,
@@ -22,6 +23,8 @@ import {
   QueryPlanner,
 } from '@apollo/query-planner';
 import { serializeQueryPlan } from '@apollo/query-planner';
+import { diagnosticCollections } from '../../extension';
+import { log } from '../../utils/logger';
 
 export class FileProvider implements FileSystemProvider {
   //Singleton implementation
@@ -33,30 +36,60 @@ export class FileProvider implements FileSystemProvider {
     return this._instance;
   }
 
-  constructor(private workspaceRoot?: string) {}
+  constructor(private workspaceRoot?: string) { }
 
   //All workbench files in opened VS Code folder
   private workbenchFiles: Map<string, ApolloWorkbenchFile> = new Map();
   refreshLocalWorkbenchFiles() {
+    // Clear all workbench files and workbench diagnostics 
     this.workbenchFiles.clear();
+    diagnosticCollections.forEach(diagnosticCollection => {
+      diagnosticCollection.compositionDiagnostics.clear();
+      diagnosticCollection.operationDiagnostics.clear();
+    })
+
     const workspaceRoot = StateManager.workspaceRoot;
     if (workspaceRoot) {
       const workbenchFiles = this.getWorkbenchFilesInDirectory(workspaceRoot);
-      workbenchFiles.forEach((workbenchFile) => {
-        try {
-          const test = JSON.parse(
-            readFileSync(workbenchFile.path, { encoding: 'utf-8' }),
-          );
-          const wbFile = JSON.parse(
-            readFileSync(workbenchFile.path, { encoding: 'utf-8' }),
-          ) as ApolloWorkbenchFile;
-          this.workbenchFiles.set(workbenchFile.path, wbFile);
-        } catch (err) {
-          window.showErrorMessage(
-            `Workbench file was not in the correct format. File located at ${workbenchFile.fsPath}`,
-          );
-        }
-      });
+
+      if (workbenchFiles.length == 0) {
+        diagnosticCollections.clear();
+      } else {
+        workbenchFiles.forEach((workbenchFile) => {
+          const wbFilePath = workbenchFile.path;
+
+          try {
+            const wbFile = JSON.parse(
+              readFileSync(wbFilePath, { encoding: 'utf-8' }),
+            ) as ApolloWorkbenchFile;
+            this.workbenchFiles.set(wbFilePath, wbFile);
+
+            if (diagnosticCollections.has(wbFilePath)) {
+              const collection = diagnosticCollections.get(wbFilePath);
+              collection?.compositionDiagnostics.clear();
+              collection?.operationDiagnostics.clear();
+
+              if (!wbFile.supergraphSdl)
+                getComposedSchemaLogCompositionErrorsForWbFile(workbenchFile.path);
+            } else {
+              const compositionDiagnostics = languages.createDiagnosticCollection(`${wbFile.graphName}-composition`);
+              const operationDiagnostics = languages.createDiagnosticCollection(`${wbFile.graphName}-composition`);
+
+              StateManager.instance.context?.subscriptions.push(compositionDiagnostics);
+              StateManager.instance.context?.subscriptions.push(operationDiagnostics);
+
+              diagnosticCollections.set(wbFilePath, { operationDiagnostics, compositionDiagnostics });
+
+              if (!wbFile.supergraphSdl)
+                getComposedSchemaLogCompositionErrorsForWbFile(workbenchFile.path);
+            }
+          } catch (err) {
+            window.showErrorMessage(
+              `Workbench file was not in the correct format. File located at ${wbFilePath}`,
+            );
+          }
+        });
+      }
     }
 
     return this.workbenchFiles;
@@ -171,7 +204,12 @@ export class FileProvider implements FileSystemProvider {
     } else if (uri.path.includes('/queries')) {
       const wbFilePath = uri.path.split('/queries')[0];
       const wbFile = this.workbenchFileFromPath(wbFilePath);
-      return Buffer.from(wbFile?.operations[name] ?? '');
+      const op = wbFile?.operations[name];
+      if (typeof op == 'string')
+        return Buffer.from(op);
+      else if (op?.operation)
+        return Buffer.from(op.operation);
+      return Buffer.from("");
     } else if (uri.path.includes('/queryplans')) {
       const wbFilePath = uri.path.split('/queryplans')[0];
       const wbFile = this.workbenchFileFromPath(wbFilePath);
@@ -244,8 +282,9 @@ export class FileProvider implements FileSystemProvider {
   }
   generateQueryPlan(operationName: string, wbFile: ApolloWorkbenchFile) {
     try {
-      const operation = wbFile.operations[operationName];
       const schema = buildComposedSchema(parse(wbFile.supergraphSdl));
+      const operation = wbFile.operations[operationName] instanceof String ?
+        wbFile.operations[operationName] as string ?? "" : (wbFile.operations[operationName] as WorkbenchOperation).operation ?? ""
       const operationContext = buildOperationContext(
         schema,
         parse(operation),
@@ -259,7 +298,7 @@ export class FileProvider implements FileSystemProvider {
 
       return queryPlanString;
     } catch (err) {
-      console.log(err);
+      log(err);
       return '';
     }
   }
@@ -269,17 +308,17 @@ export class FileProvider implements FileSystemProvider {
     options: { create: boolean; overwrite: boolean },
   ): void | Thenable<void> {
     //Supergraph schema and queryplans are read-only
+    const stringContent = content.toString();
     if (
       uri.path.includes('supergraph-schema') ||
       uri.path.includes('supergraph-api-schema') ||
-      uri.path.includes('queryplans')
+      stringContent.substring(0, 9) == 'QueryPlan'
     )
       return;
 
     const name = uri.query;
     const wbFilePath = this.getPath(uri.path);
     const wbFile = this.workbenchFileFromPath(wbFilePath);
-    const stringContent = content.toString();
 
     if (wbFile) {
       let shouldRecompose = false;
@@ -289,7 +328,7 @@ export class FileProvider implements FileSystemProvider {
           shouldRecompose = true;
         }
       } else if (uri.path.includes('/queries')) {
-        wbFile.operations[name] = stringContent;
+        wbFile.operations[name] = { operation: stringContent };
 
         if (wbFile.supergraphSdl) {
           try {
@@ -297,7 +336,7 @@ export class FileProvider implements FileSystemProvider {
 
             wbFile.queryPlans[name] = queryPlanString;
           } catch (err) {
-            console.log(err);
+            log(err);
           }
         }
       } else if (uri.path.includes('/subgraph-settings')) {

@@ -18,13 +18,12 @@ import { FileProvider } from './file-system/fileProvider';
 import { extractEntityNames } from '../graphql/parsers/schemaParser';
 import { resolve } from 'path';
 import { mkdirSync, writeFileSync, readFileSync } from 'fs';
-import { workspace, Uri, window, StatusBarAlignment, tasks } from 'vscode';
+import { workspace, Uri, window, StatusBarAlignment, tasks, extensions, Progress, commands } from 'vscode';
 import { execSync } from 'child_process';
 import { Disposable } from 'vscode-languageclient';
 import { WorkbenchUri, WorkbenchUriType } from './file-system/WorkbenchUri';
-
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const { name } = require('../../package.json');
+import { outputChannel } from '../extension';
+import { log } from '../utils/logger';
 
 export class ServerManager {
   private static _instance: ServerManager;
@@ -43,21 +42,26 @@ export class ServerManager {
     credentials: true,
   };
 
-  async startSupergraphMocks(wbFilePath: string) {
+  async startSupergraphMocks(wbFilePath: string, progress?: Progress<{
+    message?: string | undefined;
+    increment?: number | undefined;
+  }>) {
     if (StateManager.settings_tlsRejectUnauthorized)
       process.env.NODE_TLS_REJECT_UNAUTHORIZED = '';
     else process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
-    console.log(`${name}:Setting up mocks`);
+    log(`Setting up mocks`);
     const workbenchFile = FileProvider.instance.workbenchFileFromPath(
       wbFilePath,
     );
     if (workbenchFile) {
-      console.log(`${name}:Mocking workbench file: ${workbenchFile.graphName}`);
+      log(`Mocking workbench file: ${workbenchFile.graphName}`);
       FileProvider.instance.loadedWorkbenchFile = workbenchFile;
+      const increment = 80 / Object.keys(workbenchFile.schemas).length;
       for (const serviceName in workbenchFile.schemas) {
         //Check if we should be mocking this service
         if (workbenchFile.schemas[serviceName].shouldMock) {
+          progress?.report({ message: `Mocking subgraph ${serviceName}`, increment });
           //Check if Custom Mocks are defined in workbench
           let customMocks = workbenchFile.schemas[serviceName].customMocks;
           if (customMocks) {
@@ -74,22 +78,24 @@ export class ServerManager {
               );
             } catch (err) {
               //Most likely  wasn't valid javascript
-              console.log(err);
+              log(err);
               this.startServer(
                 serviceName,
                 workbenchFile.schemas[serviceName].sdl,
               );
             }
           } else
-            this.startServer(
+            await this.startServer(
               serviceName,
               workbenchFile.schemas[serviceName].sdl,
             );
+        } else {
+          progress?.report({ message: `Skipping mocks for ${serviceName} due to setting`, increment });
         }
       }
 
-      this.startGateway();
-    } else console.log(`${name}:No selected workbench file to setup`);
+      await this.startGateway(progress);
+    } else log(`No selected workbench file to setup`);
   }
   stopMocks() {
     if (this.serversState?.gateway)
@@ -97,31 +103,30 @@ export class ServerManager {
 
     for (const port in this.serversState) {
       if (port != 'gateway') {
-        console.log(`${name}:Stopping server running at port ${port}...`);
+        log(`Stopping server running at port ${port}...`);
         this.stopServerOnPort(port);
       }
     }
     this.stopGateway();
     this.portMapping = {};
   }
-  private startServer(
+  private async startServer(
     serviceName: string,
     schemaString: string,
     mocks?: IMocks,
   ) {
     //Ensure we don't have an empty schema string - meaning a blank new service was created
     if (schemaString == '') {
-      console.log(`${name}:No schema defined for ${serviceName} service.`);
+      log(`No schema defined for ${serviceName} service.`);
       return;
     }
 
     //Establish what port the server should be running on
     const port = this.portMapping[serviceName] ?? this.getNextAvailablePort();
-    console.log(`${name}:Starting ${serviceName} on port ${port}`);
 
     //Check local server state to stop server running at a specific port
     if (this.serversState[port]) {
-      console.log(`${name}:Stopping previous running server at port ${port}`);
+      log(`Stopping previous running server at port ${port}`);
       this.serversState[port].stop();
       delete this.serversState[port];
     }
@@ -148,11 +153,11 @@ export class ServerManager {
       const entities = extractEntityNames(schemaString);
       entities.forEach(
         (entity) =>
-          (resolvers[entity] = {
-            __resolveReference(parent, args) {
-              return { ...parent };
-            },
-          }),
+        (resolvers[entity] = {
+          __resolveReference(parent, args) {
+            return { ...parent };
+          },
+        }),
       );
 
       //Build federated schema with resolvers and then add custom mocks to that schema
@@ -163,29 +168,23 @@ export class ServerManager {
       const server = new ApolloServer({
         cors: this.corsConfiguration,
         schema,
-        // mocks,
-        // mockEntireSchema: false,
-        subscriptions: false,
+        subscriptions: false
       });
-      server
-        .listen({ port })
-        .then(({ url }) =>
-          console.log(
-            `${name}:🚀 ${serviceName} mocked server ready at ${url}`,
-          ),
-        );
+
+      await server.listen({ port });
+      await new Promise(resolve => setTimeout(resolve, 25));
 
       //Set the port and server to local state
       this.serversState[port] = server;
       this.portMapping[serviceName] = port;
     } catch (err) {
       if (err.message.includes('EOF')) {
-        console.log(
-          `${name}:${serviceName} has no contents, try defining a schema`,
+        log(
+          `${serviceName} has no contents, try defining a schema`,
         );
       } else {
-        console.log(
-          `${name}:${serviceName} had errors starting up mocked server: ${err}`,
+        log(
+          `${serviceName} had errors starting up mocked server: ${err}`,
         );
       }
     }
@@ -203,26 +202,31 @@ export class ServerManager {
   private stopGateway() {
     const gatewayPort = StateManager.settings_gatewayServerPort;
     if (this.serversState[gatewayPort]) {
-      console.log(`${name}:Stopping previous running gateway`);
+      log(`Stopping previous running gateway`);
       this.serversState[gatewayPort].stop();
       delete this.serversState[gatewayPort];
     }
     if (this.statusBarMessage) this.statusBarMessage.dispose();
   }
-  private startGateway() {
+  private async startGateway(progress?: Progress<{
+    message?: string | undefined;
+    increment?: number | undefined;
+  }>) {
     const gatewayPort = StateManager.settings_gatewayServerPort;
     if (this.serversState[gatewayPort]) {
-      console.log(`${name}:Stopping previous running gateway`);
+      log(`Stopping previous running gateway`);
       this.serversState[gatewayPort].stop();
       delete this.serversState[gatewayPort];
     }
+
+    progress?.report({ message: `Starting graph router...`, increment: 10 });
 
     const graphApiKey = StateManager.settings_apiKey;
     const graphVariant = StateManager.settings_graphVariant;
     let plugins = [ApolloServerPluginUsageReportingDisabled()];
     const shouldRunOpReg = StateManager.settings_shouldRunOpRegistry;
     if (shouldRunOpReg) {
-      console.log(`${name}:Enabling operation registry for ${graphVariant}`);
+      log(`Enabling operation registry for ${graphVariant}`);
       plugins = [ApolloServerPluginUsageReportingDisabled()]; //, plugin({ graphVariant, forbidUnregisteredOperations: shouldRunOpReg, debug: true })()];
     }
 
@@ -247,19 +251,24 @@ export class ServerManager {
       },
     });
 
-    server
+    await server
       .listen({ port: gatewayPort })
-      .then(({ url }) => {
-        console.log(`${name}:🚀 Apollo Workbench gateway ready at ${url}`);
+      .then(async () => {
+        const sandboxUrl = `https://studio.apollographql.com/sandbox/explorer?endpoint=http%3A%2F%2Flocalhost%3A${gatewayPort}`;
+        log(`🚀 Interact with your gateway through Sandbox\n\t${sandboxUrl}`);
         ServerManager.instance.statusBarMessage = window.setStatusBarMessage(
           'Apollo Workbench Mocks Running',
         );
+
+        await commands.executeCommand('vscode.open', Uri.parse(sandboxUrl));
       })
       .then(undefined, (err) => {
         console.error('I am error');
       });
 
     this.serversState[gatewayPort] = server;
+
+    progress?.report({ message: `Workbench Design Mocked Successfully`, increment: 10 });
   }
   private stopServer(port: string) {
     this.serversState[port].stop();

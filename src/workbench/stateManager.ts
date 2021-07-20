@@ -117,6 +117,16 @@ export class StateManager {
       .getConfiguration('apollo-workbench')
       .get('apolloOrg') as string;
   }
+  static get settings_localDesigns_expandSubgraphsByDefault() {
+    return workspace
+      .getConfiguration('apollo-workbench')
+      .get('local-designs.expandSubgraphsByDefault') as boolean;
+  }
+  static get settings_localDesigns_expandOperationsByDefault() {
+    return workspace
+      .getConfiguration('apollo-workbench')
+      .get('local-designs.expandOperationsByDefault') as boolean;
+  }
   get globalState_userApiKey() {
     return this.context?.globalState.get('APOLLO_KEY') as string;
   }
@@ -127,7 +137,6 @@ export class StateManager {
 
     this.apolloStudioGraphsProvider.refresh();
     this.apolloStudioGraphOpsProvider.refresh();
-    this.localSupergraphTreeDataProvider.refresh();
   }
   get globalState_selectedApolloAccount() {
     if (StateManager.settings_apolloOrg) return StateManager.settings_apolloOrg;

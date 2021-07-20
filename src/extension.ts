@@ -8,6 +8,7 @@ import {
   Range,
   Diagnostic,
   Position,
+  WebviewPanel,
 } from 'vscode';
 import { Kind, Source } from 'graphql';
 import { DiagnosticSeverity } from 'vscode-languageclient';
@@ -40,7 +41,7 @@ import {
 } from './commands/studio-graphs';
 import {
   createWorkbenchFromPreloaded,
-  startMocks,
+  startMocksWithDialog,
   stopMocks,
   deleteOperation,
   addOperation,
@@ -61,24 +62,21 @@ import {
   viewSubgraphCustomMocks,
   exportSubgraphSchema,
   exportSubgraphResolvers,
-  createWorkbenchFromSupergraphVariant,
+  createWorkbenchFromSupergraphVariant
 } from './commands/local-supergraph-designs';
 import { resolve } from 'path';
 import { mkdirSync, writeFileSync } from 'fs';
 import { execSync } from 'child_process';
-import { WorkbenchUri } from './workbench/file-system/WorkbenchUri';
+import { log } from './utils/logger';
+import { ApolloWorkbenchFile } from './workbench/file-system/fileTypes';
 
-export const compositionDiagnostics: DiagnosticCollection = languages.createDiagnosticCollection(
-  'composition-errors',
-);
-export const operationDiagnostics: DiagnosticCollection = languages.createDiagnosticCollection(
-  'operation-errors',
-);
+interface WorkbenchDiagnostics {
+  operationDiagnostics: DiagnosticCollection
+  compositionDiagnostics: DiagnosticCollection
+}
+export const diagnosticCollections: Map<string, WorkbenchDiagnostics> = new Map<string, WorkbenchDiagnostics>();
+
 export const outputChannel = window.createOutputChannel('Apollo Workbench');
-//Redirect console.log to Output tab in extension
-console.log = function (str) {
-  outputChannel.appendLine(str);
-};
 
 // Our event when vscode deactivates
 export async function deactivate(context: ExtensionContext) {
@@ -103,7 +101,7 @@ export async function activate(context: ExtensionContext) {
     });
     execSync(`npm i faker`, { cwd: mocksPath });
   }
-  context.subscriptions.push(compositionDiagnostics);
+
   context.subscriptions.push(
     workspace.registerFileSystemProvider('workbench', FileProvider.instance, {
       isCaseSensitive: true,
@@ -170,7 +168,7 @@ export async function activate(context: ExtensionContext) {
     exportSupergraphApiSchema,
   ); //right-click
   //****Subgraph Summary Commands
-  commands.registerCommand('local-supergraph-designs.startMocks', startMocks);
+  commands.registerCommand('local-supergraph-designs.startMocks', startMocksWithDialog);
   commands.registerCommand('local-supergraph-designs.stopMocks', stopMocks);
   commands.registerCommand('local-supergraph-designs.addSubgraph', addSubgraph);
   //****Subgraph Commands
@@ -219,6 +217,22 @@ export async function activate(context: ExtensionContext) {
     'local-supergraph-designs.viewQueryPlan',
     viewQueryPlan,
   );
+  //TODO: Need to implemnt loading image in a custom view, will come in following release
+  // commands.registerCommand(
+  //   'local-supergraph-designs.setOperationDesignMock',
+  //   setOperationDesignMock,
+  // );
+
+  if (window.registerWebviewPanelSerializer) {
+    // Make sure we register a serializer in activation event
+    window.registerWebviewPanelSerializer("apolloWorkbenchDesign", {
+      async deserializeWebviewPanel(webviewPanel: WebviewPanel, state: any) {
+        log(`Got state: ${state}`)
+        // Reset the webview options so we use latest uri for `localResourceRoots`.
+        // webviewPanel.webview.options = getWebviewOptions(context.extensionUri);
+      }
+    });
+  }
   // commands.registerCommand('current-workbench-schemas.deleteSchemaDocTextRange', deleteSchemaDocTextRange);
   // commands.registerCommand('current-workbench-schemas.makeSchemaDocTextRangeArray', makeSchemaDocTextRangeArray);
 
@@ -254,54 +268,82 @@ export async function activate(context: ExtensionContext) {
     ApolloStudioOperationsProvider.scheme,
     new ApolloStudioOperationsProvider(),
   );
+  //This ensures the visible text editor loads the correct design for composition errors 
+  window.onDidChangeActiveTextEditor((e) => {
+    if (e) {
+      const uri = e.document.uri;
+      const path = uri.path;
+      const updateComposition = (path.includes('subgraphs') || path.includes('queries'));
+      if (uri.scheme == 'workbench' && updateComposition) {
+        const designPath = path.split('/subgraphs')[0];
+        FileProvider.instance.loadWorkbenchForComposition(designPath);
+      }
+    }
+  })
+  workspace.onDidDeleteFiles(e => {
+    let deletedWorkbenchFile = false;
+    e.files.forEach(f => {
+      if (f.path.includes('.apollo-workbench')) deletedWorkbenchFile = true;
+    })
+
+    if (deletedWorkbenchFile) {
+      FileProvider.instance.refreshLocalWorkbenchFiles();
+      StateManager.instance.localSupergraphTreeDataProvider.refresh();
+    }
+  })
   workspace.onDidChangeTextDocument((e) => {
     const uri = e.document.uri;
     const document = new GraphQLDocument(new Source(e.document.getText()));
     if (uri.scheme == 'workbench') {
       if (uri.path.includes('queries')) {
         const schema = StateManager.instance.workspaceState_schema;
-        if (schema) {
-          const fragments = Object.create(null);
-          if (document.ast) {
-            for (const definition of document.ast.definitions) {
-              if (definition.kind === Kind.FRAGMENT_DEFINITION) {
-                fragments[definition.name.value] = definition;
+        const operationDiagnostic = diagnosticCollections.get(FileProvider.instance.loadedWorbenchFilePath)?.operationDiagnostics;
+
+        if (operationDiagnostic) {
+          if (schema) {
+            const fragments = Object.create(null);
+            if (document.ast) {
+              for (const definition of document.ast.definitions) {
+                if (definition.kind === Kind.FRAGMENT_DEFINITION) {
+                  fragments[definition.name.value] = definition;
+                }
               }
             }
-          }
-          const opDiagnostics = collectExecutableDefinitionDiagnositics(
-            schema,
-            document,
-            fragments,
-            defaultValidationRules,
-          );
-          if (opDiagnostics.length > 0) {
-            operationDiagnostics.clear();
-            const diagnostics = new Array<Diagnostic>();
-            opDiagnostics.forEach((opDiag) => {
-              const start = opDiag.range.start;
-              const end = opDiag.range.end;
-              const range = new Range(
-                new Position(start.line, start.character),
-                new Position(end.line, end.character),
-              );
-              diagnostics.push(
-                new Diagnostic(range, opDiag.message, opDiag.severity),
-              );
-            });
-            operationDiagnostics.set(uri, diagnostics);
+            const opDiagnostics = collectExecutableDefinitionDiagnositics(
+              schema,
+              document,
+              fragments,
+              defaultValidationRules,
+            );
+
+            if (opDiagnostics.length > 0) {
+              operationDiagnostic.clear();
+              const diagnostics = new Array<Diagnostic>();
+              opDiagnostics.forEach((opDiag) => {
+                const start = opDiag.range.start;
+                const end = opDiag.range.end;
+                const range = new Range(
+                  new Position(start.line, start.character),
+                  new Position(end.line, end.character),
+                );
+                diagnostics.push(
+                  new Diagnostic(range, opDiag.message, opDiag.severity),
+                );
+              });
+              operationDiagnostic.set(uri, diagnostics);
+            } else {
+              operationDiagnostic.clear();
+            }
           } else {
-            operationDiagnostics.clear();
+            operationDiagnostic.clear();
+            operationDiagnostic.set(uri, [
+              new Diagnostic(
+                new Range(0, 0, 0, 0),
+                'No valid composed schema',
+                DiagnosticSeverity.Warning,
+              ),
+            ]);
           }
-        } else {
-          operationDiagnostics.clear();
-          operationDiagnostics.set(uri, [
-            new Diagnostic(
-              new Range(0, 0, 0, 0),
-              'No valid composed schema',
-              DiagnosticSeverity.Warning,
-            ),
-          ]);
         }
       }
     }

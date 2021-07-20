@@ -7,6 +7,7 @@ import {
   ScalarTypeDefinitionNode,
   visit,
 } from 'graphql';
+import { log } from '../../utils/logger';
 import { FileProvider } from '../../workbench/file-system/fileProvider';
 
 import { runOnlineParser } from './runOnlineParser';
@@ -59,7 +60,7 @@ export function getServiceAvailableTypes(
       });
     }
   } catch (err) {
-    console.log(err.message);
+    log(err.message);
   }
 
   //Add Object/Interface/Enum/Scalars definitions
@@ -110,7 +111,7 @@ export function extractEntityNames(schema: string): string[] {
       }
     });
   } catch (err) {
-    console.log(err);
+    log(err);
   }
 
   return entityName;

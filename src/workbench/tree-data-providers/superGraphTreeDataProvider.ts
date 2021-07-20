@@ -10,7 +10,7 @@ import {
   Uri,
   ThemeIcon,
 } from 'vscode';
-import { ApolloWorkbenchFile, WorkbenchSchema } from '../file-system/fileTypes';
+import { ApolloWorkbenchFile, WorkbenchOperation, WorkbenchSchema } from '../file-system/fileTypes';
 import { newDesign } from '../../commands/local-supergraph-designs';
 import { StateManager } from '../stateManager';
 
@@ -114,7 +114,7 @@ export class SupergraphTreeItem extends TreeItem {
     public readonly wbFile: ApolloWorkbenchFile,
     public readonly filePath: string,
   ) {
-    super(wbFile.graphName, TreeItemCollapsibleState.Collapsed);
+    super(wbFile.graphName, TreeItemCollapsibleState.Expanded);
     this.subgraphsChild = new SubgraphSummaryTreeItem(wbFile, filePath);
     this.operationsChild = new OperationSummaryTreeItem(wbFile, filePath);
     this.tooltip = this.wbFile.graphName;
@@ -188,7 +188,7 @@ export class SubgraphSummaryTreeItem extends TreeItem {
   ) {
     super(
       `${Object.keys(wbFile.schemas).length} subgraphs`,
-      TreeItemCollapsibleState.Expanded,
+      StateManager.settings_localDesigns_expandSubgraphsByDefault ? TreeItemCollapsibleState.Expanded : TreeItemCollapsibleState.Collapsed,
     );
 
     this.tooltip = `${Object.keys(wbFile.schemas).length} Subgraphs`;
@@ -275,17 +275,20 @@ export class OperationSummaryTreeItem extends TreeItem {
   ) {
     super(
       `${Object.keys(wbFile.operations).length} Operations`,
-      TreeItemCollapsibleState.Collapsed,
+      StateManager.settings_localDesigns_expandOperationsByDefault ? TreeItemCollapsibleState.Expanded : TreeItemCollapsibleState.Collapsed,
     );
 
     this.tooltip = `${Object.keys(wbFile.operations).length} operations`;
     this.contextValue = 'operationSummaryTreeItem';
 
     Object.keys(wbFile.operations).forEach((operationName) => {
+      const operation = wbFile.operations[operationName] instanceof String ?
+        wbFile.operations[operationName] as string ?? "" : (wbFile.operations[operationName] as WorkbenchOperation).operation ?? ""
+
       this.operations.push(
         new OperationTreeItem(
           operationName,
-          wbFile.operations[operationName],
+          operation,
           filePath,
         ),
       );
@@ -310,7 +313,7 @@ export class OperationTreeItem extends TreeItem {
       arguments: [this],
     };
 
-    if (this.operationString.includes('mutation'))
+    if (this.operationString && this.operationString.includes('mutation'))
       this.iconPath = {
         light: path.join(__filename, '..', '..', '..', '..', 'media', 'm.svg'),
         dark: path.join(__filename, '..', '..', '..', '..', 'media', 'm.svg'),
