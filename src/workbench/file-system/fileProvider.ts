@@ -92,6 +92,15 @@ export class FileProvider implements FileSystemProvider {
       }
     }
 
+    const activeEditorUri = window.activeTextEditor?.document.uri;
+    if (activeEditorUri?.scheme == 'workbench') {
+      if (activeEditorUri.path.includes('C:'))
+        this.loadWorkbenchForComposition(activeEditorUri.path.split('\subgraphs')[0], true);
+      else
+        this.loadWorkbenchForComposition(activeEditorUri.path.split('/subgraphs')[0], true);
+    }
+
+
     return this.workbenchFiles;
   }
   clearWorkbenchFiles() {

@@ -5,7 +5,6 @@ import {
   IMocks,
   CorsOptions,
 } from 'apollo-server';
-import plugin from 'apollo-server-plugin-operation-registry';
 import { buildFederatedSchema } from '@apollo/federation';
 import { ApolloServerPluginUsageReportingDisabled } from 'apollo-server-core';
 
@@ -15,14 +14,9 @@ import {
   GatewayForwardHeadersDataSource,
 } from '../graphql/graphRouter';
 import { FileProvider } from './file-system/fileProvider';
-import { extractEntityNames } from '../graphql/parsers/schemaParser';
-import { resolve } from 'path';
-import { mkdirSync, writeFileSync, readFileSync } from 'fs';
-import { workspace, Uri, window, StatusBarAlignment, tasks, extensions, Progress, commands } from 'vscode';
-import { execSync } from 'child_process';
+import { addFederationSpecAsNeeded, extractEntityNames } from '../graphql/parsers/schemaParser';
+import { Uri, window, Progress, commands } from 'vscode';
 import { Disposable } from 'vscode-languageclient';
-import { WorkbenchUri, WorkbenchUriType } from './file-system/WorkbenchUri';
-import { outputChannel } from '../extension';
 import { log } from '../utils/logger';
 
 export class ServerManager {
@@ -130,6 +124,10 @@ export class ServerManager {
       this.serversState[port].stop();
       delete this.serversState[port];
     }
+
+    //Schema needs to be checked if Federation spec was added in an unexpected way
+    //This will probably need to grow to cover all use cases from other libraries
+    schemaString = addFederationSpecAsNeeded(schemaString);
 
     //Surround server startup in try/catch to prevent UI errors from schema errors - most likey a blank schema file
     try {
