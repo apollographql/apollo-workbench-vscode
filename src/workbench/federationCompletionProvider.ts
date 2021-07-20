@@ -51,34 +51,37 @@ export const federationCompletionProvider = {
             let completionKind = CompletionItemKind.Value;
 
             if (typeName.includes(':')) {
+              const isArray = typeName.includes('[');
               const typeSplit = typeName.split(':');
-              if (typeSplit[0] == 'I') {
-                details = `Interface ${typeSplit[1]}`;
+              const typeToAdd = isArray ? "[" + typeSplit[1] : typeSplit[1];
+              const completionKindClassifier = isArray ? typeSplit[0].substring(1) : typeSplit[0];
+              if (completionKindClassifier == 'I') {
+                details = `Interface ${typeToAdd}`;
                 completionKind = CompletionItemKind.Interface;
                 documentation.appendText(
                   'To learn more about interfaces, click [here](https://www.apollographql.com/docs/apollo-server/schema/unions-interfaces/#interface-type).',
                 );
-              } else if (typeSplit[0] == 'O') {
-                details = `Object Types ${typeSplit[1]}`;
+              } else if (completionKindClassifier == 'O') {
+                details = `Object Types ${typeToAdd}`;
                 completionKind = CompletionItemKind.Class;
                 documentation.appendText(
                   'To learn more about object types, click [here](https://www.apollographql.com/docs/apollo-server/schema/schema/#object-types).',
                 );
-              } else if (typeSplit[0] == 'S') {
-                details = `Scalar Types ${typeSplit[1]}`;
+              } else if (completionKindClassifier == 'S') {
+                details = `Scalar Types ${typeToAdd}`;
                 completionKind = CompletionItemKind.Struct;
                 documentation.appendText(
                   'To learn more about object types, click [here](https://www.apollographql.com/docs/apollo-server/schema/scalars-enums/#custom-scalars).',
                 );
-              } else if (typeSplit[0] == 'E') {
-                details = `Enum Types ${typeSplit[1]}`;
+              } else if (completionKindClassifier == 'E') {
+                details = `Enum Types ${typeToAdd}`;
                 completionKind = CompletionItemKind.Enum;
                 documentation.appendText(
                   'To learn more about object types, click [here](https://www.apollographql.com/docs/apollo-server/schema/scalars-enums/#enums).',
                 );
               }
 
-              typeName = typeSplit[1];
+              typeName = typeToAdd;
             } else {
               documentation.appendText(
                 `To learn more about GraphQL's default scalar types, click [here](https://www.apollographql.com/docs/apollo-server/schema/schema/#scalar-types).`,
@@ -98,7 +101,6 @@ export const federationCompletionProvider = {
         const extendableTypes =
           StateManager.instance
             .workspaceState_selectedWorkbenchAvailableEntities;
-        // await extractDefinedEntitiesByService();
 
         for (const sn in extendableTypes)
           if (sn != serviceName)
