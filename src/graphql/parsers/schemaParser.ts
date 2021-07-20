@@ -116,3 +116,60 @@ export function extractEntityNames(schema: string): string[] {
 
   return entityName;
 }
+
+export function addFederationSpecAsNeeded(schemaString: string): string {
+  let schemaModifications: { addEntityScalar?: undefined | boolean, addServiceScalar?: undefined | boolean, addAnyScalar?: undefined | boolean, } = {}
+
+  runOnlineParser(schemaString, (state, ruleRange, tokens) => {
+    if (ruleRange.isSingleLine)
+      switch (state.kind) {
+        case 'ScalarDef': {
+          if (state.name == "_Entity")
+            schemaModifications.addEntityScalar = false;
+          else if (state.name == "_Service")
+            schemaModifications.addServiceScalar = false;
+          if (state.name == "_Any")
+            schemaModifications.addAnyScalar = false;
+
+          break;
+        }
+        case 'NamedType' as any: {
+          let prevState = state.prevState;
+
+          if (state.name == "_Entity" && schemaModifications.addEntityScalar == undefined) {
+            while (prevState != undefined) {
+              if (prevState.name == '_entities')
+                schemaModifications.addEntityScalar = true
+
+              prevState = prevState.prevState;
+            }
+          } else if (state.name == '_Service' && schemaModifications.addServiceScalar == undefined) {
+            while (prevState != undefined) {
+              if (prevState.name == '_service')
+                schemaModifications.addServiceScalar = true
+
+              prevState = prevState.prevState;
+            }
+          } else if (state.name == '_Any' && schemaModifications.addAnyScalar == undefined) {
+            while (prevState != undefined) {
+              if (prevState.name == 'representations')
+                schemaModifications.addAnyScalar = true
+
+              prevState = prevState.prevState;
+            }
+          }
+
+          break;
+        }
+      }
+  });
+
+  if (schemaModifications?.addEntityScalar)
+    schemaString = schemaString.concat('scalar _Entity\n');
+  if (schemaModifications?.addServiceScalar)
+    schemaString = schemaString.concat('scalar _Service\n');
+  if (schemaModifications?.addAnyScalar)
+    schemaString = schemaString.concat('scalar _Any\n');
+
+  return schemaString;
+}
