@@ -28,10 +28,10 @@ export class LocalSupergraphTreeDataProvider
     return element;
   }
 
-  getChildren(element?: TreeItem): Thenable<TreeItem[]> {
+  async getChildren(element?: TreeItem): Promise<TreeItem[]> {
     if (element == undefined) {
       const items = new Array<TreeItem>();
-      const workbenchFiles = FileProvider.instance.refreshLocalWorkbenchFiles();
+      const workbenchFiles = await FileProvider.instance.refreshLocalWorkbenchFiles();
       workbenchFiles.forEach((wbFile, wbFilePath) => {
         items.push(new SupergraphTreeItem(wbFile, wbFilePath));
       });
