@@ -12,9 +12,8 @@ import {
 } from 'vscode';
 import { Kind, Source } from 'graphql';
 import { DiagnosticSeverity } from 'vscode-languageclient';
-import { GraphQLDocument } from 'apollo-language-server/lib/document';
-import { defaultValidationRules } from 'apollo-language-server/lib/errors/validation';
-import { collectExecutableDefinitionDiagnositics } from 'apollo-language-server/lib/diagnostics';
+import { GraphQLDocument } from './utils/operation-diagnostics/document';
+import { collectExecutableDefinitionDiagnositics } from './utils/operation-diagnostics/diagnostics';
 
 import { StateManager } from './workbench/stateManager';
 import { ServerManager } from './workbench/serverManager';
@@ -68,7 +67,6 @@ import { resolve } from 'path';
 import { mkdirSync, writeFileSync } from 'fs';
 import { execSync } from 'child_process';
 import { log } from './utils/logger';
-import { ApolloWorkbenchFile } from './workbench/file-system/fileTypes';
 
 interface WorkbenchDiagnostics {
   operationDiagnostics: DiagnosticCollection
@@ -312,8 +310,7 @@ export async function activate(context: ExtensionContext) {
             const opDiagnostics = collectExecutableDefinitionDiagnositics(
               schema,
               document,
-              fragments,
-              defaultValidationRules,
+              fragments
             );
 
             if (opDiagnostics.length > 0) {

@@ -3,15 +3,15 @@ import {
   CompletionItem,
   CompletionItemKind,
   MarkdownString,
-  Position,
   SnippetString,
   TextDocument,
   window,
   workspace,
 } from 'vscode';
+import { Position } from 'vscode-languageserver';
 import { getServiceAvailableTypes } from '../graphql/parsers/schemaParser';
 import { StateManager } from './stateManager';
-import { getAutocompleteSuggestions } from '@apollographql/graphql-language-service-interface';
+import { getAutocompleteSuggestions } from 'graphql-language-service-interface';
 
 export interface FieldWithType {
   field: string;
@@ -121,7 +121,8 @@ export const federationCompletionProvider = {
       const schema = StateManager.instance.workspaceState_schema;
       if (schema) {
         const query = document.getText();
-        const suggestions = getAutocompleteSuggestions(schema, query, position);
+
+        const suggestions = getAutocompleteSuggestions(schema, query, position as any);
         if (suggestions.length > 0) {
           suggestions.forEach((ci) =>
             completionItems.push(new QueryCompletionItem(ci)),

@@ -45,7 +45,6 @@ export class FileProvider implements FileSystemProvider {
     this.workbenchFiles.clear();
     diagnosticCollections.forEach(diagnosticCollection => {
       diagnosticCollection.compositionDiagnostics.clear();
-      diagnosticCollection.operationDiagnostics.clear();
     })
 
     const workspaceRoot = StateManager.workspaceRoot;
@@ -65,9 +64,9 @@ export class FileProvider implements FileSystemProvider {
             this.workbenchFiles.set(wbFilePath, wbFile);
 
             if (diagnosticCollections.has(wbFilePath)) {
-              const collection = diagnosticCollections.get(wbFilePath);
-              collection?.compositionDiagnostics.clear();
-              collection?.operationDiagnostics.clear();
+              // const collection = diagnosticCollections.get(wbFilePath);
+              // collection?.compositionDiagnostics.clear();
+              // collection?.operationDiagnostics.clear();
 
               if (!wbFile.supergraphSdl)
                 getComposedSchemaLogCompositionErrorsForWbFile(workbenchFile.path);
