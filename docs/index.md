@@ -22,9 +22,9 @@ Workbench is a tool built by the Apollo Solutions Team to help design schemas us
 
 ### Supported Workflows
 
-- [Design a New Supergraph](./docs/new-supergraph.md)
-- [Migrating from Monolith to a New Supergraph](./docs/migration-monolith-to-supergraph.md)
-- [Designing a change to an existing graph in Apollo Studio](./docs/apollo-studio-supergraph-designs.md)
+- [Design a New Supergraph](./new-supergraph.md)
+- [Migrating from Monolith to a New Supergraph](./migration-monolith-to-supergraph.md)
+- [Designing a change to an existing graph in Apollo Studio](./apollo-studio-supergraph-designs.md)
 
 ## What is Apollo Workbench for VS Code?
 
