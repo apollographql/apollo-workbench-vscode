@@ -53,6 +53,11 @@ export class StateManager {
         ?.get('startingServerPort') ?? (4000 as number)
     );
   }
+  static get settings_openSandbox(): boolean {
+    return (
+      workspace?.getConfiguration('apollo-workbench')?.get('openSandboxOnStartMocks') ?? true
+    );
+  }
   static get settings_gatewayServerPort(): number {
     return (
       workspace?.getConfiguration('apollo-workbench')?.get('gatewayPort') ??

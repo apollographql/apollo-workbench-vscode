@@ -239,7 +239,8 @@ export class ServerManager {
           'Apollo Workbench Mocks Running',
         );
 
-        await commands.executeCommand('vscode.open', Uri.parse(sandboxUrl));
+        if (StateManager.settings_openSandbox)
+          await commands.executeCommand('vscode.open', Uri.parse(sandboxUrl));
       })
       .then(undefined, (err) => {
         console.error('I am error');

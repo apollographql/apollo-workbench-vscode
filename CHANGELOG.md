@@ -1,6 +1,27 @@
-## Apollo Workbench VSCode 0.2.x (upcoming)
+## Apollo Workbench VSCode 1.1
 
-- Better composition error pointing
+- Support multiple workbench design files with errors and context
+- Workbench file upgrades for feature work (backwards compatible)
+- Mocks engine overhaul
+  - Upgrade to Apollo Server 3.0
+  - Use Apollo Sandbox as default with auto-open url
+    - Introduce setting `apollo-workbench.openSandboxOnStartMocks` to disable auto-open url
+  - Upgrade to latest @apollo/gateway/federation/query-plan packages
+  - UI feedback when starting up multiple mocked subgraphs (tested with 25 subgraphs)
+- Local files are now synced into Workbench. This means if you delete a workbench file in VS Code, then switch back to the workbench extension, the design file will no longer exist
+  - This is how you delete a workbench file locally 
+- Filtered output to have a better structure
+
+### Bug Fixes
+
+- Mocks don't work with schemas that define Apollo Federation Spec items (i.e. `Query._service`)
+- Wrong workbench file could be loaded due to different design subgraph schema being open while local tree refresh happens
+- Type completion for arrays printed incorrectly
+- Various 
+
+## Apollo Workbench VSCode 1.0 - INITIAL RELEASE
+
+----
 
 ## Apollo Workbench VSCode 0.2.39
 
