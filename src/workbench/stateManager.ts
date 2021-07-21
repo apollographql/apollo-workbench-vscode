@@ -82,11 +82,6 @@ export class StateManager {
       .getConfiguration('apollo-workbench')
       .get('daysOfOperationsToFetch') as number;
   }
-  static get settings_shouldRunOpRegistry() {
-    return workspace
-      .getConfiguration('apollo-workbench')
-      .get('runOperationRegistry') as boolean;
-  }
   static get settings_gatewayReCompositionInterval() {
     return workspace
       .getConfiguration('apollo-workbench')

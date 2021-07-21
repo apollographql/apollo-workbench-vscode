@@ -1,22 +1,23 @@
 import {
-  addMockFunctionsToSchema,
   ApolloServer,
-  gql,
-  IMocks,
-  CorsOptions,
+  gql
 } from 'apollo-server';
+import {
+  addMocksToSchema,
+  IMocks
+} from 'graphql-tools';
 import { buildFederatedSchema } from '@apollo/federation';
-import { ApolloServerPluginUsageReportingDisabled } from 'apollo-server-core';
-
-import { StateManager } from './stateManager';
 import {
   OverrideApolloGateway,
   GatewayForwardHeadersDataSource,
 } from '../graphql/graphRouter';
-import { FileProvider } from './file-system/fileProvider';
-import { addFederationSpecAsNeeded, extractEntityNames } from '../graphql/parsers/schemaParser';
+
 import { Uri, window, Progress, commands } from 'vscode';
 import { Disposable } from 'vscode-languageclient';
+
+import { StateManager } from './stateManager';
+import { FileProvider } from './file-system/fileProvider';
+import { addFederationSpecAsNeeded, extractEntityNames } from '../graphql/parsers/schemaParser';
 import { log } from '../utils/logger';
 
 export class ServerManager {
@@ -31,7 +32,7 @@ export class ServerManager {
   //serverState will hold the ApolloServer/ApolloGateway instances based on the ports they are running on
   private serversState: { [port: string]: any } = {};
 
-  private corsConfiguration: CorsOptions = {
+  private corsConfiguration = {
     origin: '*',
     credentials: true,
   };
@@ -150,31 +151,25 @@ export class ServerManager {
       const resolvers = {};
       const entities = extractEntityNames(schemaString);
       entities.forEach(
-        (entity) =>
-        (resolvers[entity] = {
+        (entity) => resolvers[entity] = {
           __resolveReference(parent, args) {
             return { ...parent };
           },
-        }),
+        }
       );
 
-      //Build federated schema with resolvers and then add custom mocks to that schema
-      const schema = buildFederatedSchema({ typeDefs, resolvers });
-      addMockFunctionsToSchema({ schema, mocks, preserveResolvers: true });
+      const federatedSchema = buildFederatedSchema([{ typeDefs, resolvers }]);
+      const mockedSchema = addMocksToSchema({ schema: federatedSchema, mocks, preserveResolvers: true });
 
       //Create and start up server locally
-      const server = new ApolloServer({
-        cors: this.corsConfiguration,
-        schema,
-        subscriptions: false
-      });
-
-      await server.listen({ port });
-      await new Promise(resolve => setTimeout(resolve, 25));
+      const server = new ApolloServer({ schema: mockedSchema });
 
       //Set the port and server to local state
       this.serversState[port] = server;
       this.portMapping[serviceName] = port;
+
+      server.listen({ port });
+      await new Promise(resolve => setTimeout(resolve, 25));
     } catch (err) {
       if (err.message.includes('EOF')) {
         log(
@@ -196,6 +191,7 @@ export class ServerManager {
 
     if (this.portMapping[serviceName]) delete this.portMapping[serviceName];
   }
+
   statusBarMessage: Disposable = window.setStatusBarMessage('');
   private stopGateway() {
     const gatewayPort = StateManager.settings_gatewayServerPort;
@@ -219,15 +215,6 @@ export class ServerManager {
 
     progress?.report({ message: `Starting graph router...`, increment: 10 });
 
-    const graphApiKey = StateManager.settings_apiKey;
-    const graphVariant = StateManager.settings_graphVariant;
-    let plugins = [ApolloServerPluginUsageReportingDisabled()];
-    const shouldRunOpReg = StateManager.settings_shouldRunOpRegistry;
-    if (shouldRunOpReg) {
-      log(`Enabling operation registry for ${graphVariant}`);
-      plugins = [ApolloServerPluginUsageReportingDisabled()]; //, plugin({ graphVariant, forbidUnregisteredOperations: shouldRunOpReg, debug: true })()];
-    }
-
     const server = new ApolloServer({
       cors: this.corsConfiguration,
       gateway: new OverrideApolloGateway({
@@ -238,12 +225,6 @@ export class ServerManager {
           return source;
         },
       }),
-      subscriptions: false,
-      apollo: {
-        key: graphApiKey,
-        graphVariant,
-      },
-      plugins,
       context: ({ req }) => {
         return { incomingHeaders: req.headers };
       },

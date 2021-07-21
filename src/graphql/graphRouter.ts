@@ -43,7 +43,7 @@ export class GatewayForwardHeadersDataSource extends RemoteGraphQLDataSource {
     const service =
       FileProvider.instance.loadedWorkbenchFile?.schemas[this.serviceName];
     if (service) {
-      service.requiredHeaders?.forEach((requiredHeader) => {
+      service?.requiredHeaders?.forEach((requiredHeader) => {
         if (requiredHeader)
           request.http.headers.set(
             requiredHeader.key,
@@ -53,6 +53,9 @@ export class GatewayForwardHeadersDataSource extends RemoteGraphQLDataSource {
           );
       });
     }
+  }
+  didReceiveResponse({ response, context }) {
+    return response;
   }
 }
 
