@@ -183,7 +183,7 @@ function createLink(options: CreateLinkOptions) {
   if (StateManager.settings_apolloOrg) headers['apollo-sudo'] = 'true';
 
   return createHttpLink({
-    fetch,
+    fetch: fetch as any,
     headers,
     uri: vscode.workspace
       .getConfiguration('apollo-workbench')
