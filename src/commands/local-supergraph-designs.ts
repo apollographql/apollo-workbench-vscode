@@ -37,15 +37,15 @@ import {
   GetGraphSchemas_service_implementingServices_NonFederatedImplementingService,
   GetGraphSchemas_service_implementingServices_FederatedImplementingServices,
 } from '../graphql/types/GetGraphSchemas';
-import { resolve } from 'path';
-import { writeFileSync, existsSync } from 'fs';
+import { join, resolve } from 'path';
+import { writeFileSync, existsSync, readFileSync } from 'fs';
 import { TextEncoder } from 'util';
 import { GraphQLSchema, parse, extendSchema, printSchema } from 'graphql';
 import { OverrideApolloGateway } from '../graphql/graphRouter';
 import { generateJsFederatedResolvers } from '../utils/exportFiles';
-import { getComposedSchema, superSchemaToSchema } from '../graphql/composition';
 import { outputChannel } from '../extension';
 import { log } from '../utils/logger';
+import { WorkbenchFederationProvider } from '../workbench/federationProvider';
 
 let startingMocks = false;
 
@@ -53,27 +53,31 @@ export async function startMocksWithDialog(item: SubgraphSummaryTreeItem) {
   if (startingMocks) return;
   startingMocks = true;
 
-  await window.withProgress({ location: 15, title: `${item.wbFile.graphName}`, cancellable: false }, async (progress, token) => {
-    progress.report({ message: `Starting mocks` });
-    return new Promise(async (resolve) => {
-      await startMocks(item, progress);
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      startingMocks = false;
-      resolve(100);
-    })
-  })
+  await window.withProgress(
+    { location: 15, title: `${item.wbFile.graphName}`, cancellable: false },
+    async (progress, token) => {
+      progress.report({ message: `Starting mocks` });
+      return new Promise(async (resolve) => {
+        await startMocks(item, progress);
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        startingMocks = false;
+        resolve(100);
+      });
+    },
+  );
 }
 
-async function startMocks(item: SubgraphSummaryTreeItem, progress: Progress<{
-  message?: string | undefined;
-  increment?: number | undefined;
-}>) {
+async function startMocks(
+  item: SubgraphSummaryTreeItem,
+  progress: Progress<{
+    message?: string | undefined;
+    increment?: number | undefined;
+  }>,
+) {
   outputChannel.show();
   if (item) {
     await ServerManager.instance.startSupergraphMocks(item.filePath, progress);
-
-  }
-  else {
+  } else {
     const wbFiles: string[] = [];
     FileProvider.instance
       .getWorkbenchFiles()
@@ -109,8 +113,8 @@ export async function editSubgraph(item: SubgraphTreeItem) {
     WorkbenchUriType.SCHEMAS,
   );
   try {
+    FileProvider.instance.load(item.wbFilePath);
     await window.showTextDocument(uri);
-    FileProvider.instance.loadWorkbenchForComposition(item.wbFilePath);
   } catch (err) {
     log(err);
   }
@@ -123,7 +127,7 @@ export async function editSupergraphOperation(item: OperationTreeItem) {
       WorkbenchUriType.QUERIES,
     ),
   );
-  FileProvider.instance.loadWorkbenchForComposition(item.filePath);
+  FileProvider.instance.load(item.filePath);
 }
 export async function viewSubgraphSettings(item: SubgraphTreeItem) {
   await window.showTextDocument(
@@ -147,16 +151,30 @@ export async function addOperation(item: OperationTreeItem) {
       log(message);
       window.setStatusBarMessage(message, 3000);
     } else {
-      wbFile.operations[operationName] = { operation: `query ${operationName} {\n\t\n}` };
-      FileProvider.instance.saveWorkbenchFile(wbFile, item.filePath);
+      const operation = `query ${operationName} {\n\t\n}`;
+      const operationUri = WorkbenchUri.supergraph(
+        item.filePath,
+        operationName,
+        WorkbenchUriType.QUERIES,
+      );
+      wbFile.operations[operationName] = { operation };
+      FileProvider.instance.writeFile(
+        operationUri,
+        new TextEncoder().encode(operation),
+        { create: true, overwrite: true },
+      );
 
-      const newOpDoc = await workspace.openTextDocument(WorkbenchUri.supergraph(item.filePath, operationName, WorkbenchUriType.QUERIES));
+      const newOpDoc = await workspace.openTextDocument(operationUri);
       await window.showTextDocument(newOpDoc);
     }
   }
 }
 export async function setOperationDesignMock(item: OperationTreeItem) {
-  env.openExternal(Uri.parse('https://en.wikipedia.org/wiki/Visual_Studio_Code#/media/File:Visual_Studio_Code_Insiders_1.36_icon.svg'));
+  env.openExternal(
+    Uri.parse(
+      'https://en.wikipedia.org/wiki/Visual_Studio_Code#/media/File:Visual_Studio_Code_Insiders_1.36_icon.svg',
+    ),
+  );
   // const panel = window.createWebviewPanel(
   //   "apolloWorkbenchDesign",
   //   'UI Design',
@@ -169,7 +187,7 @@ export async function setOperationDesignMock(item: OperationTreeItem) {
   //   },
   // );
 
-  // panel.webview.html = 
+  // panel.webview.html =
   // const wbFilePath = item.filePath;
   // const wbFile = FileProvider.instance.workbenchFileFromPath(wbFilePath);
   // if (wbFile) {
@@ -188,13 +206,12 @@ export async function setOperationDesignMock(item: OperationTreeItem) {
   // }
 }
 export async function deleteOperation(item: OperationTreeItem) {
-  const wbFilePath = item.filePath;
-  const wbFile = FileProvider.instance.workbenchFileFromPath(wbFilePath);
-  const operationName = item.operationName;
-  if (wbFile) {
-    delete wbFile.operations[operationName];
-    FileProvider.instance.saveWorkbenchFile(wbFile, item.filePath);
-  }
+  const opUri = WorkbenchUri.supergraph(
+    item.filePath,
+    item.operationName,
+    WorkbenchUriType.QUERIES,
+  );
+  await FileProvider.instance.delete(opUri, { recursive: true });
 }
 export async function viewQueryPlan(item: OperationTreeItem) {
   await window.showTextDocument(
@@ -206,6 +223,7 @@ export async function viewQueryPlan(item: OperationTreeItem) {
   );
 }
 export async function viewSupergraphSchema(item: SupergraphSchemaTreeItem) {
+  FileProvider.instance.load(item.filePath);
   await window.showTextDocument(
     WorkbenchUri.supergraph(
       item.filePath,
@@ -213,11 +231,11 @@ export async function viewSupergraphSchema(item: SupergraphSchemaTreeItem) {
       WorkbenchUriType.SUPERGRAPH_SCHEMA,
     ),
   );
-  FileProvider.instance.loadWorkbenchForComposition(item.filePath);
 }
 export async function viewSupergraphApiSchema(
   item: SupergraphApiSchemaTreeItem,
 ) {
+  FileProvider.instance.load(item.filePath);
   await window.showTextDocument(
     WorkbenchUri.supergraph(
       item.filePath,
@@ -225,7 +243,6 @@ export async function viewSupergraphApiSchema(
       WorkbenchUriType.SUPERGRAPH_API_SCHEMA,
     ),
   );
-  FileProvider.instance.loadWorkbenchForComposition(item.filePath);
 }
 export function refreshSupergraphs() {
   StateManager.instance.localSupergraphTreeDataProvider.refresh();
@@ -241,26 +258,30 @@ export async function addSubgraph(item: SubgraphSummaryTreeItem) {
     log(message);
     window.setStatusBarMessage(message, 3000);
   } else {
-    wbFile.schemas[serviceName] = {
-      shouldMock: true,
-      sdl: '',
-      autoUpdateSchemaFromUrl: false,
-    };
-    FileProvider.instance.saveWorkbenchFile(wbFile, item.filePath);
+    FileProvider.instance.writeFile(
+      WorkbenchUri.supergraph(
+        item.filePath,
+        serviceName,
+        WorkbenchUriType.SCHEMAS,
+      ),
+      new TextEncoder().encode(''),
+      { create: true, overwrite: true },
+    );
   }
 }
 export async function deleteSubgraph(item: SubgraphTreeItem) {
-  const wbFilePath = item.wbFilePath;
-  const wbFile = FileProvider.instance.workbenchFileFromPath(wbFilePath);
-  const subgraphName = item.subgraphName;
-  if (wbFile) {
-    delete wbFile.schemas[subgraphName];
-    FileProvider.instance.saveWorkbenchFile(wbFile, item.wbFilePath);
-  }
+  await FileProvider.instance.delete(
+    WorkbenchUri.supergraph(
+      item.wbFilePath,
+      item.subgraphName,
+      WorkbenchUriType.SCHEMAS,
+    ),
+    { recursive: true },
+  );
 }
 export async function newDesign() {
   if (!StateManager.workspaceRoot) {
-    await FileProvider.instance.promptOpenFolder();
+    await promptOpenFolder();
   } else {
     const workbenchName = await window.showInputBox({
       placeHolder: 'Enter name for workbench file',
@@ -282,7 +303,7 @@ export async function createWorkbenchFromSupergraphVariant(
   graphVariantTreeItem: StudioGraphVariantTreeItem,
 ) {
   if (!StateManager.workspaceRoot) {
-    await FileProvider.instance.promptOpenFolder();
+    await promptOpenFolder();
   } else {
     await createWorkbench(
       graphVariantTreeItem.graphId,
@@ -296,7 +317,7 @@ export async function createWorkbenchFromSupergraph(
   selectedVariant?: string,
 ) {
   if (!StateManager.workspaceRoot) {
-    await FileProvider.instance.promptOpenFolder();
+    await promptOpenFolder();
   } else {
     const graphId = graphVariantTreeItem.graphId;
     const graphVariants = graphVariantTreeItem.variants;
@@ -350,16 +371,17 @@ async function createWorkbench(graphId: string, selectedVariant: string) {
         ?.implementingServices as GetGraphSchemas_service_implementingServices_FederatedImplementingServices;
       implementingServices?.services?.map(
         (service) =>
-        (workbenchFile.schemas[service.name] = {
-          sdl: service.activePartialSchema.sdl,
-          url: service.url ?? '',
-          shouldMock: true,
-          autoUpdateSchemaFromUrl: false,
-        }),
+          (workbenchFile.schemas[service.name] = {
+            sdl: service.activePartialSchema.sdl,
+            url: service.url ?? '',
+            shouldMock: true,
+            autoUpdateSchemaFromUrl: false,
+          }),
       );
     }
 
-    const { supergraphSdl } = await getComposedSchema(workbenchFile);
+    const { supergraphSdl } =
+      WorkbenchFederationProvider.compose(workbenchFile);
     if (supergraphSdl) workbenchFile.supergraphSdl = supergraphSdl;
 
     FileProvider.instance.createWorkbenchFileLocally(workbenchFile);
@@ -375,53 +397,56 @@ export async function updateSubgraphSchemaFromURL(item: SubgraphTreeItem) {
     process.env.NODE_TLS_REJECT_UNAUTHORIZED = '';
   else process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
+  const subgraphName = item.subgraphName;
   const wbFile = FileProvider.instance.workbenchFileFromPath(item.wbFilePath);
-  if (
-    wbFile?.schemas[item.subgraphName] &&
-    !wbFile?.schemas[item.subgraphName].url
-  ) {
-    const routingURL =
-      (await window.showInputBox({
-        placeHolder: 'Enter a the url for the schema/service',
-      })) ?? '';
-    if (!routingURL) {
-      const message = `Set service URL cancelled for ${item.subgraphName} - No URL entered.`;
-      log(message);
-      window.setStatusBarMessage(message, 3000);
-    } else {
-      wbFile.schemas[item.subgraphName].url = routingURL;
-    }
-  }
-  if (wbFile?.schemas[item.subgraphName].url) {
-    const sdl = await OverrideApolloGateway.getTypeDefs(
-      wbFile.schemas[item.subgraphName].url ?? '',
-      item.subgraphName,
-    );
-    if (sdl) {
-      wbFile.schemas[item.subgraphName].sdl = sdl;
-
-      const editor = await window.showTextDocument(
-        WorkbenchUri.supergraph(
-          item.wbFilePath,
-          item.subgraphName,
-          WorkbenchUriType.SCHEMAS,
-        ),
-      );
-      if (editor) {
-        const document = editor.document;
-        await editor.edit((editor) => {
-          editor.replace(new Range(0, 0, document.lineCount, 0), sdl);
-        });
-        await document.save();
+  if (wbFile) {
+    if (wbFile?.schemas[subgraphName] && !wbFile?.schemas[subgraphName].url) {
+      const routingURL =
+        (await window.showInputBox({
+          placeHolder: 'Enter a the url for the schema/service',
+        })) ?? '';
+      if (!routingURL) {
+        const message = `Set service URL cancelled for ${item.subgraphName} - No URL entered.`;
+        log(message);
+        window.setStatusBarMessage(message, 3000);
+      } else {
+        wbFile.schemas[item.subgraphName].url = routingURL;
       }
     }
 
-    FileProvider.instance.saveWorkbenchFile(wbFile, item.wbFilePath, false);
-  } else {
-    //No URL entered for schema
-    window.showErrorMessage(
-      'You must set a url for the service if you want to update the schema from it.',
-    );
+    if (wbFile?.schemas[subgraphName].url) {
+      const sdl = await WorkbenchFederationProvider.getRemoteTypeDefs(
+        subgraphName,
+        wbFile,
+      );
+      if (sdl) {
+        const subgraphUri = WorkbenchUri.supergraph(
+          item.wbFilePath,
+          subgraphName,
+          WorkbenchUriType.SCHEMAS,
+        );
+        FileProvider.instance.writeFile(
+          subgraphUri,
+          new TextEncoder().encode(sdl),
+          { create: true, overwrite: true },
+        );
+
+        //TODO: Is it still necessary to replace the text or does this refresh the doc while open?
+        const editor = await window.showTextDocument(subgraphUri);
+        // if (editor) {
+        //   const document = editor.document;
+        //   await editor.edit((editor) => {
+        //     editor.replace(new Range(0, 0, document.lineCount, 0), sdl);
+        //   });
+        //   await document.save();
+        // }
+      }
+    } else {
+      //No URL entered for schema
+      window.showErrorMessage(
+        'You must set a url for the service if you want to update the schema from it.',
+      );
+    }
   }
 }
 
@@ -475,7 +500,8 @@ export async function exportSupergraphApiSchema(
       StateManager.workspaceRoot,
       `${item.wbFile.graphName}-api-schema.graphql`,
     );
-    const finalSchema = superSchemaToSchema(supergraphSchema);
+    const finalSchema =
+      WorkbenchFederationProvider.superSchemaToApiSchema(supergraphSchema);
     writeFileSync(exportPath, printSchema(finalSchema), { encoding: 'utf-8' });
     window.showInformationMessage(
       `Graph Core Schema was exported to ${exportPath}`,
@@ -530,7 +556,32 @@ export async function exportSubgraphResolvers(item: SubgraphTreeItem) {
 export async function createWorkbenchFromPreloaded(
   preloadedItem: PreloadedWorkbenchFile,
 ) {
-  await FileProvider.instance.copyPreloadedWorkbenchFile(
-    preloadedItem.fileName,
+  if (!StateManager.workspaceRoot) {
+    await promptOpenFolder();
+  } else {
+    const preloadFileDir = join(
+      __dirname,
+      '..',
+      '..',
+      '..',
+      'media',
+      `preloaded-files`,
+      `${preloadedItem.fileName}.apollo-workbench`,
+    );
+    const workbenchFile = JSON.parse(
+      readFileSync(preloadFileDir, { encoding: 'utf-8' }),
+    ) as ApolloWorkbenchFile;
+
+    FileProvider.instance.createWorkbenchFileLocally(workbenchFile);
+  }
+}
+
+export async function promptOpenFolder() {
+  const openFolder = 'Open Folder';
+  const response = await window.showErrorMessage(
+    'You must open a folder to create Apollo Workbench files',
+    openFolder,
   );
+  if (response == openFolder)
+    await commands.executeCommand('extension.openFolder');
 }

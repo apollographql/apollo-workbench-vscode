@@ -10,15 +10,21 @@ import {
   Uri,
   ThemeIcon,
 } from 'vscode';
-import { ApolloWorkbenchFile, WorkbenchOperation, WorkbenchSchema } from '../file-system/fileTypes';
+import {
+  ApolloWorkbenchFile,
+  WorkbenchOperation,
+  WorkbenchSchema,
+} from '../file-system/fileTypes';
 import { newDesign } from '../../commands/local-supergraph-designs';
 import { StateManager } from '../stateManager';
 
 export class LocalSupergraphTreeDataProvider
-  implements TreeDataProvider<TreeItem> {
-  private _onDidChangeTreeData: EventEmitter<undefined> = new EventEmitter<undefined>();
-  readonly onDidChangeTreeData: Event<undefined> = this._onDidChangeTreeData
-    .event;
+  implements TreeDataProvider<TreeItem>
+{
+  private _onDidChangeTreeData: EventEmitter<undefined> =
+    new EventEmitter<undefined>();
+  readonly onDidChangeTreeData: Event<undefined> =
+    this._onDidChangeTreeData.event;
 
   refresh(): void {
     this._onDidChangeTreeData.fire(undefined);
@@ -31,10 +37,12 @@ export class LocalSupergraphTreeDataProvider
   async getChildren(element?: TreeItem): Promise<TreeItem[]> {
     if (element == undefined) {
       const items = new Array<TreeItem>();
-      const workbenchFiles = await FileProvider.instance.refreshLocalWorkbenchFiles();
-      workbenchFiles.forEach((wbFile, wbFilePath) => {
-        items.push(new SupergraphTreeItem(wbFile, wbFilePath));
-      });
+      FileProvider.instance.refreshLocalWorkbenchFiles();
+      FileProvider.instance
+        .getWorkbenchFiles()
+        .forEach((wbFile, wbFilePath) => {
+          items.push(new SupergraphTreeItem(wbFile, wbFilePath));
+        });
 
       if (items.length == 0) {
         window
@@ -59,7 +67,9 @@ export class LocalSupergraphTreeDataProvider
             (supergraphItem.wbFile as any)?.composedSchema &&
             !subgraphItem.wbFile.supergraphSdl
           ) {
-            subgraphItem.wbFile.supergraphSdl = (supergraphItem.wbFile as any)?.composedSchema;
+            subgraphItem.wbFile.supergraphSdl = (
+              supergraphItem.wbFile as any
+            )?.composedSchema;
             delete (supergraphItem.wbFile as any)?.composedSchema;
           }
 
@@ -188,7 +198,9 @@ export class SubgraphSummaryTreeItem extends TreeItem {
   ) {
     super(
       `${Object.keys(wbFile.schemas).length} subgraphs`,
-      StateManager.settings_localDesigns_expandSubgraphsByDefault ? TreeItemCollapsibleState.Expanded : TreeItemCollapsibleState.Collapsed,
+      StateManager.settings_localDesigns_expandSubgraphsByDefault
+        ? TreeItemCollapsibleState.Expanded
+        : TreeItemCollapsibleState.Collapsed,
     );
 
     this.tooltip = `${Object.keys(wbFile.schemas).length} Subgraphs`;
@@ -275,22 +287,23 @@ export class OperationSummaryTreeItem extends TreeItem {
   ) {
     super(
       `${Object.keys(wbFile.operations).length} Operations`,
-      StateManager.settings_localDesigns_expandOperationsByDefault ? TreeItemCollapsibleState.Expanded : TreeItemCollapsibleState.Collapsed,
+      StateManager.settings_localDesigns_expandOperationsByDefault
+        ? TreeItemCollapsibleState.Expanded
+        : TreeItemCollapsibleState.Collapsed,
     );
 
     this.tooltip = `${Object.keys(wbFile.operations).length} operations`;
     this.contextValue = 'operationSummaryTreeItem';
 
     Object.keys(wbFile.operations).forEach((operationName) => {
-      const operation = wbFile.operations[operationName] instanceof String ?
-        wbFile.operations[operationName] as string ?? "" : (wbFile.operations[operationName] as WorkbenchOperation).operation ?? ""
+      const operation =
+        wbFile.operations[operationName] instanceof String
+          ? (wbFile.operations[operationName] as string) ?? ''
+          : (wbFile.operations[operationName] as WorkbenchOperation)
+              .operation ?? '';
 
       this.operations.push(
-        new OperationTreeItem(
-          operationName,
-          operation,
-          filePath,
-        ),
+        new OperationTreeItem(operationName, operation, filePath),
       );
     });
   }

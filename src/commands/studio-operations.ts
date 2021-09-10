@@ -1,9 +1,12 @@
 import { StudioOperationTreeItem } from '../workbench/tree-data-providers/apolloStudioGraphOpsTreeDataProvider';
 import { FileProvider } from '../workbench/file-system/fileProvider';
 import { window } from 'vscode';
-import { StateManager } from '../workbench/stateManager';
 import { parse } from 'graphql';
 import { print } from 'graphql';
+import {
+  WorkbenchUri,
+  WorkbenchUriType,
+} from '../workbench/file-system/WorkbenchUri';
 
 export async function addToWorkbench(op: StudioOperationTreeItem) {
   const supergraphs = FileProvider.instance.getWorkbenchFiles();
@@ -31,8 +34,16 @@ export async function addToWorkbench(op: StudioOperationTreeItem) {
           wbPath = path;
       });
 
-      wbFile.operations[op.operationName] = { operation: print(parse(op.operationSignature)) };
-      FileProvider.instance.saveWorkbenchFile(wbFile, wbPath);
+      const operation = print(parse(op.operationSignature));
+      FileProvider.instance.writeFile(
+        WorkbenchUri.supergraph(
+          wbPath,
+          op.operationName,
+          WorkbenchUriType.QUERIES,
+        ),
+        new TextEncoder().encode(operation),
+        { create: true, overwrite: true },
+      );
     }
   }
 }
