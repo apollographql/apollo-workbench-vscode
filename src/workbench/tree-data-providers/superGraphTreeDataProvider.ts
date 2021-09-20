@@ -34,17 +34,19 @@ export class LocalSupergraphTreeDataProvider
     return element;
   }
 
+  items = new Array<SupergraphTreeItem>();
+
   async getChildren(element?: TreeItem): Promise<TreeItem[]> {
     if (element == undefined) {
-      const items = new Array<TreeItem>();
+this.items = new Array<SupergraphTreeItem>();
       FileProvider.instance.refreshLocalWorkbenchFiles();
       FileProvider.instance
         .getWorkbenchFiles()
         .forEach((wbFile, wbFilePath) => {
-          items.push(new SupergraphTreeItem(wbFile, wbFilePath));
+          this.items.push(new SupergraphTreeItem(wbFile, wbFilePath));
         });
 
-      if (items.length == 0) {
+      if (this.items.length == 0) {
         window
           .showInformationMessage(
             'No workspace files found in current directory',
@@ -55,7 +57,7 @@ export class LocalSupergraphTreeDataProvider
           });
       }
 
-      return Promise.resolve(items);
+      return Promise.resolve(this.items);
     } else {
       switch (element.contextValue) {
         case 'supergraphTreeItem': {

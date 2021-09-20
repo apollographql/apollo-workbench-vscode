@@ -47,7 +47,7 @@ export class WorkbenchFederationProvider {
             typeDefs: doc,
             url: workbenchFile.schemas[key].url,
           });
-        } catch (err) {
+        } catch (err: any) {
           //Need to include any errors for invalid schema
           //TODO: consider using online parser when there is a gql error to get a better placement of the error
           let errorMessage = `Not valid GraphQL Schema: ${err.message}`;
@@ -204,7 +204,7 @@ export class WorkbenchFederationProvider {
           headers,
         );
       }
-    } catch (err) {
+    } catch (err: any) {
       if (err.code == 'ECONNREFUSED')
         log(`Do you have service ${serviceName} running? \n\t${err.message}`);
       else if (err.code == 'ENOTFOUND')
@@ -265,9 +265,9 @@ export class WorkbenchFederationProvider {
       const queryPlanString = serializeQueryPlan(queryPlan);
 
       return queryPlanString;
-    } catch (err) {
+    } catch (err: any) {
       log(err);
-      return '';
+      return err?.message ?? '';
     }
   }
   static extractDefinedEntitiesByService(workbenchFile: ApolloWorkbenchFile) {
@@ -393,7 +393,7 @@ export class WorkbenchFederationProvider {
           delete extendables[k];
         });
       }
-    } catch (err) {
+    } catch (err: any) {
       log(err);
     }
 

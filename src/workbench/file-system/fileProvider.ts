@@ -169,6 +169,9 @@ export class FileProvider implements FileSystemProvider {
             WorkbenchDiagnostics.instance.clearCompositionDiagnostics(
               wbFilePath,
             );
+
+            if(this.loadedWorbenchFilePath == uri.path)
+            this.loadedWorkbenchFile = wbFile;
           }
         }
       } else if (uri.path.includes('/queries')) {
@@ -200,6 +203,8 @@ export class FileProvider implements FileSystemProvider {
           encoding: 'utf8',
         });
         this.workbenchFiles.set(wbFilePath, wbFile);
+
+        StateManager.instance.localSupergraphTreeDataProvider.refresh();
       }
     } else throw new Error('Workbench file was unable to load');
   }
@@ -325,22 +330,6 @@ export class FileProvider implements FileSystemProvider {
         });
       }
     }
-
-    // const activeEditorUri = window.activeTextEditor?.document.uri;
-    // if (activeEditorUri?.scheme == 'workbench') {
-    //   if (activeEditorUri.path.includes('C:'))
-    //     this.loadWorkbenchForComposition(
-    //       activeEditorUri.path.split('subgraphs')[0],
-    //       true,
-    //     );
-    //   else
-    //     this.loadWorkbenchForComposition(
-    //       activeEditorUri.path.split('/subgraphs')[0],
-    //       true,
-    //     );
-    // }
-
-    // return this.workbenchFiles;
   }
   clearWorkbenchFiles() {
     this.workbenchFiles.clear();
@@ -348,23 +337,6 @@ export class FileProvider implements FileSystemProvider {
   getWorkbenchFiles() {
     return this.workbenchFiles;
   }
-
-  // loadWorkbenchForComposition(wbFilePath: string, forceCompose = false) {
-  //   if (this.loadedWorbenchFilePath != wbFilePath) {
-  //     this.loadedWorbenchFilePath = wbFilePath;
-  //     this.loadedWorkbenchFile = this.workbenchFileFromPath(wbFilePath);
-  //     this.refreshComposition(wbFilePath);
-  //   } else if (forceCompose) {
-  //     this.refreshComposition(wbFilePath);
-  //   }
-  // }
-  // refreshComposition(wbFilePath: string) {
-  //   window.setStatusBarMessage(
-  //     'Composition Running',
-  //     new Promise(() => composeSchemaForWbFilePath(wbFilePath)),
-  //   );
-  // }
-
   async promptOpenFolder() {
     const openFolder = 'Open Folder';
     const response = await window.showErrorMessage(
@@ -386,15 +358,6 @@ export class FileProvider implements FileSystemProvider {
       StateManager.instance.localSupergraphTreeDataProvider.refresh();
     }
   }
-  // saveWorkbenchFile(
-  //   wbFile: ApolloWorkbenchFile,
-  //   wbFilePath: string,
-  //   refreshTree = true,
-  // ) {
-  //   writeFileSync(wbFilePath, JSON.stringify(wbFile), { encoding: 'utf8' });
-  //   if (refreshTree)
-  //     StateManager.instance.localSupergraphTreeDataProvider.refresh();
-  // }
 
   workbenchFileByGraphName(name: string) {
     let path = '';
@@ -408,9 +371,6 @@ export class FileProvider implements FileSystemProvider {
 
     return { wbFile, path };
   }
-  //FileSystemProvider Implementations
-  //File chagnes are watched at the `vscode.workspace.onDidChangeTextDocument` level
-
   getPath(path: string) {
     if (path.includes('/subgraphs')) {
       return path.split('/subgraphs')[0];

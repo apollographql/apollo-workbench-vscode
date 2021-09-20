@@ -4,15 +4,8 @@ import {
   languages,
   window,
   ExtensionContext,
-  Range,
-  Diagnostic,
-  Position,
   WebviewPanel,
 } from 'vscode';
-import { Kind, Source } from 'graphql';
-import { DiagnosticSeverity } from 'vscode-languageclient';
-import { GraphQLDocument } from './utils/operation-diagnostics/document';
-import { collectExecutableDefinitionDiagnositics } from './utils/operation-diagnostics/diagnostics';
 
 import { StateManager } from './workbench/stateManager';
 import { ServerManager } from './workbench/serverManager';
@@ -67,7 +60,6 @@ import { mkdirSync, writeFileSync } from 'fs';
 import { execSync } from 'child_process';
 import { log } from './utils/logger';
 import { WorkbenchDiagnostics } from './workbench/diagnosticsManager';
-import { WorkbenchUri } from './workbench/file-system/WorkbenchUri';
 import { WorkbenchFederationProvider } from './workbench/federationProvider';
 
 export const outputChannel = window.createOutputChannel('Apollo Workbench');
@@ -315,24 +307,21 @@ export async function activate(context: ExtensionContext) {
           FileProvider.instance.loadedWorbenchFilePath,
         );
       } else if (uri.path.includes('subgraphs')) {
-        let loadedWorkbenchFile = FileProvider.instance.workbenchFileFromPath(
-          FileProvider.instance.loadedWorbenchFilePath,
-        );
-        if (loadedWorkbenchFile) {
           const subgraphName = uri.query;
           if (
-            loadedWorkbenchFile.schemas[subgraphName] &&
-            loadedWorkbenchFile.schemas[subgraphName].sdl != documentText
+            FileProvider.instance.loadedWorkbenchFile &&
+            FileProvider.instance.loadedWorkbenchFile.schemas[subgraphName] &&
+            FileProvider.instance.loadedWorkbenchFile.schemas[subgraphName].sdl != documentText
           ) {
             //TODO: Need to handle temp file changes
-            const editedWorkbenchFile = { ...loadedWorkbenchFile };
+            const editedWorkbenchFile = { ...FileProvider.instance.loadedWorkbenchFile };
             editedWorkbenchFile.schemas[subgraphName].sdl = documentText;
             const tryNewComposition =
               WorkbenchFederationProvider.compose(editedWorkbenchFile);
             if (tryNewComposition.errors)
               WorkbenchDiagnostics.instance.setCompositionErrors(
                 FileProvider.instance.loadedWorbenchFilePath,
-                loadedWorkbenchFile,
+                FileProvider.instance.loadedWorkbenchFile,
                 tryNewComposition.errors,
               );
             else {
@@ -340,12 +329,6 @@ export async function activate(context: ExtensionContext) {
                 FileProvider.instance.loadedWorbenchFilePath,
               );
             }
-            // composeSchema(
-            //   loadedWorkbenchFile,
-            //   FileProvider.instance.loadedWorbenchFilePath,
-            //   false,
-            // );
-          }
         }
       }
     }

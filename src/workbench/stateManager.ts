@@ -1,6 +1,5 @@
 import { GraphQLSchema } from 'graphql';
-import { ExtensionContext, window, workspace, StatusBarItem } from 'vscode';
-import { getUserMemberships } from '../graphql/graphClient';
+import { ExtensionContext, workspace } from 'vscode';
 import { FieldWithType } from './federationCompletionProvider';
 import { ApolloStudioGraphsTreeDataProvider } from './tree-data-providers/apolloStudioGraphsTreeDataProvider';
 import { ApolloStudioGraphOpsTreeDataProvider } from './tree-data-providers/apolloStudioGraphOpsTreeDataProvider';
