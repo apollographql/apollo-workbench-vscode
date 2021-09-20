@@ -71,7 +71,7 @@ export class ServerManager {
                 workbenchFile.schemas[serviceName].sdl,
                 mocks,
               );
-            } catch (err) {
+            } catch (err: any) {
               //Most likely  wasn't valid javascript
               log(err);
               this.startServer(
@@ -170,7 +170,7 @@ export class ServerManager {
 
       server.listen({ port });
       await new Promise(resolve => setTimeout(resolve, 25));
-    } catch (err) {
+    } catch (err: any) {
       if (err.message.includes('EOF')) {
         log(
           `${serviceName} has no contents, try defining a schema`,
