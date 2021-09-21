@@ -158,9 +158,9 @@ export async function addOperation(item: OperationTreeItem) {
         WorkbenchUriType.QUERIES,
       );
       wbFile.operations[operationName] = { operation };
-      FileProvider.instance.writeFile(
+      await FileProvider.instance.writeFile(
         operationUri,
-        new TextEncoder().encode(operation),
+        Buffer.from(operation, 'utf8'),
         { create: true, overwrite: true },
       );
 
@@ -371,12 +371,12 @@ async function createWorkbench(graphId: string, selectedVariant: string) {
         ?.implementingServices as GetGraphSchemas_service_implementingServices_FederatedImplementingServices;
       implementingServices?.services?.map(
         (service) =>
-          (workbenchFile.schemas[service.name] = {
-            sdl: service.activePartialSchema.sdl,
-            url: service.url ?? '',
-            shouldMock: true,
-            autoUpdateSchemaFromUrl: false,
-          }),
+        (workbenchFile.schemas[service.name] = {
+          sdl: service.activePartialSchema.sdl,
+          url: service.url ?? '',
+          shouldMock: true,
+          autoUpdateSchemaFromUrl: false,
+        }),
       );
     }
 

@@ -1,5 +1,5 @@
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'fs';
-import path, { join, relative, resolve } from 'path';
+import path, { join, normalize, relative, resolve } from 'path';
 import {
   commands,
   Disposable,
@@ -17,16 +17,14 @@ import { StateManager } from '../stateManager';
 import {
   ApolloWorkbenchFile,
   WorkbenchSettings,
-  WorkbenchOperation,
 } from './fileTypes';
-import { parse, GraphQLSchema, extendSchema, printSchema } from 'graphql';
-import { log } from '../../utils/logger';
+import { printSchema } from 'graphql';
 import { WorkbenchDiagnostics } from '../diagnosticsManager';
 import { WorkbenchFederationProvider } from '../federationProvider';
 import { WorkbenchUri, WorkbenchUriType } from './WorkbenchUri';
 
 export class FileProvider implements FileSystemProvider {
-  constructor(private workspaceRoot?: string) {}
+  constructor(private workspaceRoot?: string) { }
 
   private static _instance: FileProvider;
   static get instance(): FileProvider {
@@ -41,12 +39,14 @@ export class FileProvider implements FileSystemProvider {
   private workbenchFiles: Map<string, ApolloWorkbenchFile> = new Map();
 
   load(wbFilePath: string): boolean {
+    this.loadedWorkbenchFile =
+      this.workbenchFileFromPath(wbFilePath) ?? undefined;
+
     if (this.loadedWorbenchFilePath != wbFilePath) {
       const workbenchFileToLoad = this.workbenchFileFromPath(wbFilePath);
       if (workbenchFileToLoad) {
         this.loadedWorbenchFilePath = wbFilePath;
-        this.loadedWorkbenchFile =
-          this.workbenchFileFromPath(wbFilePath) ?? undefined;
+
 
         window.setStatusBarMessage(
           'Composition Running',
@@ -170,8 +170,8 @@ export class FileProvider implements FileSystemProvider {
               wbFilePath,
             );
 
-            if(this.loadedWorbenchFilePath == uri.path)
-            this.loadedWorkbenchFile = wbFile;
+            if (this.loadedWorbenchFilePath == uri.path)
+              this.loadedWorkbenchFile = wbFile;
           }
         }
       } else if (uri.path.includes('/queries')) {
@@ -199,12 +199,7 @@ export class FileProvider implements FileSystemProvider {
       }
 
       if (shouldSave) {
-        writeFileSync(wbFilePath, JSON.stringify(wbFile), {
-          encoding: 'utf8',
-        });
-        this.workbenchFiles.set(wbFilePath, wbFile);
-
-        StateManager.instance.localSupergraphTreeDataProvider.refresh();
+        this.writeWorbenchFile(wbFilePath, wbFile);
       }
     } else throw new Error('Workbench file was unable to load');
   }
@@ -214,7 +209,7 @@ export class FileProvider implements FileSystemProvider {
       const wbFile = this.workbenchFileFromPath(wbFilePath);
       if (wbFile) {
         const name = uri.query;
-        if (uri.path.includes('/schemas')) {
+        if (uri.path.includes('/subgraphs')) {
           delete wbFile.schemas[name];
         } else if (uri.path.includes('/queries')) {
           delete wbFile.operations[name];
@@ -235,12 +230,16 @@ export class FileProvider implements FileSystemProvider {
           throw new Error('Unknown uri format');
         }
 
-        writeFileSync(wbFilePath, JSON.stringify(wbFile), {
-          encoding: 'utf8',
-        });
-        this.workbenchFiles.set(wbFilePath, wbFile);
+        this.writeWorbenchFile(wbFilePath, wbFile);
       }
     }
+  }
+  private writeWorbenchFile(wbFilePath: string, wbFile: any) {
+    writeFileSync(normalize(wbFilePath), JSON.stringify(wbFile), {
+      encoding: 'utf8',
+    });
+    this.workbenchFiles.set(wbFilePath, wbFile);
+    StateManager.instance.localSupergraphTreeDataProvider.refresh();
   }
   private loadCurrent() {
     if (this.loadedWorkbenchFile) {
@@ -354,7 +353,7 @@ export class FileProvider implements FileSystemProvider {
         StateManager.workspaceRoot,
         `${wbFile.graphName}.apollo-workbench`,
       );
-      writeFileSync(path, JSON.stringify(wbFile), { encoding: 'utf8' });
+      writeFileSync(normalize(path), JSON.stringify(wbFile), { encoding: 'utf8' });
       StateManager.instance.localSupergraphTreeDataProvider.refresh();
     }
   }
@@ -448,7 +447,7 @@ export class FileProvider implements FileSystemProvider {
         if (dirent.isDirectory() && dirent.name != 'node_modules') {
           directories.push(directoryPath);
         } else if (dirent.name.includes('.apollo-workbench')) {
-          const uri = Uri.parse(directoryPath);
+          const uri = WorkbenchUri.parse(directoryPath);
           workbenchFiles.push(uri);
         }
       }

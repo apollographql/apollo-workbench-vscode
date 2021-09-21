@@ -63,10 +63,16 @@ export class WorkbenchDiagnostics {
 
     const diagnosticsGroups = this.handleErrors(wbFile, errors);
     for (const sn in diagnosticsGroups) {
-      compositionDiagnostics.set(
-        WorkbenchUri.supergraph(wbFilePath, sn, WorkbenchUriType.SCHEMAS),
-        diagnosticsGroups[sn],
-      );
+      if (sn.toLowerCase() == 'workbench')
+        compositionDiagnostics.set(
+          Uri.parse(wbFilePath),
+          diagnosticsGroups[sn],
+        );
+      else
+        compositionDiagnostics.set(
+          WorkbenchUri.supergraph(wbFilePath, sn, WorkbenchUriType.SCHEMAS),
+          diagnosticsGroups[sn],
+        );
     }
 
     // if (Object.keys(diagnosticsGroups).length > 0)

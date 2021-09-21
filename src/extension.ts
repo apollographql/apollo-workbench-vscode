@@ -307,28 +307,28 @@ export async function activate(context: ExtensionContext) {
           FileProvider.instance.loadedWorbenchFilePath,
         );
       } else if (uri.path.includes('subgraphs')) {
-          const subgraphName = uri.query;
-          if (
-            FileProvider.instance.loadedWorkbenchFile &&
-            FileProvider.instance.loadedWorkbenchFile.schemas[subgraphName] &&
-            FileProvider.instance.loadedWorkbenchFile.schemas[subgraphName].sdl != documentText
-          ) {
-            //TODO: Need to handle temp file changes
-            const editedWorkbenchFile = { ...FileProvider.instance.loadedWorkbenchFile };
-            editedWorkbenchFile.schemas[subgraphName].sdl = documentText;
-            const tryNewComposition =
-              WorkbenchFederationProvider.compose(editedWorkbenchFile);
-            if (tryNewComposition.errors)
-              WorkbenchDiagnostics.instance.setCompositionErrors(
-                FileProvider.instance.loadedWorbenchFilePath,
-                FileProvider.instance.loadedWorkbenchFile,
-                tryNewComposition.errors,
-              );
-            else {
-              WorkbenchDiagnostics.instance.clearCompositionDiagnostics(
-                FileProvider.instance.loadedWorbenchFilePath,
-              );
-            }
+        const subgraphName = uri.query;
+        if (
+          FileProvider.instance.loadedWorkbenchFile &&
+          FileProvider.instance.loadedWorkbenchFile.schemas[subgraphName] &&
+          FileProvider.instance.loadedWorkbenchFile.schemas[subgraphName].sdl != documentText
+        ) {
+          //TODO: Need to handle temp file changes
+          const editedWorkbenchFile = { ...FileProvider.instance.loadedWorkbenchFile };
+          editedWorkbenchFile.schemas[subgraphName].sdl = documentText;
+          const tryNewComposition =
+            WorkbenchFederationProvider.compose(editedWorkbenchFile);
+          if (tryNewComposition.errors)
+            WorkbenchDiagnostics.instance.setCompositionErrors(
+              FileProvider.instance.loadedWorbenchFilePath,
+              FileProvider.instance.loadedWorkbenchFile,
+              tryNewComposition.errors,
+            );
+          else {
+            WorkbenchDiagnostics.instance.clearCompositionDiagnostics(
+              FileProvider.instance.loadedWorbenchFilePath,
+            );
+          }
         }
       }
     }
@@ -344,7 +344,7 @@ export async function activate(context: ExtensionContext) {
       if (newMocksText != wbFile.schemas[querySplit[1]].customMocks) {
         FileProvider.instance.writeFile(
           uri,
-          new TextEncoder().encode(newMocksText),
+          Buffer.from(newMocksText, 'utf8'),
           { create: true, overwrite: true },
         );
       }

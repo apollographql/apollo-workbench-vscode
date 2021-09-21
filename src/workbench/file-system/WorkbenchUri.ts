@@ -1,7 +1,6 @@
 import { Uri } from 'vscode';
-import { resolve } from 'path';
+import { normalize, resolve } from 'path';
 import { StateManager } from '../stateManager';
-import { FileProvider } from './fileProvider';
 
 export enum WorkbenchUriType {
   SCHEMAS,
@@ -12,7 +11,18 @@ export enum WorkbenchUriType {
   SUPERGRAPH_SCHEMA,
   SUPERGRAPH_API_SCHEMA,
 }
+
+function platformPath(path: string) {
+  if (path.toLowerCase().includes('c:'))
+    path = path.slice(2).replace(/\\/g, '/');
+
+  return path;
+}
+
 export class WorkbenchUri {
+  static parse(wbFilePath: string) {
+    return Uri.parse(`workbench:${platformPath(wbFilePath)}`);
+  }
   static supergraph(
     path: string,
     name?: string,
@@ -21,9 +31,7 @@ export class WorkbenchUri {
     switch (type) {
       case WorkbenchUriType.SCHEMAS: {
         let subgraphPath = resolve(path, 'subgraphs', `${name}.graphql`);
-        if (subgraphPath.includes('C:'))
-          subgraphPath = subgraphPath.slice(2).replace(/\\/g, '/');
-        return Uri.parse(`workbench:${subgraphPath}?${name}`);
+        return Uri.parse(`workbench:${platformPath(subgraphPath)}?${name}`);
       }
       case WorkbenchUriType.SCHEMAS_SETTINGS: {
         let schemaSettingPath = resolve(
@@ -31,21 +39,15 @@ export class WorkbenchUri {
           'subgraph-settings',
           `${name}-settings.json`,
         );
-        if (schemaSettingPath.includes('C:'))
-          schemaSettingPath = schemaSettingPath.slice(2).replace(/\\/g, '/');
-        return Uri.parse(`workbench:${schemaSettingPath}?${name}`);
+        return Uri.parse(`workbench:${platformPath(schemaSettingPath)}?${name}`);
       }
       case WorkbenchUriType.QUERIES: {
         let queryPath = resolve(path, 'queries', `${name}.graphql`);
-        if (queryPath.includes('C:'))
-          queryPath = queryPath.slice(2).replace(/\\/g, '/');
-        return Uri.parse(`workbench:${queryPath}?${name}`);
+        return Uri.parse(`workbench:${platformPath(queryPath)}?${name}`);
       }
       case WorkbenchUriType.QUERY_PLANS: {
         let queryPlanPath = resolve(path, 'queryplans', `${name}.queryplan`);
-        if (queryPlanPath.includes('C:'))
-          queryPlanPath = queryPlanPath.slice(2).replace(/\\/g, '/');
-        return Uri.parse(`workbench:${queryPlanPath}?${name}`);
+        return Uri.parse(`workbench:${platformPath(queryPlanPath)}?${name}`);
       }
       case WorkbenchUriType.SUPERGRAPH_SCHEMA: {
         let superGraphSchemaPath = resolve(
@@ -53,11 +55,7 @@ export class WorkbenchUri {
           'supergraph-schema',
           `${name}-supergraph.graphql`,
         );
-        if (superGraphSchemaPath.includes('C:'))
-          superGraphSchemaPath = superGraphSchemaPath
-            .slice(2)
-            .replace(/\\/g, '/');
-        return Uri.parse(`workbench:${superGraphSchemaPath}?${name}`);
+        return Uri.parse(`workbench:${platformPath(superGraphSchemaPath)}?${name}`);
       }
       case WorkbenchUriType.SUPERGRAPH_API_SCHEMA: {
         let superGraphApiSchemaPath = resolve(
@@ -65,11 +63,7 @@ export class WorkbenchUri {
           'supergraph-api-schema',
           `${name}-api-schema.graphql`,
         );
-        if (superGraphApiSchemaPath.includes('C:'))
-          superGraphApiSchemaPath = superGraphApiSchemaPath
-            .slice(2)
-            .replace(/\\/g, '/');
-        return Uri.parse(`workbench:${superGraphApiSchemaPath}?${name}`);
+        return Uri.parse(`workbench:${platformPath(superGraphApiSchemaPath)}?${name}`);
       }
       case WorkbenchUriType.MOCKS: {
         let subgarphMocksPath = resolve(
@@ -77,10 +71,8 @@ export class WorkbenchUri {
           'mocks',
           `${name}-mocks.js`,
         );
-        if (subgarphMocksPath.toLowerCase().includes('c:'))
-          subgarphMocksPath = subgarphMocksPath.slice(2).replace(/\\/g, '/');
 
-        return Uri.parse(`${subgarphMocksPath}?${path}:${name}`);
+        return Uri.parse(`${normalize(subgarphMocksPath)}?${path}:${name}`);
       }
     }
   }
