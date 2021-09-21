@@ -19,6 +19,10 @@ import { StateManager } from './stateManager';
 import { FileProvider } from './file-system/fileProvider';
 import { addFederationSpecAsNeeded, extractEntityNames } from '../graphql/parsers/schemaParser';
 import { log } from '../utils/logger';
+import { ApolloWorkbenchFile, WorkbenchSchema } from './file-system/fileTypes';
+
+const sandboxUrl = (port?)=> `https://studio.apollographql.com/sandbox/explorer?endpoint=http%3A%2F%2Flocalhost%3A${port ?? StateManager.settings_gatewayServerPort}`;
+        
 
 export class ServerManager {
   private static _instance: ServerManager;
@@ -31,6 +35,8 @@ export class ServerManager {
   portMapping: { [serviceName: string]: string } = {};
   //serverState will hold the ApolloServer/ApolloGateway instances based on the ports they are running on
   private serversState: { [port: string]: any } = {};
+  mocksWorkbenchFile?: ApolloWorkbenchFile;
+  mocksWorkbenchFilePath: string = "";
 
   private corsConfiguration = {
     origin: '*',
@@ -46,50 +52,26 @@ export class ServerManager {
     else process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
     log(`Setting up mocks`);
-    const workbenchFile = FileProvider.instance.workbenchFileFromPath(
+    this.mocksWorkbenchFile = FileProvider.instance.workbenchFileFromPath(
       wbFilePath,
-    );
-    if (workbenchFile) {
-      log(`Mocking workbench file: ${workbenchFile.graphName}`);
-      FileProvider.instance.loadedWorkbenchFile = workbenchFile;
-      const increment = 80 / Object.keys(workbenchFile.schemas).length;
-      for (const serviceName in workbenchFile.schemas) {
-        //Check if we should be mocking this service
-        if (workbenchFile.schemas[serviceName].shouldMock) {
-          progress?.report({ message: `Mocking subgraph ${serviceName}`, increment });
-          //Check if Custom Mocks are defined in workbench
-          let customMocks = workbenchFile.schemas[serviceName].customMocks;
-          if (customMocks) {
-            //By default we add the export shown to the user, but they may delete it
-            if (!customMocks.includes('module.exports'))
-              customMocks = customMocks.concat('\nmodule.exports = mocks');
-
-            try {
-              const mocks = eval(customMocks);
-              this.startServer(
-                serviceName,
-                workbenchFile.schemas[serviceName].sdl,
-                mocks,
-              );
-            } catch (err: any) {
-              //Most likely  wasn't valid javascript
-              log(err);
-              this.startServer(
-                serviceName,
-                workbenchFile.schemas[serviceName].sdl,
-              );
-            }
-          } else
-            await this.startServer(
-              serviceName,
-              workbenchFile.schemas[serviceName].sdl,
-            );
-        } else {
-          progress?.report({ message: `Skipping mocks for ${serviceName} due to setting`, increment });
-        }
+    ) ?? undefined;
+    if (this.mocksWorkbenchFile) {
+      log(`Mocking workbench file: ${this.mocksWorkbenchFile.graphName}`);
+      this.mocksWorkbenchFilePath = wbFilePath;
+      const increment = 80 / Object.keys(this.mocksWorkbenchFile.schemas).length;
+      for (const serviceName in this.mocksWorkbenchFile.schemas) {
+        progress?.report({ message: `Mocking subgraph ${serviceName}`, increment });
+        const subgraph = this.mocksWorkbenchFile.schemas[serviceName];
+        const mocks = this.getMocks(subgraph);
+        await this.startServer(
+          serviceName,
+          subgraph.sdl,
+          mocks
+        );
       }
 
       await this.startGateway(progress);
+      await this.openSandbox(sandboxUrl());
     } else log(`No selected workbench file to setup`);
   }
   stopMocks() {
@@ -99,11 +81,30 @@ export class ServerManager {
     for (const port in this.serversState) {
       if (port != 'gateway') {
         log(`Stopping server running at port ${port}...`);
-        this.stopServerOnPort(port);
+        this.stopSubgraphOnPort(port);
       }
     }
     this.stopGateway();
     this.portMapping = {};
+  }
+
+  async restartSubgraph(wbFilePath: string, name: string, schema?: string){
+    const serverPort = this.portMapping[name];
+    if(this.mocksWorkbenchFile && wbFilePath == this.mocksWorkbenchFilePath && serverPort){
+      //We have to restart a subgraph in currently running workbench file
+      log(`Restarting Subgraph: ${name}`)
+      this.stopSubgraphOnPort(serverPort);
+      this.stopGateway();
+
+      const subgraph = this.mocksWorkbenchFile?.schemas[name];
+      const mocks = this.getMocks(subgraph);
+      if(!schema) schema = subgraph.sdl;
+
+      log(`\tStarting subgraph`);
+      await this.startServer(name,schema,mocks);
+      log(`\tStarting router`);
+      await this.startGateway();
+    }
   }
   private async startServer(
     serviceName: string,
@@ -182,7 +183,7 @@ export class ServerManager {
       }
     }
   }
-  private stopServerOnPort(port: string) {
+  private stopSubgraphOnPort(port: string) {
     let serviceName = '';
     for (const sn in this.portMapping)
       if (this.portMapping[sn] == port) serviceName = sn;
@@ -233,14 +234,10 @@ export class ServerManager {
     await server
       .listen({ port: gatewayPort })
       .then(async () => {
-        const sandboxUrl = `https://studio.apollographql.com/sandbox/explorer?endpoint=http%3A%2F%2Flocalhost%3A${gatewayPort}`;
-        log(`🚀 Interact with your gateway through Sandbox\n\t${sandboxUrl}`);
+        log(`🚀 Interact with your gateway through Sandbox\n\t${sandboxUrl(gatewayPort)}`);
         ServerManager.instance.statusBarMessage = window.setStatusBarMessage(
           'Apollo Workbench Mocks Running',
         );
-
-        if (StateManager.settings_openSandbox)
-          await commands.executeCommand('vscode.open', Uri.parse(sandboxUrl));
       })
       .then(undefined, (err) => {
         console.error('I am error');
@@ -249,6 +246,10 @@ export class ServerManager {
     this.serversState[gatewayPort] = server;
 
     progress?.report({ message: `Workbench Design Mocked Successfully`, increment: 10 });
+  }
+  private async openSandbox(sandboxUrl: string){
+    if (StateManager.settings_openSandbox)
+    await commands.executeCommand('vscode.open', Uri.parse(sandboxUrl));
   }
   private stopServer(port: string) {
     this.serversState[port].stop();
@@ -259,5 +260,21 @@ export class ServerManager {
     while (this.serversState[port]) port++;
 
     return port;
+  }
+  private getMocks(subgraph: WorkbenchSchema) {
+    let customMocks = subgraph.customMocks;
+    if(subgraph.shouldMock && customMocks){
+      //By default we add the export shown to the user, but they may delete it
+      if (!customMocks.includes('module.exports'))
+        customMocks = customMocks.concat('\nmodule.exports = mocks');
+
+      try {
+        return eval(customMocks);
+      } catch (err: any) {
+        //Most likely  wasn't valid javascript
+        log(err);
+      }
+    } 
+    return {};
   }
 }

@@ -8,10 +8,8 @@ import {
   FileStat,
   FileSystemProvider,
   FileType,
-  languages,
   Uri,
   window,
-  workspace,
 } from 'vscode';
 import { StateManager } from '../stateManager';
 import {
@@ -22,6 +20,7 @@ import { printSchema } from 'graphql';
 import { WorkbenchDiagnostics } from '../diagnosticsManager';
 import { WorkbenchFederationProvider } from '../federationProvider';
 import { WorkbenchUri, WorkbenchUriType } from './WorkbenchUri';
+import { ServerManager } from '../serverManager';
 
 export class FileProvider implements FileSystemProvider {
   constructor(private workspaceRoot?: string) { }
@@ -147,6 +146,7 @@ export class FileProvider implements FileSystemProvider {
     if (wbFile) {
       let shouldSave = true;
       if (uri.path.includes('/subgraphs')) {
+        //Since we are making a change to a subgraph, we should notify the ServerManager
         if (!wbFile.schemas[name]) {
           wbFile.schemas[name] = {
             shouldMock: true,
@@ -173,6 +173,11 @@ export class FileProvider implements FileSystemProvider {
             if (this.loadedWorbenchFilePath == uri.path)
               this.loadedWorkbenchFile = wbFile;
           }
+        }
+
+        if(wbFilePath == ServerManager.instance.mocksWorkbenchFilePath){
+          ServerManager.instance.mocksWorkbenchFile = wbFile;
+          ServerManager.instance.restartSubgraph(wbFilePath,name);
         }
       } else if (uri.path.includes('/queries')) {
         wbFile.operations[name] = { operation: stringContent };
@@ -359,16 +364,16 @@ export class FileProvider implements FileSystemProvider {
   }
 
   workbenchFileByGraphName(name: string) {
-    let path = '';
+    let wbFilePath = '';
     let wbFile: ApolloWorkbenchFile = new ApolloWorkbenchFile(name);
     this.workbenchFiles.forEach((value, key) => {
       if (value.graphName == name) {
-        path = key;
+        wbFilePath = key;
         wbFile = value;
       }
     });
 
-    return { wbFile, path };
+    return { wbFile, path: wbFilePath };
   }
   getPath(path: string) {
     if (path.includes('/subgraphs')) {

@@ -115,7 +115,7 @@ export async function editSubgraph(item: SubgraphTreeItem) {
   try {
     FileProvider.instance.load(item.wbFilePath);
     await window.showTextDocument(uri);
-  } catch (err) {
+  } catch (err: any) {
     log(err);
   }
 }
@@ -472,7 +472,7 @@ export async function viewSubgraphCustomMocks(item: SubgraphTreeItem) {
   }
   try {
     await window.showTextDocument(subgraphMocksUri);
-  } catch (err) {
+  } catch (err:any) {
     log(err);
   }
 }
@@ -568,9 +568,8 @@ export async function createWorkbenchFromPreloaded(
       `preloaded-files`,
       `${preloadedItem.fileName}.apollo-workbench`,
     );
-    const workbenchFile = JSON.parse(
-      readFileSync(preloadFileDir, { encoding: 'utf-8' }),
-    ) as ApolloWorkbenchFile;
+    const fileContent = readFileSync(preloadFileDir, { encoding: 'utf-8' });
+    const workbenchFile = JSON.parse(fileContent) as ApolloWorkbenchFile;
 
     FileProvider.instance.createWorkbenchFileLocally(workbenchFile);
   }

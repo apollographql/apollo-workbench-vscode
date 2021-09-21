@@ -5,6 +5,7 @@ import {
   window,
   ExtensionContext,
   WebviewPanel,
+  Uri,
 } from 'vscode';
 
 import { StateManager } from './workbench/stateManager';
@@ -61,6 +62,7 @@ import { execSync } from 'child_process';
 import { log } from './utils/logger';
 import { WorkbenchDiagnostics } from './workbench/diagnosticsManager';
 import { WorkbenchFederationProvider } from './workbench/federationProvider';
+import { WorkbenchUri, WorkbenchUriType } from './workbench/file-system/WorkbenchUri';
 
 export const outputChannel = window.createOutputChannel('Apollo Workbench');
 
@@ -340,13 +342,17 @@ export async function activate(context: ExtensionContext) {
       const { wbFile, path } = FileProvider.instance.workbenchFileByGraphName(
         querySplit[0],
       );
+      const serviceName = querySplit[1];
       const newMocksText = document.getText();
-      if (newMocksText != wbFile.schemas[querySplit[1]].customMocks) {
+      if (newMocksText != wbFile.schemas[serviceName].customMocks) {
+        const mocksUri =Uri.parse(`workbench:${path}/mocks?${serviceName}`);
         FileProvider.instance.writeFile(
-          uri,
+          mocksUri,
           Buffer.from(newMocksText, 'utf8'),
           { create: true, overwrite: true },
         );
+        log(`Detected changes to subgraph ${serviceName} mocks.`)
+        await ServerManager.instance.restartSubgraph(path,serviceName);
       }
     }
   });
