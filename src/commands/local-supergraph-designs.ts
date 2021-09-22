@@ -563,7 +563,6 @@ export async function createWorkbenchFromPreloaded(
       __dirname,
       '..',
       '..',
-      '..',
       'media',
       `preloaded-files`,
       `${preloadedItem.fileName}.apollo-workbench`,
