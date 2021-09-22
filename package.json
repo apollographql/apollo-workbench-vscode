@@ -60,7 +60,7 @@
     "graphql-language-service-parser": "^1.9.2",
     "graphql-language-service-server": "^2.6.3",
     "graphql-language-service-utils": "^2.5.3",
-    "graphql-tools": "^7.0.5",
+    "graphql-tools": "^8.2.0",
     "lodash": "^4.17.20",
     "node-fetch": "^2.6.4",
     "vscode-languageclient": "^7.0.0",

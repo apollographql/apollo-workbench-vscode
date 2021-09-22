@@ -41,7 +41,7 @@ export async function addToWorkbench(op: StudioOperationTreeItem) {
           op.operationName,
           WorkbenchUriType.QUERIES,
         ),
-        new TextEncoder().encode(operation),
+        Buffer.from(operation),
         { create: true, overwrite: true },
       );
     }

@@ -31,6 +31,7 @@ import { FieldWithType } from './federationCompletionProvider';
 import { RemoteGraphQLDataSource } from '@apollo/gateway';
 import { FileProvider } from './file-system/fileProvider';
 import { log } from '../utils/logger';
+import { Headers } from 'node-fetch';
 
 export class WorkbenchFederationProvider {
   static compose(workbenchFile: ApolloWorkbenchFile) {

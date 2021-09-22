@@ -5,7 +5,7 @@ import {
 import {
   addMocksToSchema,
   IMocks
-} from 'graphql-tools';
+} from '@graphql-tools/mock';
 import { buildFederatedSchema } from '@apollo/federation';
 import {
   OverrideApolloGateway,

@@ -318,7 +318,7 @@ export class FileProvider implements FileSystemProvider {
                     '',
                     WorkbenchUriType.SUPERGRAPH_SCHEMA,
                   ),
-                  new TextEncoder().encode(compResults.supergraphSdl),
+                  Buffer.from(compResults.supergraphSdl),
                   { create: true, overwrite: true },
                 );
               }
