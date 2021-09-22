@@ -8,14 +8,11 @@ import {
   buildClientSchema,
   getIntrospectionQuery,
   parse,
-  IntrospectionQuery,
-  printIntrospectionSchema,
   printSchema,
 } from 'graphql';
 import { Headers } from 'apollo-server-env';
 import { ServiceDefinition } from '@apollo/federation';
 import { ServerManager } from '../workbench/serverManager';
-import { FileProvider } from '../workbench/file-system/fileProvider';
 import { StateManager } from '../workbench/stateManager';
 import { window } from 'vscode';
 import {
@@ -23,6 +20,7 @@ import {
   WorkbenchUriType,
 } from '../workbench/file-system/WorkbenchUri';
 import { log } from '../utils/logger';
+import { FileProvider } from '../workbench/file-system/fileProvider';
 
 function gatewayLog(message: string) {
   log(`GATEWAY-${message}`);
@@ -41,7 +39,7 @@ export class GatewayForwardHeadersDataSource extends RemoteGraphQLDataSource {
     });
 
     const service =
-      FileProvider.instance.loadedWorkbenchFile?.schemas[this.serviceName];
+      ServerManager.instance.mocksWorkbenchFile?.schemas[this.serviceName];
     if (service) {
       service?.requiredHeaders?.forEach((requiredHeader) => {
         if (requiredHeader)
@@ -69,7 +67,7 @@ export class OverrideApolloGateway extends ApolloGateway {
 
     const newDefinitions: Array<ServiceDefinition> = [];
 
-    const wb = FileProvider.instance.loadedWorkbenchFile;
+    const wb = ServerManager.instance.mocksWorkbenchFile;
     if (wb) {
       for (const serviceName in wb.schemas) {
         const service = wb.schemas[serviceName];
@@ -93,7 +91,7 @@ export class OverrideApolloGateway extends ApolloGateway {
             if (service.autoUpdateSchemaFromUrl)
               FileProvider.instance.writeFile(
                 WorkbenchUri.supergraph(
-                  FileProvider.instance.loadedWorbenchFilePath,
+                  ServerManager.instance.mocksWorkbenchFilePath,
                   serviceName,
                   WorkbenchUriType.SCHEMAS,
                 ),
@@ -124,7 +122,7 @@ export class OverrideApolloGateway extends ApolloGateway {
   ) {
     const source = new RemoteGraphQLDataSource({ url: serviceURLOverride });
     const requiredHeaders =
-      FileProvider.instance.loadedWorkbenchFile?.schemas[serviceName]
+      ServerManager.instance.mocksWorkbenchFile?.schemas[serviceName]
         ?.requiredHeaders;
     const headers = new Headers();
     requiredHeaders?.forEach((requiredHeader) => {
@@ -155,7 +153,7 @@ export class OverrideApolloGateway extends ApolloGateway {
           headers,
         );
       }
-    } catch (err) {
+    } catch (err: any) {
       if (err.code == 'ECONNREFUSED')
         gatewayLog(`Do you have service ${serviceName} running? \n\t${err.message}`);
       else if (err.code == 'ENOTFOUND')

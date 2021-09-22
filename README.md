@@ -72,9 +72,9 @@ If you have a valid fully composed schema, you should get intellisense when writ
 
 ![](https://storage.googleapis.com/apollo-workbench-vscode/workbench-first-operation.png)
 
-### Loading GraphQL operaitons from Apollo Studio into workbench
+### Loading GraphQL operations from Apollo Studio into workbench
 
-You can load all of the operaitons for a given graph into the **Apollo Studio Graph Operations** tree view by clicking on a graph in the **Apollo Studio Graphs**:
+You can load all of the operations for a given graph into the **Apollo Studio Graph Operations** tree view by clicking on a graph in the **Apollo Studio Graphs**:
 
 ![Loading Operations](https://storage.googleapis.com/apollo-workbench-vscode/workbench-loading-operations.gif)
 

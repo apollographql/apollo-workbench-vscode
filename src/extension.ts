@@ -4,16 +4,9 @@ import {
   languages,
   window,
   ExtensionContext,
-  DiagnosticCollection,
-  Range,
-  Diagnostic,
-  Position,
   WebviewPanel,
+  Uri,
 } from 'vscode';
-import { Kind, Source } from 'graphql';
-import { DiagnosticSeverity } from 'vscode-languageclient';
-import { GraphQLDocument } from './utils/operation-diagnostics/document';
-import { collectExecutableDefinitionDiagnositics } from './utils/operation-diagnostics/diagnostics';
 
 import { StateManager } from './workbench/stateManager';
 import { ServerManager } from './workbench/serverManager';
@@ -61,18 +54,15 @@ import {
   viewSubgraphCustomMocks,
   exportSubgraphSchema,
   exportSubgraphResolvers,
-  createWorkbenchFromSupergraphVariant
+  createWorkbenchFromSupergraphVariant,
 } from './commands/local-supergraph-designs';
 import { resolve } from 'path';
 import { mkdirSync, writeFileSync } from 'fs';
 import { execSync } from 'child_process';
 import { log } from './utils/logger';
-
-interface WorkbenchDiagnostics {
-  operationDiagnostics: DiagnosticCollection
-  compositionDiagnostics: DiagnosticCollection
-}
-export const diagnosticCollections: Map<string, WorkbenchDiagnostics> = new Map<string, WorkbenchDiagnostics>();
+import { WorkbenchDiagnostics } from './workbench/diagnosticsManager';
+import { WorkbenchFederationProvider } from './workbench/federationProvider';
+import { WorkbenchUri, WorkbenchUriType } from './workbench/file-system/WorkbenchUri';
 
 export const outputChannel = window.createOutputChannel('Apollo Workbench');
 
@@ -166,7 +156,10 @@ export async function activate(context: ExtensionContext) {
     exportSupergraphApiSchema,
   ); //right-click
   //****Subgraph Summary Commands
-  commands.registerCommand('local-supergraph-designs.startMocks', startMocksWithDialog);
+  commands.registerCommand(
+    'local-supergraph-designs.startMocks',
+    startMocksWithDialog,
+  );
   commands.registerCommand('local-supergraph-designs.stopMocks', stopMocks);
   commands.registerCommand('local-supergraph-designs.addSubgraph', addSubgraph);
   //****Subgraph Commands
@@ -223,12 +216,12 @@ export async function activate(context: ExtensionContext) {
 
   if (window.registerWebviewPanelSerializer) {
     // Make sure we register a serializer in activation event
-    window.registerWebviewPanelSerializer("apolloWorkbenchDesign", {
+    window.registerWebviewPanelSerializer('apolloWorkbenchDesign', {
       async deserializeWebviewPanel(webviewPanel: WebviewPanel, state: any) {
-        log(`Got state: ${state}`)
+        log(`Got state: ${state}`);
         // Reset the webview options so we use latest uri for `localResourceRoots`.
         // webviewPanel.webview.options = getWebviewOptions(context.extensionUri);
-      }
+      },
     });
   }
   // commands.registerCommand('current-workbench-schemas.deleteSchemaDocTextRange', deleteSchemaDocTextRange);
@@ -266,80 +259,77 @@ export async function activate(context: ExtensionContext) {
     ApolloStudioOperationsProvider.scheme,
     new ApolloStudioOperationsProvider(),
   );
-  //This ensures the visible text editor loads the correct design for composition errors 
+  //This ensures the visible text editor loads the correct design for composition errors
   window.onDidChangeActiveTextEditor((e) => {
     if (e) {
       const uri = e.document.uri;
       const path = uri.path;
-      const updateComposition = (path.includes('subgraphs') || path.includes('queries'));
-      if (uri.scheme == 'workbench' && updateComposition) {
-        const designPath = path.split('/subgraphs')[0];
-        FileProvider.instance.loadWorkbenchForComposition(designPath);
+      if (uri.scheme == 'workbench') {
+        if (uri.path.includes('subgraphs')) {
+          const wbFilePath = path.split('/subgraphs')[0];
+          if (wbFilePath != FileProvider.instance.loadedWorbenchFilePath)
+            FileProvider.instance.load(wbFilePath);
+        }
       }
+    } else {
+      FileProvider.instance.refreshLocalWorkbenchFiles(false);
     }
-  })
-  workspace.onDidDeleteFiles(e => {
-    let deletedWorkbenchFile = false;
-    e.files.forEach(f => {
-      if (f.path.includes('.apollo-workbench')) deletedWorkbenchFile = true;
-    })
-
-    if (deletedWorkbenchFile) {
-      FileProvider.instance.refreshLocalWorkbenchFiles();
-      StateManager.instance.localSupergraphTreeDataProvider.refresh();
-    }
-  })
-  workspace.onDidChangeTextDocument((e) => {
-    const uri = e.document.uri;
-    const document = new GraphQLDocument(new Source(e.document.getText()));
+  });
+  workspace.onDidCloseTextDocument((e) => {
+    const uri = e.uri;
     if (uri.scheme == 'workbench') {
       if (uri.path.includes('queries')) {
-        const schema = StateManager.instance.workspaceState_schema;
-        const operationDiagnostic = diagnosticCollections.get(FileProvider.instance.loadedWorbenchFilePath)?.operationDiagnostics;
+        WorkbenchDiagnostics.instance.validateAllOperations(
+          FileProvider.instance.loadedWorbenchFilePath,
+        );
+      } else if (uri.path.includes('subgraphs')) {
+      }
+    }
+  });
+  workspace.onDidDeleteFiles((e) => {
+    let deletedWorkbenchFile = false;
+    e.files.forEach((f) => {
+      if (f.path.includes('.apollo-workbench')) deletedWorkbenchFile = true;
+    });
 
-        if (operationDiagnostic) {
-          if (schema) {
-            const fragments = Object.create(null);
-            if (document.ast) {
-              for (const definition of document.ast.definitions) {
-                if (definition.kind === Kind.FRAGMENT_DEFINITION) {
-                  fragments[definition.name.value] = definition;
-                }
-              }
-            }
-            const opDiagnostics = collectExecutableDefinitionDiagnositics(
-              schema,
-              document,
-              fragments
+    if (deletedWorkbenchFile) {
+      StateManager.instance.localSupergraphTreeDataProvider.refresh();
+    }
+  });
+  workspace.onDidChangeTextDocument((e) => {
+    if (e.contentChanges.length == 0) return;
+
+    const uri = e.document.uri;
+    if (uri.scheme == 'workbench') {
+      const documentText = e.document.getText();
+      if (uri.path.includes('queries')) {
+        WorkbenchDiagnostics.instance.validateOperation(
+          uri.query,
+          documentText,
+          FileProvider.instance.loadedWorbenchFilePath,
+        );
+      } else if (uri.path.includes('subgraphs')) {
+        const subgraphName = uri.query;
+        if (
+          FileProvider.instance.loadedWorkbenchFile &&
+          FileProvider.instance.loadedWorkbenchFile.schemas[subgraphName] &&
+          FileProvider.instance.loadedWorkbenchFile.schemas[subgraphName].sdl != documentText
+        ) {
+          //TODO: Need to handle temp file changes
+          const editedWorkbenchFile = { ...FileProvider.instance.loadedWorkbenchFile };
+          editedWorkbenchFile.schemas[subgraphName].sdl = documentText;
+          const tryNewComposition =
+            WorkbenchFederationProvider.compose(editedWorkbenchFile);
+          if (tryNewComposition.errors)
+            WorkbenchDiagnostics.instance.setCompositionErrors(
+              FileProvider.instance.loadedWorbenchFilePath,
+              FileProvider.instance.loadedWorkbenchFile,
+              tryNewComposition.errors,
             );
-
-            if (opDiagnostics.length > 0) {
-              operationDiagnostic.clear();
-              const diagnostics = new Array<Diagnostic>();
-              opDiagnostics.forEach((opDiag) => {
-                const start = opDiag.range.start;
-                const end = opDiag.range.end;
-                const range = new Range(
-                  new Position(start.line, start.character),
-                  new Position(end.line, end.character),
-                );
-                diagnostics.push(
-                  new Diagnostic(range, opDiag.message, opDiag.severity),
-                );
-              });
-              operationDiagnostic.set(uri, diagnostics);
-            } else {
-              operationDiagnostic.clear();
-            }
-          } else {
-            operationDiagnostic.clear();
-            operationDiagnostic.set(uri, [
-              new Diagnostic(
-                new Range(0, 0, 0, 0),
-                'No valid composed schema',
-                DiagnosticSeverity.Warning,
-              ),
-            ]);
+          else {
+            WorkbenchDiagnostics.instance.clearCompositionDiagnostics(
+              FileProvider.instance.loadedWorbenchFilePath,
+            );
           }
         }
       }
@@ -352,10 +342,17 @@ export async function activate(context: ExtensionContext) {
       const { wbFile, path } = FileProvider.instance.workbenchFileByGraphName(
         querySplit[0],
       );
+      const serviceName = querySplit[1];
       const newMocksText = document.getText();
-      if (newMocksText != wbFile.schemas[querySplit[1]].customMocks) {
-        wbFile.schemas[querySplit[1]].customMocks = newMocksText;
-        FileProvider.instance.saveWorkbenchFile(wbFile, path);
+      if (newMocksText != wbFile.schemas[serviceName].customMocks) {
+        const mocksUri =Uri.parse(`workbench:${path}/mocks?${serviceName}`);
+        FileProvider.instance.writeFile(
+          mocksUri,
+          Buffer.from(newMocksText, 'utf8'),
+          { create: true, overwrite: true },
+        );
+        log(`Detected changes to subgraph ${serviceName} mocks.`)
+        await ServerManager.instance.restartSubgraph(path,serviceName);
       }
     }
   });
