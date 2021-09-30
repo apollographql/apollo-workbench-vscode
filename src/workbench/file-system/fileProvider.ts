@@ -12,10 +12,7 @@ import {
   window,
 } from 'vscode';
 import { StateManager } from '../stateManager';
-import {
-  ApolloWorkbenchFile,
-  WorkbenchSettings,
-} from './fileTypes';
+import { ApolloWorkbenchFile, WorkbenchSettings } from './fileTypes';
 import { printSchema } from 'graphql';
 import { WorkbenchDiagnostics } from '../diagnosticsManager';
 import { WorkbenchFederationProvider } from '../federationProvider';
@@ -23,7 +20,7 @@ import { WorkbenchUri, WorkbenchUriType } from './WorkbenchUri';
 import { ServerManager } from '../serverManager';
 
 export class FileProvider implements FileSystemProvider {
-  constructor(private workspaceRoot?: string) { }
+  constructor(private workspaceRoot?: string) {}
 
   private static _instance: FileProvider;
   static get instance(): FileProvider {
@@ -45,7 +42,6 @@ export class FileProvider implements FileSystemProvider {
       const workbenchFileToLoad = this.workbenchFileFromPath(wbFilePath);
       if (workbenchFileToLoad) {
         this.loadedWorbenchFilePath = wbFilePath;
-
 
         window.setStatusBarMessage(
           'Composition Running',
@@ -175,9 +171,9 @@ export class FileProvider implements FileSystemProvider {
           }
         }
 
-        if(wbFilePath == ServerManager.instance.mocksWorkbenchFilePath){
+        if (wbFilePath == ServerManager.instance.mocksWorkbenchFilePath) {
           ServerManager.instance.mocksWorkbenchFile = wbFile;
-          ServerManager.instance.restartSubgraph(wbFilePath,name);
+          ServerManager.instance.restartSubgraph(wbFilePath, name);
         }
       } else if (uri.path.includes('/queries')) {
         wbFile.operations[name] = { operation: stringContent };
@@ -358,7 +354,9 @@ export class FileProvider implements FileSystemProvider {
         StateManager.workspaceRoot,
         `${wbFile.graphName}.apollo-workbench`,
       );
-      writeFileSync(normalize(path), JSON.stringify(wbFile), { encoding: 'utf8' });
+      writeFileSync(normalize(path), JSON.stringify(wbFile), {
+        encoding: 'utf8',
+      });
       StateManager.instance.localSupergraphTreeDataProvider.refresh();
     }
   }
@@ -386,6 +384,10 @@ export class FileProvider implements FileSystemProvider {
       return path.split('/subgraph-settings')[0];
     } else if (path.includes('/mocks')) {
       return path.split('/mocks')[0];
+    } else if (path.includes('/supergraph-schema')) {
+      return path.split('/supergraph-schema')[0];
+    } else if (path.includes('/supergraph-api-schema')) {
+      return path.split('/supergraph-api-schema')[0];
     }
     throw new Error('Unknown path type');
   }
