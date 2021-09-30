@@ -15,7 +15,7 @@ export class FederationCodeActionProvider implements CodeActionProvider {
   ): CodeAction[] | undefined {
     const code = context.diagnostics[0]?.code as string;
     const selectors: CodeAction[] = [];
-    if (code.includes('makeArray')) {
+    if (code?.includes('makeArray')) {
       const line = document.lineAt(range.start.line);
       const trimmedText = line.text.trim();
       if (trimmedText != '[' && trimmedText != '[]' && trimmedText != '[ ]') {
@@ -29,7 +29,7 @@ export class FederationCodeActionProvider implements CodeActionProvider {
         selectors.push(selector);
       }
     }
-    if (code.includes('deleteRange')) {
+    if (code?.includes('deleteRange')) {
       const selector = new CodeAction(
         'Delete this selection',
         CodeActionKind.QuickFix,
