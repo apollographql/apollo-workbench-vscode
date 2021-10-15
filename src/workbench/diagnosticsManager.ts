@@ -12,6 +12,7 @@ import {
 import { log } from '../utils/logger';
 import { collectExecutableDefinitionDiagnositics } from '../utils/operation-diagnostics/diagnostics';
 import { GraphQLDocument } from '../utils/operation-diagnostics/document';
+import { WorkbenchFederationProvider } from './federationProvider';
 import { FileProvider } from './file-system/fileProvider';
 import { ApolloWorkbenchFile } from './file-system/fileTypes';
 import { WorkbenchUri, WorkbenchUriType } from './file-system/WorkbenchUri';
@@ -178,6 +179,16 @@ export class WorkbenchDiagnostics {
     const schemas = wb.schemas;
     const diagnosticsGroups: { [key: string]: Diagnostic[] } = {};
 
+    const compiledSchemas: { [subgraphName: string]: string } = {};
+    Object.keys(schemas).forEach((subgraphName) => {
+      if (schemas[subgraphName].sdl) {
+        compiledSchemas[subgraphName] =
+          WorkbenchFederationProvider.normalizeSchema(
+            schemas[subgraphName].sdl,
+          );
+      }
+    });
+
     for (let i = 0; i < errors.length; i++) {
       const error = errors[i];
       const errorMessage = error.message;
@@ -186,7 +197,38 @@ export class WorkbenchDiagnostics {
       let range = new Range(0, 0, 0, 1);
       let serviceName = error.extensions?.serviceName ?? 'workbench';
 
-      if (error.extensions) {
+      if (error.nodes) {
+        error.nodes.forEach((node) => {
+          const nodeLoc = node.loc;
+          if (nodeLoc?.source.body) {
+            const normalizedSource =
+              WorkbenchFederationProvider.normalizeSchema(nodeLoc?.source.body);
+            for (const subgraphName in wb.schemas) {
+              if (normalizedSource == compiledSchemas[subgraphName]) {
+                //Create and add a diagnostic
+                const diagnostic = new Diagnostic(
+                  new Range(
+                    nodeLoc?.startToken.line ? nodeLoc?.startToken.line - 1 : 0,
+                    nodeLoc?.startToken.start
+                      ? nodeLoc?.startToken.column - 1
+                      : 0,
+                    nodeLoc?.endToken.line ? nodeLoc?.endToken.line - 1 : 0,
+                    nodeLoc?.endToken.end ? nodeLoc?.endToken.column - 1 : 1,
+                  ),
+                  errorMessage,
+                  DiagnosticSeverity.Error,
+                );
+                if (!diagnosticsGroups[subgraphName])
+                  diagnosticsGroups[subgraphName] = new Array<Diagnostic>();
+
+                diagnosticsGroups[subgraphName].push(diagnostic);
+              }
+            }
+          } else {
+            log('UNHANDLED ERROR WITH NODE');
+          }
+        });
+      } else if (error.extensions) {
         if (error.extensions?.noServicesDefined) {
           const emptySchemas = `"schemas":{}`;
           const schemasIndex = 0;
@@ -260,17 +302,6 @@ export class WorkbenchDiagnostics {
         if (serviceNames.length >= 1) {
           serviceName = serviceNames[0];
         }
-      } else if (
-        errorMessage.includes('Field "Query.') ||
-        errorMessage.includes('Field "Mutation.')
-      ) {
-        const errorNodes = error.nodes ?? [];
-        const fieldName = errorNodes[0].kind;
-        serviceName = '';
-        for (const sn in schemas)
-          if (schemas[sn].sdl.includes(fieldName))
-            if (serviceName) serviceName += `${sn}-:-`;
-            else serviceName = sn;
       } else if (errorMessage.includes('There can be only one type named')) {
         // const nameNode = error.nodes?.find((n) => n.kind == 'Name') as any;
         // serviceName = '';

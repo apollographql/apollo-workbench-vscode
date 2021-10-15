@@ -21,6 +21,8 @@ import {
   getIntrospectionQuery,
   buildClientSchema,
   printSchema,
+  print,
+  FieldDefinitionNode,
 } from 'graphql';
 import {
   ApolloWorkbenchFile,
@@ -32,6 +34,7 @@ import { RemoteGraphQLDataSource } from '@apollo/gateway';
 import { FileProvider } from './file-system/fileProvider';
 import { log } from '../utils/logger';
 import { Headers } from 'node-fetch';
+import { defaultRootOperationTypes } from '@apollo/federation/dist/composition/normalize';
 
 export class WorkbenchFederationProvider {
   static compose(workbenchFile: ApolloWorkbenchFile) {
@@ -135,6 +138,51 @@ export class WorkbenchFederationProvider {
 
       return { ...compositionResults } as CompositionResult;
     }
+  }
+  static normalizeSchema(schema: string) {
+    const doc = defaultRootOperationTypes(parse(schema));
+    const modifiedDOc = visit(doc, {
+      Document(node) {
+        const isFedSpec = (i: FieldDefinitionNode) =>
+          i.name.value == '__entities' || i.name.value == '__service';
+        const definitions = Array.from(node.definitions);
+        const queryDefinitionIndex = definitions.findIndex(
+          (d) => (d as any).name.value == 'Query',
+        );
+        if (queryDefinitionIndex >= 0) {
+          const queryDefinition = definitions[queryDefinitionIndex];
+
+          if (
+            queryDefinition.kind == 'ObjectTypeDefinition' ||
+            queryDefinition.kind == 'ObjectTypeExtension'
+          ) {
+            const queryDefinitions: FieldDefinitionNode[] = [];
+            queryDefinition.fields?.forEach((f) => {
+              if (!isFedSpec(f)) queryDefinitions.push(f);
+            });
+
+            if (queryDefinitions.length > 0) {
+              definitions[queryDefinitionIndex] = queryDefinition;
+            } else definitions.splice(queryDefinitionIndex, 1);
+
+            return { ...node, definitions };
+          }
+        }
+      },
+      ObjectTypeDefinition(node) {
+        const objectName = node.name.value;
+        if (objectName == '__Entity') {
+          return null;
+        }
+      },
+      FieldDefinition(node) {
+        if (node.name.value == '_entities' || node.name.value == '_service') {
+          return null;
+        }
+      },
+    });
+
+    return print(modifiedDOc);
   }
   static superSchemaToApiSchema(supergraphSDL: string) {
     const schema = new GraphQLSchema({
