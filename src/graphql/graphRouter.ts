@@ -21,6 +21,7 @@ import {
 } from '../workbench/file-system/WorkbenchUri';
 import { log } from '../utils/logger';
 import { FileProvider } from '../workbench/file-system/fileProvider';
+import { GraphQLDataSourceRequestKind } from '@apollo/gateway/dist/datasources/types';
 
 function gatewayLog(message: string) {
   log(`GATEWAY-${message}`);
@@ -46,8 +47,8 @@ export class GatewayForwardHeadersDataSource extends RemoteGraphQLDataSource {
           request.http.headers.set(
             requiredHeader.key,
             context.incomingHeaders[requiredHeader.key] ??
-            requiredHeader.value ??
-            '',
+              requiredHeader.value ??
+              '',
           );
       });
     }
@@ -140,7 +141,11 @@ export class OverrideApolloGateway extends ApolloGateway {
         },
       };
 
-      const { data, errors } = await source.process({ request, context: {} });
+      const { data, errors } = await source.process({
+        request,
+        kind: GraphQLDataSourceRequestKind.HEALTH_CHECK,
+        context: {},
+      });
       if (data && !errors) {
         return data._service.sdl as string;
       } else if (errors) {
@@ -155,9 +160,13 @@ export class OverrideApolloGateway extends ApolloGateway {
       }
     } catch (err: any) {
       if (err.code == 'ECONNREFUSED')
-        gatewayLog(`Do you have service ${serviceName} running? \n\t${err.message}`);
+        gatewayLog(
+          `Do you have service ${serviceName} running? \n\t${err.message}`,
+        );
       else if (err.code == 'ENOTFOUND')
-        gatewayLog(`Do you have service ${serviceName} running? \n\t${err.message}`);
+        gatewayLog(
+          `Do you have service ${serviceName} running? \n\t${err.message}`,
+        );
       else if (err.message == 'Only absolute URLs are supported')
         gatewayLog(`${serviceName}-${err.message}`);
       else
@@ -186,7 +195,11 @@ export class OverrideApolloGateway extends ApolloGateway {
       },
     };
 
-    const { data, errors } = await source.process({ request, context: {} });
+    const { data, errors } = await source.process({
+      request,
+      context: {},
+      kind: GraphQLDataSourceRequestKind.HEALTH_CHECK,
+    });
     if (data && !errors) {
       const schema = buildClientSchema(data as any);
 

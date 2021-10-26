@@ -267,7 +267,7 @@ export class FileProvider implements FileSystemProvider {
       StateManager.instance.workspaceState_schema = compResults.schema;
       StateManager.instance.workspaceState_selectedWorkbenchAvailableEntities =
         WorkbenchFederationProvider.extractDefinedEntitiesByService(
-          this.loadedWorkbenchFile,
+          this.loadedWorkbenchFile.supergraphSdl,
         );
     }
   }

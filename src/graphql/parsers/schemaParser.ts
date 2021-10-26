@@ -7,6 +7,7 @@ import {
   ScalarTypeDefinitionNode,
   visit,
 } from 'graphql';
+// import { Range } from 'vscode-languageserver-types';
 import { log } from '../../utils/logger';
 import { FileProvider } from '../../workbench/file-system/fileProvider';
 
@@ -23,8 +24,10 @@ export function getServiceAvailableTypes(
   const scalars: string[] = [];
 
   try {
-    const localSchema = FileProvider.instance.workbenchFileFromPath(wbFilePath)
-      ?.schemas[serviceName];
+    const localSchema =
+      FileProvider.instance.workbenchFileFromPath(wbFilePath)?.schemas[
+        serviceName
+      ];
     if (localSchema) {
       const doc = parse(localSchema.sdl);
 
@@ -59,7 +62,7 @@ export function getServiceAvailableTypes(
         },
       });
     }
-  } catch (err) {
+  } catch (err: any) {
     log(err.message);
   }
 
@@ -82,6 +85,71 @@ export function getServiceAvailableTypes(
 
   return types;
 }
+
+export function getTypeUsageRanges(type: string, schema: string) {
+  const ranges: any[] = [];
+  visit(parse(schema), {
+    FieldDefinition(node) {
+      if (node.loc && getFieldType(node.type) == type) {
+        const loc = node.loc;
+        ranges.push({
+          start: {
+            line: loc.startToken.line - 1,
+            character: loc.startToken.column - 1,
+          },
+          end: {
+            line: loc.endToken.line - 1,
+            character: loc.endToken.column - 1,
+          },
+        });
+      }
+    },
+  });
+
+  return ranges;
+}
+
+function getFieldType(field: any) {
+  switch (field.kind) {
+    case 'FieldDefinition':
+    case 'ListType':
+      return getFieldType(field.type);
+    case 'NamedType':
+      return field.name.value;
+    case 'NonNullType':
+      switch (field.type.kind) {
+        case 'ListType':
+          return getFieldType(field.type);
+        case 'NamedType':
+          return field.type.name.value;
+      }
+      return '';
+    default:
+      return '';
+  }
+}
+
+// function getFieldTypeString(field): string {
+// switch (field.kind) {
+//   case 'FieldDefinition':
+//     return getFieldTypeString(field.type);
+//   case 'ListType':
+//     return `[${getFieldTypeString(field.type)}]`;
+//   case 'NamedType':
+//     return field.name.value;
+//   //Need to add the ! for NonNull
+//   case 'NonNullType':
+//     switch (field.type.kind) {
+//       case 'ListType':
+//         return `${getFieldTypeString(field.type)}!`;
+//       case 'NamedType':
+//         return `${field.type.name.value}!`;
+//     }
+//     return '';
+//   default:
+//     return '';
+//   }
+// }
 
 export function extractEntityNames(schema: string): string[] {
   const entityName: string[] = [];
@@ -110,7 +178,7 @@ export function extractEntityNames(schema: string): string[] {
         }
       }
     });
-  } catch (err) {
+  } catch (err: any) {
     log(err);
   }
 
@@ -118,42 +186,54 @@ export function extractEntityNames(schema: string): string[] {
 }
 
 export function addFederationSpecAsNeeded(schemaString: string): string {
-  let schemaModifications: { addEntityScalar?: undefined | boolean, addServiceScalar?: undefined | boolean, addAnyScalar?: undefined | boolean, } = {}
+  let schemaModifications: {
+    addEntityScalar?: undefined | boolean;
+    addServiceScalar?: undefined | boolean;
+    addAnyScalar?: undefined | boolean;
+  } = {};
 
   runOnlineParser(schemaString, (state, ruleRange, tokens) => {
     if (ruleRange.isSingleLine)
       switch (state.kind) {
         case 'ScalarDef': {
-          if (state.name == "_Entity")
+          if (state.name == '_Entity')
             schemaModifications.addEntityScalar = false;
-          else if (state.name == "_Service")
+          else if (state.name == '_Service')
             schemaModifications.addServiceScalar = false;
-          if (state.name == "_Any")
-            schemaModifications.addAnyScalar = false;
+          if (state.name == '_Any') schemaModifications.addAnyScalar = false;
 
           break;
         }
         case 'NamedType' as any: {
           let prevState = state.prevState;
 
-          if (state.name == "_Entity" && schemaModifications.addEntityScalar == undefined) {
+          if (
+            state.name == '_Entity' &&
+            schemaModifications.addEntityScalar == undefined
+          ) {
             while (prevState != undefined) {
               if (prevState.name == '_entities')
-                schemaModifications.addEntityScalar = true
+                schemaModifications.addEntityScalar = true;
 
               prevState = prevState.prevState;
             }
-          } else if (state.name == '_Service' && schemaModifications.addServiceScalar == undefined) {
+          } else if (
+            state.name == '_Service' &&
+            schemaModifications.addServiceScalar == undefined
+          ) {
             while (prevState != undefined) {
               if (prevState.name == '_service')
-                schemaModifications.addServiceScalar = true
+                schemaModifications.addServiceScalar = true;
 
               prevState = prevState.prevState;
             }
-          } else if (state.name == '_Any' && schemaModifications.addAnyScalar == undefined) {
+          } else if (
+            state.name == '_Any' &&
+            schemaModifications.addAnyScalar == undefined
+          ) {
             while (prevState != undefined) {
               if (prevState.name == 'representations')
-                schemaModifications.addAnyScalar = true
+                schemaModifications.addAnyScalar = true;
 
               prevState = prevState.prevState;
             }

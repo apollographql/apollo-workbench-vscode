@@ -1,19 +1,6 @@
 import { FileProvider } from '../workbench/file-system/fileProvider';
-import {
-  window,
-  env,
-  Uri,
-  workspace,
-  Range,
-  StatusBarAlignment,
-  tasks,
-  Task,
-  ViewColumn,
-  commands,
-  Progress,
-} from 'vscode';
+import { window, env, Uri, workspace, commands, Progress } from 'vscode';
 import { StateManager } from '../workbench/stateManager';
-import { createTypescriptTemplate } from '../utils/createTypescriptTemplate';
 import {
   SubgraphTreeItem,
   OperationTreeItem,
@@ -39,7 +26,6 @@ import {
 } from '../graphql/types/GetGraphSchemas';
 import { join, resolve } from 'path';
 import { writeFileSync, existsSync, readFileSync } from 'fs';
-import { TextEncoder } from 'util';
 import { GraphQLSchema, parse, extendSchema, printSchema } from 'graphql';
 import { OverrideApolloGateway } from '../graphql/graphRouter';
 import { generateJsFederatedResolvers } from '../utils/exportFiles';
@@ -264,7 +250,7 @@ export async function addSubgraph(item: SubgraphSummaryTreeItem) {
         serviceName,
         WorkbenchUriType.SCHEMAS,
       ),
-      new TextEncoder().encode(''),
+      Buffer.from(''),
       { create: true, overwrite: true },
     );
   }
@@ -371,12 +357,12 @@ async function createWorkbench(graphId: string, selectedVariant: string) {
         ?.implementingServices as GetGraphSchemas_service_implementingServices_FederatedImplementingServices;
       implementingServices?.services?.map(
         (service) =>
-        (workbenchFile.schemas[service.name] = {
-          sdl: service.activePartialSchema.sdl,
-          url: service.url ?? '',
-          shouldMock: true,
-          autoUpdateSchemaFromUrl: false,
-        }),
+          (workbenchFile.schemas[service.name] = {
+            sdl: service.activePartialSchema.sdl,
+            url: service.url ?? '',
+            shouldMock: true,
+            autoUpdateSchemaFromUrl: false,
+          }),
       );
     }
 
@@ -425,11 +411,10 @@ export async function updateSubgraphSchemaFromURL(item: SubgraphTreeItem) {
           subgraphName,
           WorkbenchUriType.SCHEMAS,
         );
-        FileProvider.instance.writeFile(
-          subgraphUri,
-          new TextEncoder().encode(sdl),
-          { create: true, overwrite: true },
-        );
+        FileProvider.instance.writeFile(subgraphUri, Buffer.from(sdl), {
+          create: true,
+          overwrite: true,
+        });
 
         //TODO: Is it still necessary to replace the text or does this refresh the doc while open?
         const editor = await window.showTextDocument(subgraphUri);
@@ -472,7 +457,7 @@ export async function viewSubgraphCustomMocks(item: SubgraphTreeItem) {
   }
   try {
     await window.showTextDocument(subgraphMocksUri);
-  } catch (err:any) {
+  } catch (err: any) {
     log(err);
   }
 }

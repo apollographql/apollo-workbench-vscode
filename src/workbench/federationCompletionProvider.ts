@@ -1,3 +1,4 @@
+import { getAutocompleteSuggestions } from '@apollographql/graphql-language-service-interface';
 import {
   CancellationToken,
   CompletionItem,
@@ -9,7 +10,6 @@ import {
 import { Position } from 'vscode-languageserver';
 import { getServiceAvailableTypes } from '../graphql/parsers/schemaParser';
 import { StateManager } from './stateManager';
-import { getAutocompleteSuggestions } from 'graphql-language-service-interface';
 
 export interface FieldWithType {
   field: string;
