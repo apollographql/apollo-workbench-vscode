@@ -1,6 +1,6 @@
 import { ApolloServer, gql } from 'apollo-server';
-import { addMocksToSchema, IMocks } from '@graphql-tools/mock';
 import { buildSubgraphSchema } from '@apollo/federation';
+import { IMocks } from '@graphql-tools/mock';
 import {
   OverrideApolloGateway,
   GatewayForwardHeadersDataSource,
@@ -169,14 +169,8 @@ export class ServerManager {
       );
 
       const federatedSchema = buildSubgraphSchema([{ typeDefs, resolvers }]);
-      const mockedSchema = addMocksToSchema({
-        schema: federatedSchema,
-        mocks,
-        preserveResolvers: true,
-      });
-
       //Create and start up server locally
-      const server = new ApolloServer({ schema: mockedSchema });
+      const server = new ApolloServer({ schema: federatedSchema, mocks });
 
       //Set the port and server to local state
       this.serversState[port] = server;

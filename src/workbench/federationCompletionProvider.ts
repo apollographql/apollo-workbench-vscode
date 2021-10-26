@@ -1,4 +1,4 @@
-import { getAutocompleteSuggestions } from '@apollographql/graphql-language-service-interface';
+import { getAutocompleteSuggestions } from 'graphql-language-service-interface';
 import {
   CancellationToken,
   CompletionItem,
