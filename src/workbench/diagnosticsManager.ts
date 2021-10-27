@@ -3,12 +3,15 @@ import {
   commands,
   Diagnostic,
   DiagnosticCollection,
+  DiagnosticRelatedInformation,
   DiagnosticSeverity,
   languages,
   Position,
   Range,
   Uri,
 } from 'vscode';
+import { Location as CodeLocation } from 'vscode-languageserver-types';
+import { getTypeUsageRanges } from '../graphql/parsers/schemaParser';
 import { log } from '../utils/logger';
 import { collectExecutableDefinitionDiagnositics } from '../utils/operation-diagnostics/diagnostics';
 import { GraphQLDocument } from '../utils/operation-diagnostics/document';
@@ -62,7 +65,7 @@ export class WorkbenchDiagnostics {
     const compositionDiagnostics = this.getCompositionDiagnostics(wbFilePath);
     compositionDiagnostics.clear();
 
-    const diagnosticsGroups = this.handleErrors(wbFile, errors);
+    const diagnosticsGroups = this.handleErrors(wbFilePath, wbFile, errors);
     for (const sn in diagnosticsGroups) {
       if (sn.toLowerCase() == 'workbench')
         compositionDiagnostics.set(
@@ -175,7 +178,11 @@ export class WorkbenchDiagnostics {
     if (wbFileDiagnostics != undefined) return wbFileDiagnostics;
     else throw new Error(`No Operation Diagnostic found for ${wbFilePath}`);
   }
-  private handleErrors(wb: ApolloWorkbenchFile, errors: GraphQLError[]) {
+  private handleErrors(
+    wbFilePath: string,
+    wb: ApolloWorkbenchFile,
+    errors: GraphQLError[],
+  ) {
     const schemas = wb.schemas;
     const diagnosticsGroups: { [key: string]: Diagnostic[] } = {};
 
@@ -193,9 +200,14 @@ export class WorkbenchDiagnostics {
       const error = errors[i];
       const errorMessage = error.message;
       let diagnosticCode = '';
-      let typeToIgnore = '';
       let range = new Range(0, 0, 0, 1);
       let serviceName = error.extensions?.serviceName ?? 'workbench';
+
+      const diagnostic = new Diagnostic(
+        range,
+        errorMessage,
+        DiagnosticSeverity.Error,
+      );
 
       if (error.nodes) {
         error.nodes.forEach((node) => {
@@ -263,36 +275,6 @@ export class WorkbenchDiagnostics {
 
             range = new Range(lineNumber - 1, 0, lineNumber, 0);
           } else {
-            // let doc = await workspace.openTextDocument(WorkbenchUri.parse(serviceName));
-            // let lastLine = doc.lineAt(doc.lineCount - 1);
-            // range = new Range(0, 0, lastLine.lineNumber, lastLine.text.length);
-          }
-        } else if (error.extensions?.code) {
-          //We have a federation error with code
-          const errSplit = error.message.split('] ');
-          serviceName = errSplit[0].substring(1);
-
-          switch (error.extensions.code) {
-            case 'KEY_FIELDS_MISSING_EXTERNAL':
-            case 'KEY_FIELDS_MISSING_ON_BASE':
-              typeToIgnore = errSplit[1].split(' ->')[0];
-              break;
-
-            case 'EXECUTABLE_DIRECTIVES_IN_ALL_SERVICES': {
-              serviceName = '';
-              const services = error.message.split(':')[1].split(',');
-              if (services.length > 1)
-                services.map((service) => {
-                  const sn = service.includes('.')
-                    ? service.substring(1, service.length - 1)
-                    : service.substring(1, service.length);
-                  serviceName += `${sn}-:-`;
-                });
-              else serviceName = services[0];
-
-              typeToIgnore = serviceName;
-              break;
-            }
           }
         }
       } else if (
@@ -302,40 +284,41 @@ export class WorkbenchDiagnostics {
         if (serviceNames.length >= 1) {
           serviceName = serviceNames[0];
         }
-      } else if (errorMessage.includes('There can be only one type named')) {
-        // const nameNode = error.nodes?.find((n) => n.kind == 'Name') as any;
-        // serviceName = '';
-        // for (const sn in schemas)
-        //   if (schemas[sn].sdl.includes(nameNode.value)) serviceName += `${sn}-:-`;
-        // typeToIgnore = nameNode.value;
-      } else if (
-        errorMessage.includes('Field') &&
-        errorMessage.includes('can only be defined once')
-      ) {
-        const splitMessage = errorMessage.split('.');
-        typeToIgnore = splitMessage[0].split('"')[1];
       } else if (errorMessage.includes('Unknown type: ')) {
         const splitMessage = errorMessage.split('"');
-        const fieldType = splitMessage[1];
+        const unknownType = splitMessage[1];
 
-        for (const sn in schemas)
-          if (schemas[sn].sdl.includes(typeToIgnore)) serviceName = sn;
-
-        // let typeRange = getRangeForFieldNamedType(fieldType, schemas[serviceName].sdl);
-        // range = new Range(typeRange.startLine, typeRange.startColumn, typeRange.endLine, typeRange.endColumn);
-      }
-
-      //If we have a typeToIgnore, try getting a valid range for it
-      if (typeToIgnore) {
-        if (serviceName == 'workbench') {
-          for (const sn in schemas)
-            if (schemas[sn].sdl.includes(typeToIgnore)) serviceName = sn;
+        for (const sn in schemas) {
+          const schema = schemas[sn].sdl;
+          if (
+            schema.includes(unknownType) &&
+            !schema.includes(`type ${unknownType}`)
+          ) {
+            serviceName = sn;
+          }
         }
 
-        // if (schemas[serviceName]) {
-        //     let typeRange = getRangeForFieldNamedType(typeToIgnore, schemas[serviceName].sdl);
-        //     range = new Range(typeRange.startLine, typeRange.startColumn, typeRange.endLine, typeRange.endColumn);
-        // }
+        const typeUsage = getTypeUsageRanges(
+          unknownType,
+          schemas[serviceName].sdl,
+        );
+        if (typeUsage.length > 0) {
+          diagnostic.relatedInformation = [];
+          const uri = WorkbenchUri.supergraph(
+            wbFilePath,
+            serviceName,
+            WorkbenchUriType.SCHEMAS,
+          );
+          typeUsage.forEach((range) => {
+            const location = {
+              range,
+              uri,
+            };
+            diagnostic.relatedInformation?.push(
+              new DiagnosticRelatedInformation(location, errorMessage),
+            );
+          });
+        }
       }
 
       //If we have multiple services, we'll need to create multiple diagnostics
@@ -343,7 +326,6 @@ export class WorkbenchDiagnostics {
         const services = serviceName.split('-:-');
         services.map((s) => {
           if (s) {
-            const schema = schemas[s].sdl;
             const diagnostic = new Diagnostic(
               range,
               errorMessage,
@@ -351,29 +333,13 @@ export class WorkbenchDiagnostics {
             );
             if (!diagnosticsGroups[s])
               diagnosticsGroups[s] = new Array<Diagnostic>();
-            // if (typeToIgnore && schema.includes(typeToIgnore)) {
-            //     let typeRange = getRangeForTypeDef(typeToIgnore, schema);
-            //     diagnostic = new Diagnostic(new Range(typeRange.startLine, typeRange.startColumn, typeRange.endLine, typeRange.endColumn), errorMessage, DiagnosticSeverity.Error);
-
-            //     if (diagnosticCode)
-            //         diagnostic.code = diagnosticCode;
-            // }
 
             diagnosticsGroups[s].push(diagnostic);
           }
         });
       } else {
-        const diagnostic = new Diagnostic(
-          range,
-          errorMessage,
-          DiagnosticSeverity.Error,
-        );
-        // if (typeToIgnore && schemas[serviceName] && schemas[serviceName].sdl.includes(typeToIgnore)) {
-        //     let typeRange = getRangeForTypeDef(typeToIgnore, schemas[serviceName].sdl);
-        //     diagnostic = new Diagnostic(new Range(typeRange.startLine, typeRange.startColumn, typeRange.endLine, typeRange.endColumn), errorMessage, DiagnosticSeverity.Error);
-        // }
-
         if (diagnosticCode) diagnostic.code = diagnosticCode;
+        diagnostic.range = range;
 
         if (!diagnosticsGroups[serviceName])
           diagnosticsGroups[serviceName] = new Array<Diagnostic>();

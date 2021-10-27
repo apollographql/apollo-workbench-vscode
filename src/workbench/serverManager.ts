@@ -1,28 +1,26 @@
-import {
-  ApolloServer,
-  gql
-} from 'apollo-server';
-import {
-  addMocksToSchema,
-  IMocks
-} from '@graphql-tools/mock';
-import { buildFederatedSchema } from '@apollo/federation';
-import {
-  OverrideApolloGateway,
-  GatewayForwardHeadersDataSource,
-} from '../graphql/graphRouter';
+import { ApolloServer, gql } from 'apollo-server';
+import { buildSubgraphSchema } from '@apollo/federation-1';
+import { ApolloGateway } from '@apollo/gateway-1';
+import { IMocks } from '@graphql-tools/mock';
+import { GatewayForwardHeadersDataSource } from '../graphql/graphRouter';
 
 import { Uri, window, Progress, commands } from 'vscode';
 import { Disposable } from 'vscode-languageclient';
 
 import { StateManager } from './stateManager';
 import { FileProvider } from './file-system/fileProvider';
-import { addFederationSpecAsNeeded, extractEntityNames } from '../graphql/parsers/schemaParser';
+// import {
+//   addFederationSpecAsNeeded,
+//   extractEntityNames,
+// } from '../graphql/parsers/schemaParser';
 import { log } from '../utils/logger';
 import { ApolloWorkbenchFile, WorkbenchSchema } from './file-system/fileTypes';
+import { WorkbenchFederationProvider } from './federationProvider';
 
-const sandboxUrl = (port?)=> `https://studio.apollographql.com/sandbox/explorer?endpoint=http%3A%2F%2Flocalhost%3A${port ?? StateManager.settings_gatewayServerPort}`;
-        
+const sandboxUrl = (port?) =>
+  `https://studio.apollographql.com/sandbox/explorer?endpoint=http%3A%2F%2Flocalhost%3A${
+    port ?? StateManager.settings_gatewayServerPort
+  }`;
 
 export class ServerManager {
   private static _instance: ServerManager;
@@ -36,38 +34,40 @@ export class ServerManager {
   //serverState will hold the ApolloServer/ApolloGateway instances based on the ports they are running on
   private serversState: { [port: string]: any } = {};
   mocksWorkbenchFile?: ApolloWorkbenchFile;
-  mocksWorkbenchFilePath: string = "";
+  mocksWorkbenchFilePath: string = '';
 
   private corsConfiguration = {
     origin: '*',
     credentials: true,
   };
 
-  async startSupergraphMocks(wbFilePath: string, progress?: Progress<{
-    message?: string | undefined;
-    increment?: number | undefined;
-  }>) {
+  async startSupergraphMocks(
+    wbFilePath: string,
+    progress?: Progress<{
+      message?: string | undefined;
+      increment?: number | undefined;
+    }>,
+  ) {
     if (StateManager.settings_tlsRejectUnauthorized)
       process.env.NODE_TLS_REJECT_UNAUTHORIZED = '';
     else process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
     log(`Setting up mocks`);
-    this.mocksWorkbenchFile = FileProvider.instance.workbenchFileFromPath(
-      wbFilePath,
-    ) ?? undefined;
+    this.mocksWorkbenchFile =
+      FileProvider.instance.workbenchFileFromPath(wbFilePath) ?? undefined;
     if (this.mocksWorkbenchFile) {
       log(`Mocking workbench file: ${this.mocksWorkbenchFile.graphName}`);
       this.mocksWorkbenchFilePath = wbFilePath;
-      const increment = 80 / Object.keys(this.mocksWorkbenchFile.schemas).length;
+      const increment =
+        80 / Object.keys(this.mocksWorkbenchFile.schemas).length;
       for (const serviceName in this.mocksWorkbenchFile.schemas) {
-        progress?.report({ message: `Mocking subgraph ${serviceName}`, increment });
+        progress?.report({
+          message: `Mocking subgraph ${serviceName}`,
+          increment,
+        });
         const subgraph = this.mocksWorkbenchFile.schemas[serviceName];
         const mocks = this.getMocks(subgraph);
-        await this.startServer(
-          serviceName,
-          subgraph.sdl,
-          mocks
-        );
+        await this.startServer(serviceName, subgraph.sdl, mocks);
       }
 
       await this.startGateway(progress);
@@ -88,20 +88,24 @@ export class ServerManager {
     this.portMapping = {};
   }
 
-  async restartSubgraph(wbFilePath: string, name: string, schema?: string){
+  async restartSubgraph(wbFilePath: string, name: string, schema?: string) {
     const serverPort = this.portMapping[name];
-    if(this.mocksWorkbenchFile && wbFilePath == this.mocksWorkbenchFilePath && serverPort){
+    if (
+      this.mocksWorkbenchFile &&
+      wbFilePath == this.mocksWorkbenchFilePath &&
+      serverPort
+    ) {
       //We have to restart a subgraph in currently running workbench file
-      log(`Restarting Subgraph: ${name}`)
+      log(`Restarting Subgraph: ${name}`);
       this.stopSubgraphOnPort(serverPort);
       this.stopGateway();
 
       const subgraph = this.mocksWorkbenchFile?.schemas[name];
       const mocks = this.getMocks(subgraph);
-      if(!schema) schema = subgraph.sdl;
+      if (!schema) schema = subgraph.sdl;
 
       log(`\tStarting subgraph`);
-      await this.startServer(name,schema,mocks);
+      await this.startServer(name, schema, mocks);
       log(`\tStarting router`);
       await this.startGateway();
     }
@@ -129,7 +133,7 @@ export class ServerManager {
 
     //Schema needs to be checked if Federation spec was added in an unexpected way
     //This will probably need to grow to cover all use cases from other libraries
-    schemaString = addFederationSpecAsNeeded(schemaString);
+    // schemaString = addFederationSpecAsNeeded(schemaString);
 
     //Surround server startup in try/catch to prevent UI errors from schema errors - most likey a blank schema file
     try {
@@ -150,36 +154,33 @@ export class ServerManager {
 
       //Dynamically create __resolveReference resolvers based on defined entites in Graph
       const resolvers = {};
-      const entities = extractEntityNames(schemaString);
-      entities.forEach(
-        (entity) => resolvers[entity] = {
-          __resolveReference(parent, args) {
-            return { ...parent };
-          },
-        }
+      const entities =
+        WorkbenchFederationProvider.extractDefinedEntities(schemaString);
+
+      Object.keys(entities).forEach(
+        (entity) =>
+          (resolvers[entity] = {
+            __resolveReference(parent, args) {
+              return { ...parent };
+            },
+          }),
       );
 
-      const federatedSchema = buildFederatedSchema([{ typeDefs, resolvers }]);
-      const mockedSchema = addMocksToSchema({ schema: federatedSchema, mocks, preserveResolvers: true });
-
+      const federatedSchema = buildSubgraphSchema([{ typeDefs, resolvers }]);
       //Create and start up server locally
-      const server = new ApolloServer({ schema: mockedSchema });
+      const server = new ApolloServer({ schema: federatedSchema, mocks });
 
       //Set the port and server to local state
       this.serversState[port] = server;
       this.portMapping[serviceName] = port;
 
       server.listen({ port });
-      await new Promise(resolve => setTimeout(resolve, 25));
+      await new Promise((resolve) => setTimeout(resolve, 25));
     } catch (err: any) {
       if (err.message.includes('EOF')) {
-        log(
-          `${serviceName} has no contents, try defining a schema`,
-        );
+        log(`${serviceName} has no contents, try defining a schema`);
       } else {
-        log(
-          `${serviceName} had errors starting up mocked server: ${err}`,
-        );
+        log(`${serviceName} had errors starting up mocked server: ${err}`);
       }
     }
   }
@@ -203,10 +204,12 @@ export class ServerManager {
     }
     if (this.statusBarMessage) this.statusBarMessage.dispose();
   }
-  private async startGateway(progress?: Progress<{
-    message?: string | undefined;
-    increment?: number | undefined;
-  }>) {
+  private async startGateway(
+    progress?: Progress<{
+      message?: string | undefined;
+      increment?: number | undefined;
+    }>,
+  ) {
     const gatewayPort = StateManager.settings_gatewayServerPort;
     if (this.serversState[gatewayPort]) {
       log(`Stopping previous running gateway`);
@@ -218,7 +221,8 @@ export class ServerManager {
 
     const server = new ApolloServer({
       cors: this.corsConfiguration,
-      gateway: new OverrideApolloGateway({
+      gateway: new ApolloGateway({
+        supergraphSdl: this.mocksWorkbenchFile?.supergraphSdl,
         debug: true,
         buildService({ url, name }) {
           const source = new GatewayForwardHeadersDataSource({ url });
@@ -234,7 +238,11 @@ export class ServerManager {
     await server
       .listen({ port: gatewayPort })
       .then(async () => {
-        log(`🚀 Interact with your gateway through Sandbox\n\t${sandboxUrl(gatewayPort)}`);
+        log(
+          `🚀 Interact with your gateway through Sandbox\n\t${sandboxUrl(
+            gatewayPort,
+          )}`,
+        );
         ServerManager.instance.statusBarMessage = window.setStatusBarMessage(
           'Apollo Workbench Mocks Running',
         );
@@ -245,11 +253,14 @@ export class ServerManager {
 
     this.serversState[gatewayPort] = server;
 
-    progress?.report({ message: `Workbench Design Mocked Successfully`, increment: 10 });
+    progress?.report({
+      message: `Workbench Design Mocked Successfully`,
+      increment: 10,
+    });
   }
-  private async openSandbox(sandboxUrl: string){
+  private async openSandbox(sandboxUrl: string) {
     if (StateManager.settings_openSandbox)
-    await commands.executeCommand('vscode.open', Uri.parse(sandboxUrl));
+      await commands.executeCommand('vscode.open', Uri.parse(sandboxUrl));
   }
   private stopServer(port: string) {
     this.serversState[port].stop();
@@ -263,7 +274,7 @@ export class ServerManager {
   }
   private getMocks(subgraph: WorkbenchSchema) {
     let customMocks = subgraph.customMocks;
-    if(subgraph.shouldMock && customMocks){
+    if (subgraph.shouldMock && customMocks) {
       //By default we add the export shown to the user, but they may delete it
       if (!customMocks.includes('module.exports'))
         customMocks = customMocks.concat('\nmodule.exports = mocks');
@@ -274,7 +285,7 @@ export class ServerManager {
         //Most likely  wasn't valid javascript
         log(err);
       }
-    } 
+    }
     return {};
   }
 }

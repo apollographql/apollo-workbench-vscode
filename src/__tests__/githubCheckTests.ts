@@ -33,7 +33,7 @@ async function githubActionTests() {
 
     await setStatus('success', 'Tests for workbench folder open passed');
     process.exit(result);
-  } catch (err) {
+  } catch (err: any) {
     console.log(
       err?.message
         ? `Failed to run tests: ${err.message}`

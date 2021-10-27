@@ -4,7 +4,7 @@ import {
   CharacterStream,
   onlineParser,
   State,
-} from 'graphql-language-service-parser';
+} from '../graphql-language-service-parser';
 
 export function runOnlineParser(
   documentText: string,

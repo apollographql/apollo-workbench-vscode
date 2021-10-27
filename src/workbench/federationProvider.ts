@@ -30,11 +30,12 @@ import {
   WorkbenchOperation,
 } from './file-system/fileTypes';
 import { FieldWithType } from './federationCompletionProvider';
-import { RemoteGraphQLDataSource } from '@apollo/gateway';
+import { RemoteGraphQLDataSource } from '@apollo/gateway-1';
 import { FileProvider } from './file-system/fileProvider';
 import { log } from '../utils/logger';
 import { Headers } from 'node-fetch';
 import { defaultRootOperationTypes } from '@apollo/federation/dist/composition/normalize';
+import { GraphQLDataSourceRequestKind } from '@apollo/gateway-1/dist/datasources/types';
 
 export class WorkbenchFederationProvider {
   static compose(workbenchFile: ApolloWorkbenchFile) {
@@ -239,7 +240,11 @@ export class WorkbenchFederationProvider {
     } as any;
 
     try {
-      const { data, errors } = await source.process({ request, context: {} });
+      const { data, errors } = await source.process({
+        request,
+        context: {},
+        kind: GraphQLDataSourceRequestKind.HEALTH_CHECK,
+      });
 
       if (data && !errors) {
         return data._service.sdl as string;
@@ -285,7 +290,11 @@ export class WorkbenchFederationProvider {
       },
     } as any;
 
-    const { data, errors } = await source.process({ request, context: {} });
+    const { data, errors } = await source.process({
+      request,
+      context: {},
+      kind: GraphQLDataSourceRequestKind.HEALTH_CHECK,
+    });
     if (data && !errors) {
       const schema = buildClientSchema(data as any);
 
@@ -319,7 +328,79 @@ export class WorkbenchFederationProvider {
       return err?.message ?? '';
     }
   }
-  static extractDefinedEntitiesByService(workbenchFile: ApolloWorkbenchFile) {
+  static extractDefinedEntities(schema: string) {
+    const entities: {
+      [entity: string]: FieldWithType[];
+    } = {};
+
+    try {
+      visit(parse(schema), {
+        ObjectTypeDefinition(node) {
+          const keyDirective = node.directives?.find(
+            (d) => d.name.value == 'key',
+          );
+          if (keyDirective) {
+            const keyBlock = (
+              keyDirective.arguments?.find((a) => a.name.value == 'fields')
+                ?.value as StringValueNode
+            )?.value;
+            const parsedFields: string[] = [];
+            let startIndex = -1;
+            let notComposite = true;
+            for (let i = 0; i < keyBlock.length; i++) {
+              let lastParsedField = '';
+              const char = keyBlock[i];
+              switch (char) {
+                case ' ':
+                  if (startIndex != -1 && notComposite) {
+                    lastParsedField = keyBlock.substring(startIndex, i);
+                    parsedFields.push(lastParsedField);
+                  }
+
+                  startIndex = -1;
+                  break;
+                case '{':
+                  notComposite = false;
+                  break;
+                case '}':
+                  notComposite = true;
+                  break;
+                default:
+                  if (startIndex == 0 && i == keyBlock.length - 1)
+                    parsedFields.push(keyBlock);
+                  else if (i == keyBlock.length - 1)
+                    parsedFields.push(keyBlock.substring(startIndex));
+                  else if (startIndex == -1) startIndex = i;
+                  break;
+              }
+            }
+            entities[node.name.value] = [];
+
+            parsedFields.forEach((parsedField) => {
+              const finalKey = keyBlock.trim();
+              const field = node.fields?.find(
+                (f) => f.name.value == parsedField,
+              );
+              let fieldType = '';
+              if (field)
+                fieldType =
+                  WorkbenchFederationProvider.getFieldTypeString(field);
+
+              entities[node.name.value].push({
+                field: parsedField,
+                type: fieldType,
+              });
+            });
+          }
+        },
+      });
+    } catch (err: any) {
+      log(err.message);
+    }
+
+    return entities;
+  }
+  static extractDefinedEntitiesByService(supergraphSdl: string) {
     const extendables: {
       [serviceName: string]: {
         type: string;
@@ -329,119 +410,116 @@ export class WorkbenchFederationProvider {
     const joinGraphEnumValues: { [joinGraphEnum: string]: string } = {};
 
     try {
-      if (workbenchFile) {
-        visit(parse(workbenchFile.supergraphSdl), {
-          ObjectTypeDefinition(node) {
-            const joinOwnerDirective = node.directives?.find(
-              (d) => d.name.value == 'join__owner',
+      visit(parse(supergraphSdl), {
+        ObjectTypeDefinition(node) {
+          const joinOwnerDirective = node.directives?.find(
+            (d) => d.name.value == 'join__owner',
+          );
+          if (joinOwnerDirective && joinOwnerDirective.arguments) {
+            const joinGraphEnumValue = (
+              (joinOwnerDirective.arguments[0] as ArgumentNode)
+                .value as EnumValueNode
+            ).value;
+            const entity: {
+              type: string;
+              keys: { [key: string]: FieldWithType[] };
+            } = { type: node.name.value, keys: {} };
+
+            const joinKeyDirectives = node.directives?.filter(
+              (d) =>
+                d.name.value == 'join__type' &&
+                (
+                  d.arguments?.find(
+                    (a) =>
+                      a.name.value == 'graph' &&
+                      (a.value as StringValueNode)?.value == joinGraphEnumValue,
+                  )?.value as EnumValueNode
+                )?.value,
             );
-            if (joinOwnerDirective && joinOwnerDirective.arguments) {
-              const joinGraphEnumValue = (
-                (joinOwnerDirective.arguments[0] as ArgumentNode)
-                  .value as EnumValueNode
-              ).value;
-              const entity: {
-                type: string;
-                keys: { [key: string]: FieldWithType[] };
-              } = { type: node.name.value, keys: {} };
-
-              const joinKeyDirectives = node.directives?.filter(
-                (d) =>
-                  d.name.value == 'join__type' &&
-                  (
-                    d.arguments?.find(
-                      (a) =>
-                        a.name.value == 'graph' &&
-                        (a.value as StringValueNode)?.value ==
-                          joinGraphEnumValue,
-                    )?.value as EnumValueNode
-                  )?.value,
-              );
-              if (joinKeyDirectives) {
-                joinKeyDirectives?.forEach((jkd) => {
-                  const keyBlock = (
-                    jkd.arguments?.find((a) => a.name.value == 'key')
-                      ?.value as StringValueNode
-                  ).value;
-                  const parsedFields: string[] = [];
-                  let startIndex = -1;
-                  let notComposite = true;
-                  for (let i = 0; i < keyBlock.length; i++) {
-                    let lastParsedField = '';
-                    const char = keyBlock[i];
-                    switch (char) {
-                      case ' ':
-                        if (startIndex != -1 && notComposite) {
-                          lastParsedField = keyBlock.substring(startIndex, i);
-                          parsedFields.push(lastParsedField);
-                        }
-
-                        startIndex = -1;
-                        break;
-                      case '{':
-                        notComposite = false;
-                        break;
-                      case '}':
-                        notComposite = true;
-                        break;
-                      default:
-                        if (startIndex == 0 && i == keyBlock.length - 1)
-                          parsedFields.push(keyBlock);
-                        else if (i == keyBlock.length - 1)
-                          parsedFields.push(keyBlock.substring(startIndex));
-                        else if (startIndex == -1) startIndex = i;
-                        break;
-                    }
-                  }
-
-                  parsedFields.forEach((parsedField) => {
-                    const finalKey = keyBlock.trim();
-                    const field = node.fields?.find(
-                      (f) => f.name.value == parsedField,
-                    );
-                    let fieldType = '';
-                    if (field)
-                      fieldType =
-                        WorkbenchFederationProvider.getFieldTypeString(field);
-
-                    if (entity.keys[finalKey])
-                      entity.keys[finalKey].push({
-                        field: parsedField,
-                        type: fieldType,
-                      });
-                    else
-                      entity.keys[finalKey] = [
-                        { field: parsedField, type: fieldType },
-                      ];
-                  });
-                });
-              }
-
-              if (!extendables[joinGraphEnumValue]) {
-                extendables[joinGraphEnumValue] = [entity];
-              } else {
-                extendables[joinGraphEnumValue].push(entity);
-              }
-            }
-          },
-          EnumTypeDefinition(node) {
-            if (node.name.value == 'join__Graph') {
-              node.values?.forEach((enumValueDefinition) => {
-                joinGraphEnumValues[enumValueDefinition.name.value] = (
-                  enumValueDefinition.directives
-                    ?.find((d) => d.name.value == 'join__graph')
-                    ?.arguments?.find((a) => a.name.value == 'name')
+            if (joinKeyDirectives) {
+              joinKeyDirectives?.forEach((jkd) => {
+                const keyBlock = (
+                  jkd.arguments?.find((a) => a.name.value == 'key')
                     ?.value as StringValueNode
-                )?.value;
+                ).value;
+                const parsedFields: string[] = [];
+                let startIndex = -1;
+                let notComposite = true;
+                for (let i = 0; i < keyBlock.length; i++) {
+                  let lastParsedField = '';
+                  const char = keyBlock[i];
+                  switch (char) {
+                    case ' ':
+                      if (startIndex != -1 && notComposite) {
+                        lastParsedField = keyBlock.substring(startIndex, i);
+                        parsedFields.push(lastParsedField);
+                      }
+
+                      startIndex = -1;
+                      break;
+                    case '{':
+                      notComposite = false;
+                      break;
+                    case '}':
+                      notComposite = true;
+                      break;
+                    default:
+                      if (startIndex == 0 && i == keyBlock.length - 1)
+                        parsedFields.push(keyBlock);
+                      else if (i == keyBlock.length - 1)
+                        parsedFields.push(keyBlock.substring(startIndex));
+                      else if (startIndex == -1) startIndex = i;
+                      break;
+                  }
+                }
+
+                parsedFields.forEach((parsedField) => {
+                  const finalKey = keyBlock.trim();
+                  const field = node.fields?.find(
+                    (f) => f.name.value == parsedField,
+                  );
+                  let fieldType = '';
+                  if (field)
+                    fieldType =
+                      WorkbenchFederationProvider.getFieldTypeString(field);
+
+                  if (entity.keys[finalKey])
+                    entity.keys[finalKey].push({
+                      field: parsedField,
+                      type: fieldType,
+                    });
+                  else
+                    entity.keys[finalKey] = [
+                      { field: parsedField, type: fieldType },
+                    ];
+                });
               });
             }
-          },
-        });
-        Object.keys(extendables).forEach((k) => {
-          extendables[joinGraphEnumValues[k]] = extendables[k];
-          delete extendables[k];
-        });
-      }
+
+            if (!extendables[joinGraphEnumValue]) {
+              extendables[joinGraphEnumValue] = [entity];
+            } else {
+              extendables[joinGraphEnumValue].push(entity);
+            }
+          }
+        },
+        EnumTypeDefinition(node) {
+          if (node.name.value == 'join__Graph') {
+            node.values?.forEach((enumValueDefinition) => {
+              joinGraphEnumValues[enumValueDefinition.name.value] = (
+                enumValueDefinition.directives
+                  ?.find((d) => d.name.value == 'join__graph')
+                  ?.arguments?.find((a) => a.name.value == 'name')
+                  ?.value as StringValueNode
+              )?.value;
+            });
+          }
+        },
+      });
+      Object.keys(extendables).forEach((k) => {
+        extendables[joinGraphEnumValues[k]] = extendables[k];
+        delete extendables[k];
+      });
     } catch (err: any) {
       log(err);
     }
