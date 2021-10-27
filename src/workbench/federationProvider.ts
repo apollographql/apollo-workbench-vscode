@@ -30,12 +30,12 @@ import {
   WorkbenchOperation,
 } from './file-system/fileTypes';
 import { FieldWithType } from './federationCompletionProvider';
-import { RemoteGraphQLDataSource } from '@apollo/gateway';
+import { RemoteGraphQLDataSource } from '@apollo/gateway-1';
 import { FileProvider } from './file-system/fileProvider';
 import { log } from '../utils/logger';
 import { Headers } from 'node-fetch';
 import { defaultRootOperationTypes } from '@apollo/federation/dist/composition/normalize';
-// import { GraphQLDataSourceRequestKind } from '@apollo/gateway/dist/datasources/types';
+import { GraphQLDataSourceRequestKind } from '@apollo/gateway-1/dist/datasources/types';
 
 export class WorkbenchFederationProvider {
   static compose(workbenchFile: ApolloWorkbenchFile) {
@@ -243,7 +243,7 @@ export class WorkbenchFederationProvider {
       const { data, errors } = await source.process({
         request,
         context: {},
-        // kind: GraphQLDataSourceRequestKind.HEALTH_CHECK,
+        kind: GraphQLDataSourceRequestKind.HEALTH_CHECK,
       });
 
       if (data && !errors) {
@@ -293,7 +293,7 @@ export class WorkbenchFederationProvider {
     const { data, errors } = await source.process({
       request,
       context: {},
-      // kind: GraphQLDataSourceRequestKind.HEALTH_CHECK,
+      kind: GraphQLDataSourceRequestKind.HEALTH_CHECK,
     });
     if (data && !errors) {
       const schema = buildClientSchema(data as any);

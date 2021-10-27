@@ -1,10 +1,8 @@
 import { ApolloServer, gql } from 'apollo-server';
-import { buildSubgraphSchema } from '@apollo/federation';
+import { buildSubgraphSchema } from '@apollo/federation-1';
+import { ApolloGateway } from '@apollo/gateway-1';
 import { IMocks } from '@graphql-tools/mock';
-import {
-  OverrideApolloGateway,
-  GatewayForwardHeadersDataSource,
-} from '../graphql/graphRouter';
+import { GatewayForwardHeadersDataSource } from '../graphql/graphRouter';
 
 import { Uri, window, Progress, commands } from 'vscode';
 import { Disposable } from 'vscode-languageclient';
@@ -223,7 +221,8 @@ export class ServerManager {
 
     const server = new ApolloServer({
       cors: this.corsConfiguration,
-      gateway: new OverrideApolloGateway({
+      gateway: new ApolloGateway({
+        supergraphSdl: this.mocksWorkbenchFile?.supergraphSdl,
         debug: true,
         buildService({ url, name }) {
           const source = new GatewayForwardHeadersDataSource({ url });

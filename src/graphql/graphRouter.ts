@@ -3,7 +3,7 @@ import {
   RemoteGraphQLDataSource,
   GatewayConfig,
   Experimental_UpdateComposition,
-} from '@apollo/gateway';
+} from '@apollo/gateway-1';
 import {
   buildClientSchema,
   getIntrospectionQuery,
@@ -56,65 +56,5 @@ export class GatewayForwardHeadersDataSource extends RemoteGraphQLDataSource {
   }
   didReceiveResponse({ response, context }) {
     return response;
-  }
-}
-
-export class OverrideApolloGateway extends ApolloGateway {
-  protected async loadServiceDefinitions(
-    config: GatewayConfig,
-  ): ReturnType<Experimental_UpdateComposition> {
-    if (StateManager.settings_tlsRejectUnauthorized)
-      process.env.NODE_TLS_REJECT_UNAUTHORIZED = '';
-    else process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
-
-    const newDefinitions: Array<ServiceDefinition> = [];
-
-    const wb = ServerManager.instance.mocksWorkbenchFile;
-    if (wb) {
-      for (const serviceName in wb.schemas) {
-        const service = wb.schemas[serviceName];
-
-        if (service.shouldMock) {
-          const typeDefs = parse(service.sdl);
-          const url = `http://localhost:${ServerManager.instance.portMapping[serviceName]}`;
-          newDefinitions.push({ name: serviceName, url, typeDefs });
-        } else {
-          const typeDefs = await WorkbenchFederationProvider.getRemoteTypeDefs(
-            serviceName,
-            wb,
-          );
-          if (typeDefs) {
-            newDefinitions.push({
-              name: serviceName,
-              url: service.url,
-              typeDefs: parse(typeDefs),
-            });
-
-            if (service.autoUpdateSchemaFromUrl)
-              FileProvider.instance.writeFile(
-                WorkbenchUri.supergraph(
-                  ServerManager.instance.mocksWorkbenchFilePath,
-                  serviceName,
-                  WorkbenchUriType.SCHEMAS,
-                ),
-                Buffer.from(typeDefs),
-                { create: true, overwrite: true },
-              );
-          } else {
-            gatewayLog('Falling back to schema defined in workbench');
-            newDefinitions.push({
-              name: serviceName,
-              url: service.url,
-              typeDefs: parse(service.sdl),
-            });
-          }
-        }
-      }
-    }
-
-    return {
-      isNewSchema: true,
-      serviceDefinitions: newDefinitions,
-    };
   }
 }

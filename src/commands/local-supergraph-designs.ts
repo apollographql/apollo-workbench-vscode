@@ -27,7 +27,6 @@ import {
 import { join, resolve } from 'path';
 import { writeFileSync, existsSync, readFileSync } from 'fs';
 import { GraphQLSchema, parse, extendSchema, printSchema } from 'graphql';
-import { OverrideApolloGateway } from '../graphql/graphRouter';
 import { generateJsFederatedResolvers } from '../utils/exportFiles';
 import { outputChannel } from '../extension';
 import { log } from '../utils/logger';
