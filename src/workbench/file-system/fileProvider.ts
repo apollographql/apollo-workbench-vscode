@@ -10,6 +10,7 @@ import {
   FileType,
   Uri,
   window,
+  workspace,
 } from 'vscode';
 import { StateManager } from '../stateManager';
 import { ApolloWorkbenchFile, WorkbenchSettings } from './fileTypes';
@@ -45,7 +46,7 @@ export class FileProvider implements FileSystemProvider {
 
         window.setStatusBarMessage(
           'Composition Running',
-          new Promise(() => this.loadCurrent()),
+          new Promise<void>((resolve) => resolve(this.loadCurrent())),
         );
 
         return true;
