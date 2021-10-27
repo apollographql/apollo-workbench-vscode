@@ -14,8 +14,8 @@ export interface WorkbenchSchema {
 }
 
 export class WorkbenchOperation {
-  operation: string = "";
-  remoteVisualDesignURL?: string
+  operation: string = '';
+  remoteVisualDesignURL?: string;
 }
 
 export class ApolloWorkbenchFile {
@@ -23,8 +23,9 @@ export class ApolloWorkbenchFile {
   queryPlans: { [opName: string]: string } = {};
   schemas: { [serviceName: string]: WorkbenchSchema } = {};
   supergraphSdl = '';
+  federation: string = '1';
 
-  constructor(public graphName: string) { }
+  constructor(public graphName: string) {}
 }
 
 ///This is the user facing settings displayed

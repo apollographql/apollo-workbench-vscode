@@ -7,6 +7,7 @@ import {
   SubgraphSummaryTreeItem,
   SupergraphSchemaTreeItem,
   SupergraphApiSchemaTreeItem,
+  SupergraphTreeItem,
 } from '../workbench/tree-data-providers/superGraphTreeDataProvider';
 import {
   WorkbenchUri,
@@ -19,7 +20,12 @@ import {
   PreloadedWorkbenchFile,
 } from '../workbench/tree-data-providers/apolloStudioGraphsTreeDataProvider';
 import { ApolloWorkbenchFile } from '../workbench/file-system/fileTypes';
-import { getGraphSchemasByVariant } from '../graphql/graphClient';
+import {
+  createGraph,
+  getGraphSchemasByVariant,
+  getUserMemberships,
+  publishSubgraph,
+} from '../graphql/graphClient';
 import {
   GetGraphSchemas_service_implementingServices_NonFederatedImplementingService,
   GetGraphSchemas_service_implementingServices_FederatedImplementingServices,
@@ -31,6 +37,10 @@ import { generateJsFederatedResolvers } from '../utils/exportFiles';
 import { outputChannel } from '../extension';
 import { log } from '../utils/logger';
 import { WorkbenchFederationProvider } from '../workbench/federationProvider';
+import { enterStudioApiKey } from './extension';
+import { UserMemberships_me_User } from '../graphql/types/UserMemberships';
+import { createJavascriptTemplate } from '../utils/createJavascriptTemplate';
+import { execSync } from 'child_process';
 
 let startingMocks = false;
 
@@ -566,4 +576,182 @@ export async function promptOpenFolder() {
   );
   if (response == openFolder)
     await commands.executeCommand('extension.openFolder');
+}
+
+export async function createDesignInStudio(item: SupergraphTreeItem) {
+  await window.withProgress({ location: 15 }, async (progress) => {
+    const wbFile = item.wbFile;
+    outputChannel.show();
+    if (!StateManager.instance.globalState_userApiKey) {
+      log('No user api key found, prompting user to enter API key');
+      await enterStudioApiKey();
+    }
+
+    const userApiKey = StateManager.instance.globalState_userApiKey;
+
+    if (!userApiKey) {
+      const noApiKeyMessage = 'No API key entered to create graph';
+      log(noApiKeyMessage);
+      window.showErrorMessage(noApiKeyMessage);
+    } else {
+      let graphName: string | undefined = wbFile.graphName;
+      log(`Prompting user for graph name\n\tdefault: ${graphName}`);
+
+      graphName = await window.showInputBox({
+        value: graphName,
+        placeHolder: 'Graph Name for Apollo Studio',
+        ignoreFocusOut: true,
+      });
+      if (graphName) {
+        const graphNamePublishMessage = `Publishing ${graphName}`;
+        log(graphNamePublishMessage);
+        progress.report({ message: graphNamePublishMessage, increment: 10 });
+
+        const graphResponse = await getUserMemberships(userApiKey);
+        const memberships =
+          (graphResponse.me as UserMemberships_me_User)?.memberships ?? [];
+        let accountToCreateIn: string | undefined;
+        if (memberships.length == 0) {
+          accountToCreateIn = undefined;
+        } else if (memberships.length == 1) {
+          accountToCreateIn = memberships[0].account.id;
+        } else {
+          log(
+            `${memberships.length} membershipps found for user, prompting which to use for graph creation`,
+          );
+          const accountNames = memberships.map(
+            (membership) => membership.account.id,
+          );
+          accountToCreateIn = await window.showQuickPick(accountNames, {
+            canPickMany: false,
+            ignoreFocusOut: true,
+            title: 'Which account would you like to create the graph in?',
+          });
+        }
+
+        if (accountToCreateIn) {
+          const graphCreationResults = await createGraph(
+            userApiKey,
+            accountToCreateIn,
+            graphName,
+          );
+          if (graphCreationResults == true) {
+            log(`Graph Created Successfully!`);
+            progress.report({
+              message: `Graph Created Successfully!`,
+              increment: 25,
+            });
+            let counter = 0;
+            const increment = 75 / Object.keys(wbFile.schemas).length;
+
+            for (var subgraphName in wbFile.schemas) {
+              log(`Publishing ${subgraphName} to ${accountToCreateIn}...`);
+              const subgraph = wbFile.schemas[subgraphName];
+              const schema = subgraph.sdl;
+
+              const publishResponse = await publishSubgraph(
+                userApiKey,
+                graphName,
+                subgraphName,
+                subgraph.url ??
+                  `http://localhost:${
+                    StateManager.settings_startingServerPort + counter
+                  }`,
+                schema,
+              );
+
+              if (publishResponse !== true) {
+                log(`There was a problem publishing subgraph ${subgraphName}`);
+                publishResponse.map((e) => log(`\t${e.message}`));
+
+                progress.report({
+                  message: `Error publishing shcema for subgraph ${subgraphName}, see VS Code Output window with Apollo Workbench selected for more details.`,
+                  increment,
+                });
+              } else {
+                const successMessage = `Subgraph ${subgraphName} schema published successfully!`;
+                log(successMessage);
+                progress.report({
+                  message: successMessage,
+                  increment,
+                });
+              }
+
+              counter++;
+            }
+
+            await exportDesign(graphName, wbFile);
+
+            const studioUrl = `https://studio.apollographql.com/graph/${graphName}?variant=workbench`;
+            log(`View your newly created graph at ${studioUrl}`);
+            env.openExternal(Uri.parse(studioUrl));
+          } else {
+            const errorMessage = graphCreationResults[0].message;
+            if (errorMessage.toLowerCase().includes('already exists')) {
+              const existsMessage = `A graph with that name already exists.`;
+              log(existsMessage);
+              window.showErrorMessage(existsMessage);
+            } else {
+              const errorMessage = `Unable to create graph: ${graphName}`;
+              log(errorMessage);
+              window.showErrorMessage(errorMessage);
+            }
+          }
+        } else {
+          `You must select an account for the graph to be created in Apollo Studio`;
+        }
+      } else {
+        const noGraphNameErrorMessage = `You must provide a name for the graph you are creating in Apollo Studio`;
+        log(noGraphNameErrorMessage);
+        window.showErrorMessage(noGraphNameErrorMessage);
+      }
+    }
+  });
+}
+
+export async function exportDesignToProject(item: SupergraphTreeItem) {
+  await exportDesign(item.wbFile.graphName, item.wbFile);
+}
+
+async function exportDesign(graphName: string, wbFile: ApolloWorkbenchFile) {
+  const buildLocalProject = await window.showQuickPick(
+    ['JavaScript', 'Typescript', 'None'],
+    {
+      ignoreFocusOut: true,
+      title:
+        'Would you like to create a getting started project locally that is configured for the newly created graph in Apollo Studio?',
+    },
+  );
+
+  let assetPath: string | undefined = undefined;
+  let shouldPromptToOpen = true;
+  switch (buildLocalProject) {
+    case 'None':
+      shouldPromptToOpen = false;
+      break;
+    case 'JavaScript':
+      assetPath = createJavascriptTemplate(wbFile, graphName);
+
+      break;
+    case 'Typescript':
+      shouldPromptToOpen = false;
+
+      // createTypescriptTemplate(wbFile);
+      // assetPath = resolve(
+      //   StateManager.workspaceRoot ?? __dirname,
+      //   `${graphName}`,
+      // );
+      break;
+  }
+
+  if (shouldPromptToOpen) {
+    const shouldOpenProject = await window.showQuickPick(['Yes', 'No'], {
+      ignoreFocusOut: true,
+      title:
+        'Would you like to have the project setup and opened in another VS Code window?',
+    });
+    if (shouldOpenProject == 'Yes') {
+      execSync(`code ${assetPath}`);
+    }
+  }
 }

@@ -55,6 +55,8 @@ import {
   exportSubgraphSchema,
   exportSubgraphResolvers,
   createWorkbenchFromSupergraphVariant,
+  createDesignInStudio,
+  exportDesignToProject,
 } from './commands/local-supergraph-designs';
 import { resolve } from 'path';
 import { mkdirSync, writeFileSync } from 'fs';
@@ -62,7 +64,10 @@ import { execSync } from 'child_process';
 import { log } from './utils/logger';
 import { WorkbenchDiagnostics } from './workbench/diagnosticsManager';
 import { WorkbenchFederationProvider } from './workbench/federationProvider';
-import { WorkbenchUri, WorkbenchUriType } from './workbench/file-system/WorkbenchUri';
+import {
+  WorkbenchUri,
+  WorkbenchUriType,
+} from './workbench/file-system/WorkbenchUri';
 
 export const outputChannel = window.createOutputChannel('Apollo Workbench');
 
@@ -208,6 +213,14 @@ export async function activate(context: ExtensionContext) {
     'local-supergraph-designs.viewQueryPlan',
     viewQueryPlan,
   );
+  commands.registerCommand(
+    'local-supergraph-designs.createInStudio',
+    createDesignInStudio,
+  );
+  commands.registerCommand(
+    'local-supergraph-designs.exportDesignToProject',
+    exportDesignToProject,
+  );
   //TODO: Need to implemnt loading image in a custom view, will come in following release
   // commands.registerCommand(
   //   'local-supergraph-designs.setOperationDesignMock',
@@ -313,10 +326,13 @@ export async function activate(context: ExtensionContext) {
         if (
           FileProvider.instance.loadedWorkbenchFile &&
           FileProvider.instance.loadedWorkbenchFile.schemas[subgraphName] &&
-          FileProvider.instance.loadedWorkbenchFile.schemas[subgraphName].sdl != documentText
+          FileProvider.instance.loadedWorkbenchFile.schemas[subgraphName].sdl !=
+            documentText
         ) {
           //TODO: Need to handle temp file changes
-          const editedWorkbenchFile = { ...FileProvider.instance.loadedWorkbenchFile };
+          const editedWorkbenchFile = {
+            ...FileProvider.instance.loadedWorkbenchFile,
+          };
           editedWorkbenchFile.schemas[subgraphName].sdl = documentText;
           const tryNewComposition =
             WorkbenchFederationProvider.compose(editedWorkbenchFile);
@@ -345,14 +361,14 @@ export async function activate(context: ExtensionContext) {
       const serviceName = querySplit[1];
       const newMocksText = document.getText();
       if (newMocksText != wbFile.schemas[serviceName].customMocks) {
-        const mocksUri =Uri.parse(`workbench:${path}/mocks?${serviceName}`);
+        const mocksUri = Uri.parse(`workbench:${path}/mocks?${serviceName}`);
         FileProvider.instance.writeFile(
           mocksUri,
           Buffer.from(newMocksText, 'utf8'),
           { create: true, overwrite: true },
         );
-        log(`Detected changes to subgraph ${serviceName} mocks.`)
-        await ServerManager.instance.restartSubgraph(path,serviceName);
+        log(`Detected changes to subgraph ${serviceName} mocks.`);
+        await ServerManager.instance.restartSubgraph(path, serviceName);
       }
     }
   });

@@ -39,6 +39,15 @@ import { GraphQLDataSourceRequestKind } from '@apollo/gateway-1/dist/datasources
 
 export class WorkbenchFederationProvider {
   static compose(workbenchFile: ApolloWorkbenchFile) {
+    if (workbenchFile.federation == '2') {
+      //Add in federation v2
+      return { errors: new Array<GraphQLError>() } as CompositionFailure;
+    } else {
+      return WorkbenchFederationProvider.compose_fed_1(workbenchFile);
+    }
+  }
+
+  private static compose_fed_1(workbenchFile: ApolloWorkbenchFile) {
     const sdls: ServiceDefinition[] = [];
     const errors: GraphQLError[] = [];
     for (const key in workbenchFile.schemas) {
@@ -140,6 +149,7 @@ export class WorkbenchFederationProvider {
       return { ...compositionResults } as CompositionResult;
     }
   }
+
   static normalizeSchema(schema: string) {
     const doc = defaultRootOperationTypes(parse(schema));
     const modifiedDOc = visit(doc, {

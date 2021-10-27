@@ -259,6 +259,14 @@
         "title": "Export Subgraph Entity Resolvers"
       },
       {
+        "command": "local-supergraph-designs.createInStudio",
+        "title": "Create new Apollo Studio Graph from design"
+      },
+      {
+        "command": "local-supergraph-designs.exportDesignToProject",
+        "title": "Export design into a local project"
+      },
+      {
         "command": "extension.gettingStarted",
         "title": "Getting Started"
       },
@@ -355,6 +363,16 @@
         }
       ],
       "view/item/context": [
+        {
+          "command": "local-supergraph-designs.createInStudio",
+          "when": "view == local-supergraph-designs && viewItem == supergraphTreeItem",
+          "group": "1"
+        },
+        {
+          "command": "local-supergraph-designs.exportDesignToProject",
+          "when": "view == local-supergraph-designs && viewItem == supergraphTreeItem",
+          "group": "2"
+        },
         {
           "command": "local-supergraph-designs.viewSettings",
           "when": "view == local-supergraph-designs && viewItem == subgraphTreeItem",

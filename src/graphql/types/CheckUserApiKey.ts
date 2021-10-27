@@ -7,18 +7,16 @@
 // GraphQL query operation: CheckUserApiKey
 // ====================================================
 
-export interface CheckUserApiKey_me_InternalIdentity {
-  __typename: 'InternalIdentity' | 'Service';
+export interface CheckUserApiKey_me_Service {
+  __typename: "Service" | "InternalIdentity";
 }
 
 export interface CheckUserApiKey_me_User {
-  __typename: 'User';
+  __typename: "User";
   id: string;
 }
 
-export type CheckUserApiKey_me =
-  | CheckUserApiKey_me_InternalIdentity
-  | CheckUserApiKey_me_User;
+export type CheckUserApiKey_me = CheckUserApiKey_me_Service | CheckUserApiKey_me_User;
 
 export interface CheckUserApiKey {
   /**
