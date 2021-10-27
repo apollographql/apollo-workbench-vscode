@@ -115,7 +115,7 @@ export function createJavascriptTemplate(
     );
     writeFileSync(
       resolve(githubActionsFolder, 'publish-schema.yaml'),
-      generateSubgraphAction(),
+      generateSubgraphAction(graphName),
       options,
     );
 

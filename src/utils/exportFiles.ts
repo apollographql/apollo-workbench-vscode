@@ -81,7 +81,7 @@ export function generateCodeWorkspaceFile(subgraphNames: string[]) {
   return JSON.stringify(codeWorkspaceFile);
 }
 
-export function generateSubgraphAction() {
+export function generateSubgraphAction(graph: string) {
   return `
 name: Publish Schema to Apollo Studio
 
@@ -99,7 +99,7 @@ jobs:
     env:
       APOLLO_VCS_COMMIT: \${{ github.event.pull_request.head.sha }}
       APOLLO_KEY: \${{ secrets.APOLLO_KEY }}
-      APOLLO_GRAPH_VARIANT: production
+      APOLLO_GRAPH_REF: ${graph}@production
     steps: 
       - uses: actions/checkout@v2
       - uses: actions/setup-node@v2
