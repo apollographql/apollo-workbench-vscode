@@ -55,8 +55,12 @@ export class ServerManager {
     log(`Setting up mocks`);
     this.mocksWorkbenchFile =
       FileProvider.instance.workbenchFileFromPath(wbFilePath) ?? undefined;
-    if (this.mocksWorkbenchFile) {
+    if (
+      this.mocksWorkbenchFile &&
+      StateManager.instance.extensionGlobalStoragePath
+    ) {
       log(`Mocking workbench file: ${this.mocksWorkbenchFile.graphName}`);
+
       this.mocksWorkbenchFilePath = wbFilePath;
       const increment =
         80 / Object.keys(this.mocksWorkbenchFile.schemas).length;
@@ -70,10 +74,41 @@ export class ServerManager {
         await this.startServer(serviceName, subgraph.sdl, mocks);
       }
 
-      await this.startGateway(progress);
-      await this.openSandbox(sandboxUrl());
-    } else log(`No selected workbench file to setup`);
+      if (this.generateMocksSupergraphSdl()) {
+        await this.startGateway(progress);
+        await this.openSandbox(sandboxUrl());
+      } else
+        log(
+          `Unable to generate supergraphSdl for mocked gateway. Check the problems panel for composition errors.`,
+        );
+    }
   }
+
+  generateMocksSupergraphSdl() {
+    if (
+      this.mocksWorkbenchFile &&
+      StateManager.instance.extensionGlobalStoragePath
+    ) {
+      for (const subgraphName in this.portMapping) {
+        this.mocksWorkbenchFile.schemas[
+          subgraphName
+        ].url = `http://localhost:${this.portMapping[subgraphName]}`;
+      }
+
+      log(`\tComposing new supergraphSdl`);
+      const compResults = WorkbenchFederationProvider.compose(
+        this.mocksWorkbenchFile,
+      );
+      if (compResults.supergraphSdl) {
+        this.mocksWorkbenchFile.supergraphSdl = compResults.supergraphSdl;
+
+        return true;
+      }
+
+      return false;
+    }
+  }
+
   stopMocks() {
     if (this.serversState?.gateway)
       this.serversState.gateway.experimental_pollInterval = 10000000;
