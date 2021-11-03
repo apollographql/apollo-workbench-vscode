@@ -10,6 +10,12 @@ import {
   CheckUserApiKey_me_User,
 } from './types/CheckUserApiKey';
 import { StateManager } from '../workbench/stateManager';
+import { CreateGraphFromWorkbench } from './types/CreateGraphFromWorkbench';
+import {
+  ApolloWorkbenchFile,
+  WorkbenchSchema,
+} from '../workbench/file-system/fileTypes';
+import { log } from '../utils/logger';
 
 const keyCheck = gql`
   query CheckUserApiKey {
@@ -94,6 +100,67 @@ const getGraphOperations = gql`
   }
 `;
 
+const createGraphFromDesign = gql`
+  mutation CreateGraphFromWorkbench(
+    $graphId: ID!
+    $accountId: ID!
+    $name: String
+  ) {
+    newService(accountId: $accountId, id: $graphId, name: $name) {
+      id
+      apiKeys {
+        token
+      }
+    }
+  }
+`;
+
+const setVariantComposition = (version: string = '1') => gql`
+  mutation WorkbenchSetComposition(
+    $graphId: ID!
+    $variant: String!
+    $version: String
+  ) {
+    service(id: $graphId) {
+      variant(name: $variant) {
+        configureComposition(version: $version) {
+          compositionVersion
+        }
+      }
+    }
+  }
+`;
+
+const UPLOAD_AND_COMPOSE_PARTIAL_SCHEMA = gql`
+  mutation UploadAndComposePartialSchema(
+    $id: ID!
+    $graphVariant: String!
+    $name: String!
+    $url: String!
+    $revision: String!
+    $activePartialSchema: PartialSchemaInput!
+  ) {
+    service(id: $id) {
+      upsertImplementingServiceAndTriggerComposition(
+        name: $name
+        url: $url
+        revision: $revision
+        activePartialSchema: $activePartialSchema
+        graphVariant: $graphVariant
+      ) {
+        compositionConfig {
+          schemaHash
+        }
+        errors {
+          message
+        }
+        didUpdateGateway: updatedGateway
+        serviceWasCreated: wasCreated
+      }
+    }
+  }
+`;
+
 export async function isValidKey(apiKey: string) {
   const result = await toPromise(
     execute(createLink({ apiKey }), { query: keyCheck }),
@@ -156,6 +223,68 @@ export async function getGraphSchemasByVariant(
     }),
   );
   return result.data as GetGraphSchemas;
+}
+
+export async function createGraph(
+  apiKey: string,
+  accountId: string,
+  name: string,
+) {
+  const result = await toPromise(
+    execute(createLink({ apiKey, accountId, graphId: name }), {
+      query: createGraphFromDesign,
+      variables: {
+        accountId: accountId,
+        graphId: name,
+        name: name,
+      },
+    }),
+  );
+  const routerApiKey = result.data?.newService?.apiKeys[0]?.token;
+
+  return result.errors ? result : routerApiKey;
+}
+
+export async function setFederationCompositionTwo(
+  apiKey: string,
+  graphId: string,
+) {
+  const result = await toPromise(
+    execute(createLink({ apiKey, graphId }), {
+      query: setVariantComposition('2'),
+      variables: {
+        variant: 'workbench',
+        graphId,
+        version: '2',
+      },
+    }),
+  );
+
+  return result.errors ? false : true;
+}
+
+export async function publishSubgraph(
+  apiKey: string,
+  graphId: string,
+  subgraphName: string,
+  subgraphUrl: string,
+  schema: string,
+) {
+  const result = await toPromise(
+    execute(createLink({ apiKey, graphId }), {
+      query: UPLOAD_AND_COMPOSE_PARTIAL_SCHEMA,
+      variables: {
+        id: graphId,
+        graphVariant: 'workbench',
+        name: subgraphName,
+        url: subgraphUrl, //subgraph.url ?? `http://localhost:${counter}`,
+        revision: 'initial-creation-workbench',
+        activePartialSchema: { sdl: schema },
+      },
+    }),
+  );
+
+  return result.errors ? result.errors : true;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires

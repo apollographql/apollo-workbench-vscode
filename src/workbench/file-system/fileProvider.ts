@@ -19,6 +19,7 @@ import { WorkbenchDiagnostics } from '../diagnosticsManager';
 import { WorkbenchFederationProvider } from '../federationProvider';
 import { WorkbenchUri, WorkbenchUriType } from './WorkbenchUri';
 import { ServerManager } from '../serverManager';
+import { log } from '../../utils/logger';
 
 export class FileProvider implements FileSystemProvider {
   constructor(private workspaceRoot?: string) {}
@@ -39,18 +40,16 @@ export class FileProvider implements FileSystemProvider {
     this.loadedWorkbenchFile =
       this.workbenchFileFromPath(wbFilePath) ?? undefined;
 
-    if (this.loadedWorbenchFilePath != wbFilePath) {
-      const workbenchFileToLoad = this.workbenchFileFromPath(wbFilePath);
-      if (workbenchFileToLoad) {
-        this.loadedWorbenchFilePath = wbFilePath;
+    const workbenchFileToLoad = this.workbenchFileFromPath(wbFilePath);
+    if (workbenchFileToLoad) {
+      this.loadedWorbenchFilePath = wbFilePath;
 
-        window.setStatusBarMessage(
-          'Composition Running',
-          new Promise<void>((resolve) => resolve(this.loadCurrent())),
-        );
+      window.setStatusBarMessage(
+        'Composition Running',
+        new Promise<void>((resolve) => resolve(this.loadCurrent())),
+      );
 
-        return true;
-      }
+      return true;
     }
 
     return false;
@@ -130,6 +129,12 @@ export class FileProvider implements FileSystemProvider {
     }
     throw new Error(`Unable to load workbench file for ${wbFilePath}`);
   }
+  write(uri: Uri, content: string): void | Thenable<void> {
+    return this.writeFile(uri, Buffer.from(content), {
+      create: true,
+      overwrite: true,
+    });
+  }
   writeFile(
     uri: Uri,
     content: Uint8Array,
@@ -138,7 +143,7 @@ export class FileProvider implements FileSystemProvider {
     const name = uri.query;
     const stringContent = content.toString();
     const wbFilePath = this.getPath(uri.path);
-    const wbFile = this.workbenchFileFromPath(wbFilePath);
+    let wbFile = this.workbenchFileFromPath(wbFilePath);
 
     if (wbFile) {
       let shouldSave = true;
@@ -162,7 +167,8 @@ export class FileProvider implements FileSystemProvider {
             wbFile.supergraphSdl = '';
           } else {
             wbFile.supergraphSdl = compResults.supergraphSdl;
-            StateManager.instance.workspaceState_schema = compResults.schema;
+            StateManager.instance.workspaceState_schema =
+              WorkbenchFederationProvider.getSchemaFromResults(compResults);
             WorkbenchDiagnostics.instance.clearCompositionDiagnostics(
               wbFilePath,
             );
@@ -193,11 +199,13 @@ export class FileProvider implements FileSystemProvider {
       } else if (uri.path.includes('/mocks')) {
         wbFile.schemas[name].customMocks = stringContent;
       } else if (uri.path.includes('/supergraph-schema')) {
-        wbFile.supergraphSdl = stringContent; //TODO: Need to figure out how to block users editing and saving
+        wbFile.supergraphSdl = stringContent;
       } else if (uri.path.includes('/supergraph-api-schema')) {
         shouldSave = false; //This is read-only if a user edits it in editor
       } else if (uri.path.includes('/queryplans')) {
         shouldSave = false; //This is read-only if a user edits it in editor
+      } else if (uri.path.includes('/federation-composition')) {
+        wbFile.federation = name ?? '1';
       }
 
       if (shouldSave) {
@@ -237,7 +245,7 @@ export class FileProvider implements FileSystemProvider {
     }
   }
   private writeWorbenchFile(wbFilePath: string, wbFile: any) {
-    writeFileSync(normalize(wbFilePath), JSON.stringify(wbFile), {
+    writeFileSync(normalize(wbFilePath), JSON.stringify(wbFile, null, 2), {
       encoding: 'utf8',
     });
     this.workbenchFiles.set(wbFilePath, wbFile);
@@ -265,11 +273,43 @@ export class FileProvider implements FileSystemProvider {
         this.loadedWorkbenchFile.supergraphSdl = compResults.supergraphSdl;
       }
 
-      StateManager.instance.workspaceState_schema = compResults.schema;
+      StateManager.instance.workspaceState_schema =
+        WorkbenchFederationProvider.getSchemaFromResults(compResults);
       StateManager.instance.workspaceState_selectedWorkbenchAvailableEntities =
         WorkbenchFederationProvider.extractDefinedEntitiesByService(
-          this.loadedWorkbenchFile.supergraphSdl,
+          this.loadedWorkbenchFile,
         );
+    }
+  }
+
+  refreshLocalWorkbenchFile(wbFilePath: string) {
+    try {
+      const wbString = readFileSync(wbFilePath, { encoding: 'utf-8' });
+      let wbFile = JSON.parse(wbString) as ApolloWorkbenchFile;
+
+      const compResults = WorkbenchFederationProvider.compose(wbFile);
+      if (compResults.errors) {
+        WorkbenchDiagnostics.instance.setCompositionErrors(
+          wbFilePath,
+          wbFile,
+          compResults.errors,
+        );
+      } else if (!wbFile.supergraphSdl && compResults.supergraphSdl) {
+        this.writeFile(
+          WorkbenchUri.supergraph(
+            wbFilePath,
+            '',
+            WorkbenchUriType.SUPERGRAPH_SCHEMA,
+          ),
+          Buffer.from(compResults.supergraphSdl),
+          { create: true, overwrite: true },
+        );
+      }
+
+      //Need to validate operations
+      WorkbenchDiagnostics.instance.validateAllOperations(wbFilePath);
+    } catch (err: any) {
+      log(err.message);
     }
   }
 
@@ -289,7 +329,7 @@ export class FileProvider implements FileSystemProvider {
 
           try {
             const wbString = readFileSync(wbFilePath, { encoding: 'utf-8' });
-            const wbFile = JSON.parse(wbString) as ApolloWorkbenchFile;
+            let wbFile = JSON.parse(wbString) as ApolloWorkbenchFile;
 
             this.workbenchFiles.set(wbFilePath, wbFile);
             WorkbenchDiagnostics.instance.createWorkbenchFileDiagnostics(
@@ -297,32 +337,34 @@ export class FileProvider implements FileSystemProvider {
               wbFilePath,
             );
 
-            //If there is no valid composition, we should try composing graph to:
-            //  1. Add any composition diagnostics to Problems Panel
-            //  2. Save valid supergraphSDL
-            if (!wbFile.supergraphSdl) {
-              const compResults = WorkbenchFederationProvider.compose(wbFile);
-              if (compResults.errors) {
-                WorkbenchDiagnostics.instance.setCompositionErrors(
-                  wbFilePath,
-                  wbFile,
-                  compResults.errors,
-                );
-              } else {
-                this.writeFile(
-                  WorkbenchUri.supergraph(
-                    wbFilePath,
-                    '',
-                    WorkbenchUriType.SUPERGRAPH_SCHEMA,
-                  ),
-                  Buffer.from(compResults.supergraphSdl),
-                  { create: true, overwrite: true },
-                );
-              }
-            }
+            this.refreshLocalWorkbenchFile(wbFilePath);
 
-            //Need to validate operations
-            WorkbenchDiagnostics.instance.validateAllOperations(wbFilePath);
+            // //If there is no valid composition, we should try composing graph to:
+            // //  1. Add any composition diagnostics to Problems Panel
+            // //  2. Save valid supergraphSDL
+            // if (!wbFile.supergraphSdl) {
+            //   const compResults = WorkbenchFederationProvider.compose(wbFile);
+            //   if (compResults.errors) {
+            //     WorkbenchDiagnostics.instance.setCompositionErrors(
+            //       wbFilePath,
+            //       wbFile,
+            //       compResults.errors,
+            //     );
+            //   } else {
+            //     this.writeFile(
+            //       WorkbenchUri.supergraph(
+            //         wbFilePath,
+            //         '',
+            //         WorkbenchUriType.SUPERGRAPH_SCHEMA,
+            //       ),
+            //       Buffer.from(compResults.supergraphSdl),
+            //       { create: true, overwrite: true },
+            //     );
+            //   }
+            // }
+
+            // //Need to validate operations
+            // WorkbenchDiagnostics.instance.validateAllOperations(wbFilePath);
           } catch (err) {
             window.showErrorMessage(
               `Workbench file was not in the correct format. File located at ${wbFilePath}`,
@@ -389,6 +431,8 @@ export class FileProvider implements FileSystemProvider {
       return path.split('/supergraph-schema')[0];
     } else if (path.includes('/supergraph-api-schema')) {
       return path.split('/supergraph-api-schema')[0];
+    } else if (path.includes('/federation-composition')) {
+      return path.split('/federation-composition')[0];
     }
     throw new Error('Unknown path type');
   }

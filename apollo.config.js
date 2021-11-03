@@ -1,9 +1,8 @@
 module.exports = {
-    client: {
-        name: 'Apollo-Workbench',
-        service: 'engine@prod'
+  client: {
+    name: 'Apollo-Workbench',
+    service: {
+      url: 'https://graphql.api.apollographql.com/api/graphql',
     },
-    engine: {
-        endpoint: 'https://engine-staging-graphql.apollographql.com/api/graphql'
-    }
+  },
 };

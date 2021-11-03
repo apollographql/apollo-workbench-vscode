@@ -1,5 +1,4 @@
 import {
-  BREAK,
   EnumTypeDefinitionNode,
   InterfaceTypeDefinitionNode,
   ObjectTypeDefinitionNode,
@@ -7,7 +6,6 @@ import {
   ScalarTypeDefinitionNode,
   visit,
 } from 'graphql';
-// import { Range } from 'vscode-languageserver-types';
 import { log } from '../../utils/logger';
 import { FileProvider } from '../../workbench/file-system/fileProvider';
 

@@ -8,12 +8,12 @@
 // ====================================================
 
 export interface GetGraphSchemas_service_schema {
-  __typename: 'Schema';
+  __typename: "Schema";
   document: any;
 }
 
 export interface GetGraphSchemas_service_implementingServices_NonFederatedImplementingService {
-  __typename: 'NonFederatedImplementingService';
+  __typename: "NonFederatedImplementingService";
   /**
    * Identifies which graph this non-implementing service belongs to.
    * Formerly known as "service_id"
@@ -22,7 +22,7 @@ export interface GetGraphSchemas_service_implementingServices_NonFederatedImplem
 }
 
 export interface GetGraphSchemas_service_implementingServices_FederatedImplementingServices_services_activePartialSchema {
-  __typename: 'PartialSchema';
+  __typename: "PartialSchema";
   /**
    * The enriched sdl of a partial schema
    */
@@ -30,7 +30,7 @@ export interface GetGraphSchemas_service_implementingServices_FederatedImplement
 }
 
 export interface GetGraphSchemas_service_implementingServices_FederatedImplementingServices_services {
-  __typename: 'FederatedImplementingService';
+  __typename: "FederatedImplementingService";
   /**
    * Name of the implementing service
    */
@@ -47,23 +47,21 @@ export interface GetGraphSchemas_service_implementingServices_FederatedImplement
 }
 
 export interface GetGraphSchemas_service_implementingServices_FederatedImplementingServices {
-  __typename: 'FederatedImplementingServices';
+  __typename: "FederatedImplementingServices";
   services: GetGraphSchemas_service_implementingServices_FederatedImplementingServices_services[];
 }
 
-export type GetGraphSchemas_service_implementingServices =
-  | GetGraphSchemas_service_implementingServices_NonFederatedImplementingService
-  | GetGraphSchemas_service_implementingServices_FederatedImplementingServices;
+export type GetGraphSchemas_service_implementingServices = GetGraphSchemas_service_implementingServices_NonFederatedImplementingService | GetGraphSchemas_service_implementingServices_FederatedImplementingServices;
 
 export interface GetGraphSchemas_service {
-  __typename: 'Service';
+  __typename: "Service";
   /**
    * Get a schema by hash OR current tag
    */
   schema: GetGraphSchemas_service_schema | null;
   /**
    * List of implementing services that comprise a graph. A non-federated graph should have a single implementing service.
-   * Set includeDeleted to see deleted implementing services
+   * Set includeDeleted to see deleted implementing services.
    */
   implementingServices: GetGraphSchemas_service_implementingServices | null;
 }

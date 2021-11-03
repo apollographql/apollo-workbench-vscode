@@ -1,8 +1,6 @@
 import { ApolloServer, gql } from 'apollo-server';
-import { buildSubgraphSchema } from '@apollo/federation-1';
-import { ApolloGateway } from '@apollo/gateway-1';
 import { IMocks } from '@graphql-tools/mock';
-import { GatewayForwardHeadersDataSource } from '../graphql/graphRouter';
+import { GatewayForwardHeadersDataSource_1 } from '../graphql/graphRouter';
 
 import { Uri, window, Progress, commands } from 'vscode';
 import { Disposable } from 'vscode-languageclient';
@@ -16,6 +14,14 @@ import { FileProvider } from './file-system/fileProvider';
 import { log } from '../utils/logger';
 import { ApolloWorkbenchFile, WorkbenchSchema } from './file-system/fileTypes';
 import { WorkbenchFederationProvider } from './federationProvider';
+
+//Federation 1
+import { buildSubgraphSchema as buildSubgraphSchema_1 } from '@apollo/federation-1';
+import { ApolloGateway as ApolloGateway_1 } from '@apollo/gateway-1';
+
+//Federation 2
+import { buildSubgraphSchema as buildSubgraphSchema_2 } from '@apollo/federation-2';
+import { ApolloGateway as ApolloGateway_2 } from '@apollo/gateway-2';
 
 const sandboxUrl = (port?) =>
   `https://studio.apollographql.com/sandbox/explorer?endpoint=http%3A%2F%2Flocalhost%3A${
@@ -201,7 +207,11 @@ export class ServerManager {
           }),
       );
 
-      const federatedSchema = buildSubgraphSchema([{ typeDefs, resolvers }]);
+      let federatedSchema;
+      if (this.mocksWorkbenchFile?.federation == '1')
+        federatedSchema = buildSubgraphSchema_1([{ typeDefs, resolvers }]);
+      else federatedSchema = buildSubgraphSchema_2([{ typeDefs, resolvers }]);
+
       //Create and start up server locally
       const server = new ApolloServer({ schema: federatedSchema, mocks });
 
@@ -254,17 +264,32 @@ export class ServerManager {
 
     progress?.report({ message: `Starting graph router...`, increment: 10 });
 
-    const server = new ApolloServer({
-      cors: this.corsConfiguration,
-      gateway: new ApolloGateway({
+    let router;
+    if (this.mocksWorkbenchFile?.federation == '1') {
+      router = new ApolloGateway_1({
         supergraphSdl: this.mocksWorkbenchFile?.supergraphSdl,
         debug: true,
         buildService({ url, name }) {
-          const source = new GatewayForwardHeadersDataSource({ url });
+          const source = new GatewayForwardHeadersDataSource_1({ url });
           source.serviceName = name;
           return source;
         },
-      }),
+      });
+    } else {
+      router = new ApolloGateway_2({
+        supergraphSdl: this.mocksWorkbenchFile?.supergraphSdl,
+        debug: true,
+        buildService({ url, name }) {
+          const source = new GatewayForwardHeadersDataSource_1({ url });
+          source.serviceName = name;
+          return source;
+        },
+      });
+    }
+
+    const server = new ApolloServer({
+      cors: this.corsConfiguration,
+      gateway: router,
       context: ({ req }) => {
         return { incomingHeaders: req.headers };
       },

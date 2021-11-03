@@ -1,99 +1,29 @@
-# Apollo Solutions Tooling - Workbench for VS Code
+# Apollo Workbench for VS Code
 
 Workbench is a tool built by the Apollo Solutions Team to help design schemas using Apollo Federation and work with the composed results. This need was driven by working countless number of migrations from an existing GraphQL infrastructure (monolith or schema stitched) to an [Apollo Federated architecture](https://www.apollographql.com/docs/federation/).
 
-Head over to the [docs](https://apollographql.github.io/apollo-workbench-vscode/) to learn how you can use this tool.
+Head over to the [docs](https://www.apollographql.com/docs/federation/v2/workbench/overview/) to learn how you can use this tool.
 
-## Getting Started
+## Community
 
-### Setup
+Are you stuck? Want to contribute? Come visit us in the [Apollo community forum!](https://community.apollographql.com)
 
-- [Install VS Code](https://code.visualstudio.com/download)
-- [Install Apollo GraphQL VS Code Extension](https://marketplace.visualstudio.com/items?itemName=apollographql.vscode-apollo)
-  - This is part of what makes intellisense work for writing schemas and queries
-- Download the latest [Apollo Workbench Release](https://marketplace.visualstudio.com/items?itemName=apollographql.apollo-workbench)
-  - You can view past releases [here](https://github.com/apollographql/apollo-workbench-vscode/releases)
+## Maintainers
 
-### Logging in
+- [Michael Watson](https://github.com/michael-watson/)
 
-1. Open VS Code with any folder (a dialog will display if you don't have a folder open)
+## Who is Apollo?
 
-2. Go to your [personal settings in Apollo Studio](https://studio.apollographql.com/user-settings) and copy your user api key. Paste your api key into the extension (which will be saved to your VS Code global state)
+[Apollo](https://apollographql.com/) builds open-source software and a graph platform to unify GraphQL across your apps and services. We help you ship faster with:
 
-![Enter Apollo User API Key](https://storage.googleapis.com/apollo-workbench-vscode/workbench-add-api-key.png)
+* [Apollo Studio](https://www.apollographql.com/studio/develop/) – A free, end-to-end platform for managing your GraphQL lifecycle. Track your GraphQL schemas in a hosted registry to create a source of truth for everything in your graph. Studio provides an IDE (Apollo Explorer) so you can explore data, collaborate on queries, observe usage, and safely make schema changes.
+* [Apollo Federation](https://www.apollographql.com/apollo-federation) – The industry-standard open architecture for building a distributed graph. Use Apollo’s open-source gateway to compose a unified graph from multiple subgraphs, determine a query plan, and route requests across your services.
+* [Apollo Client](https://www.apollographql.com/apollo-client/) – The most popular GraphQL client for the web. Apollo also builds and maintains [Apollo iOS](https://github.com/apollographql/apollo-ios) and [Apollo Android](https://github.com/apollographql/apollo-android).
+* [Apollo Server](https://www.apollographql.com/docs/apollo-server/) – A production-ready JavaScript GraphQL server that connects to any microservice, API, or database. Compatible with all popular JavaScript frameworks and deployable in serverless environments.
 
-### Supported Workflows
+## Learn how to build with Apollo
 
-- [Design a New Supergraph](./docs/new-supergraph.md)
-- [Migrating from Monolith to a New Supergraph](./docs/migration-monolith-to-supergraph.md)
-- [Designing a change to an existing graph in Apollo Studio](./docs/apollo-studio-supergraph-designs.md)
+Check out the [Odyssey](https://odyssey.apollographql.com/) learning platform, the perfect place to start your GraphQL journey with videos and interactive code challenges. Join the [Apollo Community](https://community.apollographql.com/) to interact with and get technical help from the GraphQL community.
 
-## What is Apollo Workbench for VS Code?
-
-To get the most out of GraphQL, your organization should expose a single data graph that provides a unified interface for querying any combination of your backing data sources. However, it can be challenging to represent an enterprise-scale data graph with a single, monolithic GraphQL server. Apollo Federation enables you to divide your graph's implementation across multiple composable services and Workbench is the tool to help you design that out with only schema files.
-
-The Apollo Workbench extension for VS Code brings an all-in-one tooling experience for developing federated graphs.
-
-## Features
-- Creating and working with `.apollo-workbench` files
-- Mocking `.apollo-workbench` files
-  - Supports remote URLs for any defined service
-- Providing composition errors in **Problems** panel within VS Code
-- Create and edit GraphQL operations for a loaded `.apollo-workbench` file
-- With a fully composed graph, view generated query plans for defined GraphQL operations
-- **Apollo Studio Integration**
-  - Create a `.apollo-workbench` file from a graph that has been pushed into the schema registry (i.e. `apollo service:push`)
-  - Load GraphQL operations from a graph and add them to the loaded `.apollo-workbench` file.
-
-### Mocking `.apollo-workbench` files
-
-Apollo Workbench VS Code contains all the internals needed to mock the schemas you design out. Just click the play button for the design you want to start up and workbench takes care of the rest. You can also stop the mocks at anytime by just clicking the stop button *(Hint: any design's stop button will stop the currently running mocks)*
-
-![Starting Mocks](https://storage.googleapis.com/apollo-workbench-vscode/workbench-mock-design.gif)
-
-You may need to set specific headers that should be sent to the downstream services and you can set those by clicking on the settings "gear" icon for a service:
-![Set Required Headers](https://storage.googleapis.com/apollo-workbench-vscode/workbench-set-required-headers.png)
-
-You can also set custom mocks per a service! Workbench currently only supports standard node packages and [faker.js](https://github.com/marak/Faker.js/). If you want to see an example of a setup service, make a copy of the `acephei-e-commerce` example graph after logging into Apollo Studio.
-
-![Custom Mocks](https://storage.googleapis.com/apollo-workbench-vscode/workbench-custom-mocks.png)
-
-### Composition Errors in the Problems Panel
-
-Composition errors in your designed schema will be written to the **Problems** panel in VS Code (you will see errors for any designs in the folder vs code has open):
-
-![Composition Errors](https://storage.googleapis.com/apollo-workbench-vscode/workbench-composition-errors.png)
-
-_Note: Since this is the beta release, some of the composition error pointers might be broken - like having the wrong range selected. All `workbench.graphql` errors won't point at the correct file as the proper `serviceName` needs to be identified. The error message should provide the details of what needs to be done. Stay tuned for more fixes in this area_
-
-### Writing GraphQL Operations in workbench
-
-If you have a valid fully composed schema, you should get intellisense when writing your queries with feedback in the Problems panel.
-
-![](https://storage.googleapis.com/apollo-workbench-vscode/workbench-first-operation.png)
-
-### Loading GraphQL operations from Apollo Studio into workbench
-
-You can load all of the operations for a given graph into the **Apollo Studio Graph Operations** tree view by clicking on a graph in the **Apollo Studio Graphs**:
-
-![Loading Operations](https://storage.googleapis.com/apollo-workbench-vscode/workbench-loading-operations.gif)
-
-You may see some operations that have the same name, but different `id`'s next to them. This means the operations had different signatures and are different shapes. To load any operation into the current selected workbench, either right click the operation or press the plus button on the row:
-
-![Add Operation from Studio](https://storage.googleapis.com/apollo-workbench-vscode/workbench-add-operation-from-studio.png)
-
-### View query plan for an operation
-
-Everytime you make a change to any operation in the current loaded workbench will try generating a new query plan for it. If you have a graph with composition errors, you'll need to resolve those composition errors before you can view the query plan of the given operatiion. To view the query plan, either right click the operation and select **Open Query Plan** or click the query plan icon in the row:
-
-![View Query Plan](https://storage.googleapis.com/apollo-workbench-vscode/workbench-view-query-plan.png)
-
-## What can you expect from this repo/tool?
-
-Apollo Workbench is maintained by the Apollo Developer Advocate Team with Michael Watson as the core maintainer/owner. Please feel free to open a GitHub issue on the repo with questions/issues/suggestions/feedback/just to say hi! 
-
-Also feel free to open an issue or PR and we'll try to evolve the tool to support designing a federated schema. There have been multiple additions to support mocking scenarios and we're very interested in hearing any ideas that might help with schema design.
-
-## The Apollo Solutions Team - The original inspiration behind Apollo Workbench
-
-The Apollo Solutions Team is considered Apollo's first customer and actually where Apollo Workbench first started. We work with our customers on their graph implementations and every organization has unique challenges (along with a lot of [common ones](https://www.apollographql.com/guide)). When these challenges surface, we sometimes build some tooling or example to solve that unique challenge. This could incorporate many elements of the various Apollo OSS libraries. If you're interested in learning more about the Apollo Solutions Team and an Enterprise relationship with Apollo, please [reach out through our website](https://www.apollographql.com/contact-sales).
+## Licensing
+Source code in this repository is covered by the Elastic License 2.0 as designated by the LICENSE file in the root of the repository. 
