@@ -21,7 +21,10 @@ export function createJavascriptTemplate(
 ) {
   const options: BaseEncodingOptions = { encoding: 'utf-8' };
   const fileName = workbenchFile.graphName.replace(/[/|\\:*?"<>]/g, ' ');
-  const destPath = resolve(StateManager.workspaceRoot ?? __dirname, fileName);
+  const destPath = resolve(
+    StateManager.workspaceRoot ?? __dirname,
+    `${fileName}-js`,
+  );
 
   //Create root folder
   mkdirSync(destPath, { recursive: true });
@@ -40,12 +43,16 @@ export function createJavascriptTemplate(
   );
   writeFileSync(
     resolve(graphRouterFolder, 'package.json'),
-    generateJsgatewayPackageJson(),
+    generateJsgatewayPackageJson(workbenchFile.federation),
     options,
   );
   writeFileSync(
     resolve(graphRouterFolder, '.env'),
-    `APOLLO_KEY=${apiKey}\nAPOLLO_GRAPH_REF=${graphName}@workbench`,
+    `APOLLO_KEY=${
+      apiKey ?? ''
+    }\nAPOLLO_GRAPH_REF=${graphName}@workbench\nPORT=${
+      StateManager.settings_gatewayServerPort
+    }`,
     options,
   );
   writeFileSync(
@@ -61,8 +68,8 @@ export function createJavascriptTemplate(
 
   let roverString = `# Learn more about using the @apollo/rover CLI to work with supergraphs:
   #  https://www.apollographql.com/docs/rover/supergraphs/
-  subgraphs:
-  `;
+subgraphs:
+`;
 
   let port = StateManager.settings_startingServerPort;
   for (const subgraphName in workbenchFile.schemas) {
@@ -88,7 +95,7 @@ export function createJavascriptTemplate(
 
     writeFileSync(
       resolve(subgraphFolder, 'package.json'),
-      generateJsFederatedServerPackageJson(subgraphName, port, graphName),
+      generateJsFederatedServerPackageJson(subgraphName),
       options,
     );
     writeFileSync(schemaPath, subgraphSchema, options);
@@ -115,7 +122,7 @@ export function createJavascriptTemplate(
     );
     writeFileSync(
       resolve(githubActionsFolder, 'publish-schema.yaml'),
-      generateSubgraphAction(graphName),
+      generateSubgraphAction(graphName, port),
       options,
     );
 

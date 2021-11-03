@@ -57,6 +57,7 @@ import {
   createWorkbenchFromSupergraphVariant,
   createDesignInStudio,
   exportDesignToProject,
+  switchFederationComposition,
 } from './commands/local-supergraph-designs';
 import { resolve } from 'path';
 import { mkdirSync, writeFileSync } from 'fs';
@@ -221,6 +222,11 @@ export async function activate(context: ExtensionContext) {
     'local-supergraph-designs.exportDesignToProject',
     exportDesignToProject,
   );
+  commands.registerCommand(
+    'local-supergraph-designs.switchFederationComposition',
+    switchFederationComposition,
+  );
+
   //TODO: Need to implemnt loading image in a custom view, will come in following release
   // commands.registerCommand(
   //   'local-supergraph-designs.setOperationDesignMock',
@@ -329,7 +335,6 @@ export async function activate(context: ExtensionContext) {
           FileProvider.instance.loadedWorkbenchFile.schemas[subgraphName].sdl !=
             documentText
         ) {
-          //TODO: Need to handle temp file changes
           const editedWorkbenchFile = {
             ...FileProvider.instance.loadedWorkbenchFile,
           };

@@ -10,6 +10,7 @@ export enum WorkbenchUriType {
   MOCKS,
   SUPERGRAPH_SCHEMA,
   SUPERGRAPH_API_SCHEMA,
+  FEDERATION_COMPOSITION,
 }
 
 function platformPath(path: string) {
@@ -39,7 +40,9 @@ export class WorkbenchUri {
           'subgraph-settings',
           `${name}-settings.json`,
         );
-        return Uri.parse(`workbench:${platformPath(schemaSettingPath)}?${name}`);
+        return Uri.parse(
+          `workbench:${platformPath(schemaSettingPath)}?${name}`,
+        );
       }
       case WorkbenchUriType.QUERIES: {
         let queryPath = resolve(path, 'queries', `${name}.graphql`);
@@ -55,7 +58,9 @@ export class WorkbenchUri {
           'supergraph-schema',
           `${name}-supergraph.graphql`,
         );
-        return Uri.parse(`workbench:${platformPath(superGraphSchemaPath)}?${name}`);
+        return Uri.parse(
+          `workbench:${platformPath(superGraphSchemaPath)}?${name}`,
+        );
       }
       case WorkbenchUriType.SUPERGRAPH_API_SCHEMA: {
         let superGraphApiSchemaPath = resolve(
@@ -63,7 +68,9 @@ export class WorkbenchUri {
           'supergraph-api-schema',
           `${name}-api-schema.graphql`,
         );
-        return Uri.parse(`workbench:${platformPath(superGraphApiSchemaPath)}?${name}`);
+        return Uri.parse(
+          `workbench:${platformPath(superGraphApiSchemaPath)}?${name}`,
+        );
       }
       case WorkbenchUriType.MOCKS: {
         let subgarphMocksPath = resolve(
@@ -73,6 +80,10 @@ export class WorkbenchUri {
         );
 
         return Uri.parse(`${normalize(subgarphMocksPath)}?${path}:${name}`);
+      }
+      case WorkbenchUriType.FEDERATION_COMPOSITION: {
+        let compositionPath = resolve(path, 'federation-composition');
+        return Uri.parse(`workbench:${platformPath(compositionPath)}?${name}`);
       }
     }
   }

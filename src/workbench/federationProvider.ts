@@ -1,14 +1,3 @@
-import { composeAndValidate, ServiceDefinition } from '@apollo/federation';
-import {
-  buildOperationContext,
-  buildComposedSchema,
-  QueryPlanner,
-  serializeQueryPlan,
-} from '@apollo/query-planner';
-import {
-  CompositionFailure,
-  CompositionResult,
-} from '@apollo/federation/dist/composition/utils';
 import {
   GraphQLError,
   GraphQLSchema,
@@ -23,27 +12,164 @@ import {
   printSchema,
   print,
   FieldDefinitionNode,
+  DocumentNode,
 } from 'graphql';
 import {
   ApolloWorkbenchFile,
-  RequiredHeader,
   WorkbenchOperation,
 } from './file-system/fileTypes';
 import { FieldWithType } from './federationCompletionProvider';
-import { RemoteGraphQLDataSource } from '@apollo/gateway-1';
-import { FileProvider } from './file-system/fileProvider';
 import { log } from '../utils/logger';
 import { Headers } from 'node-fetch';
-import { defaultRootOperationTypes } from '@apollo/federation/dist/composition/normalize';
-import { GraphQLDataSourceRequestKind } from '@apollo/gateway-1/dist/datasources/types';
+
+//Federation 1
+import { GraphQLDataSourceRequestKind as GraphQLDataSourceRequestKind_1 } from '@apollo/gateway-1/dist/datasources/types';
+import { RemoteGraphQLDataSource } from '@apollo/gateway-1';
+import { composeAndValidate, ServiceDefinition } from '@apollo/federation-1';
+import {
+  buildOperationContext,
+  buildComposedSchema,
+  QueryPlanner as QueryPlanner_1,
+  serializeQueryPlan,
+} from '@apollo/query-planner-1';
+import { defaultRootOperationTypes as defaultRootOperationTypes_1 } from '@apollo/federation-2/dist/composition/normalize';
+import {
+  CompositionFailure as CompositionFailure_1,
+  CompositionResult as CompositionResult_1,
+  CompositionSuccess as CompositionSuccess_1,
+} from '@apollo/federation-1/dist/composition/utils';
+
+//Federation 2
+import {
+  compose,
+  CompositionFailure as CompositionFailure_2,
+  CompositionResult as CompositionResult_2,
+  CompositionSuccess as CompositionSuccess_2,
+} from '@apollo/composition';
+import { defaultRootOperationTypes as defaultRootOperationTypes_2 } from '@apollo/federation-2/dist/composition/normalize';
+import {
+  buildSchema,
+  federationBuiltIns,
+  parseOperation,
+  Subgraph,
+  Subgraphs,
+} from '@apollo/federation-internals';
+import { QueryPlanner as QueryPlanner_2 } from '@apollo/query-planner-2';
 
 export class WorkbenchFederationProvider {
-  static compose(workbenchFile: ApolloWorkbenchFile) {
+  static getSchemaFromResults(
+    compResults: CompositionResult_1 | CompositionResult_2,
+  ) {
+    const results = compResults as any;
+    if ((compResults as any).hints) {
+      return (results as CompositionSuccess_2).schema.toGraphQLJSSchema();
+    } else {
+      return (results as CompositionSuccess_1).schema;
+    }
+  }
+  static compose(
+    workbenchFile: ApolloWorkbenchFile,
+  ):
+    | CompositionResult_1
+    | CompositionFailure_1
+    | CompositionResult_2
+    | CompositionFailure_2 {
     if (workbenchFile.federation == '2') {
       //Add in federation v2
-      return { errors: new Array<GraphQLError>() } as CompositionFailure;
+      return WorkbenchFederationProvider.compose_fed_2(workbenchFile);
     } else {
       return WorkbenchFederationProvider.compose_fed_1(workbenchFile);
+    }
+  }
+
+  private static compose_fed_2(workbenchFile: ApolloWorkbenchFile) {
+    const errors: GraphQLError[] = [];
+    for (const key in workbenchFile.schemas) {
+      const localSchemaString = workbenchFile.schemas[key].sdl;
+      if (!localSchemaString) {
+        const err = 'No schema defined for service';
+        errors.push(
+          new GraphQLError(
+            err,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            { noSchemaDefined: true, serviceName: key, message: err },
+          ),
+        );
+      }
+    }
+    if (errors.length > 0) {
+      return { errors } as CompositionFailure_2;
+    } else {
+      try {
+        const subgraphs: Subgraphs = new Subgraphs();
+
+        for (const key in workbenchFile.schemas) {
+          const url = workbenchFile.schemas[key].url ?? 'http://localhost';
+          const localSchemaString = workbenchFile.schemas[key].sdl;
+          if (localSchemaString) {
+            try {
+              // const printedSchema = WorkbenchFederationProvider.normalizeSchema(localSchemaString);
+              const builtSchema = buildSchema(
+                localSchemaString,
+                federationBuiltIns,
+              );
+              const subgraph = new Subgraph(key, url, builtSchema);
+              subgraphs.add(subgraph);
+            } catch (err: any) {
+              log(err.message);
+              if (err.causes) {
+                err.causes.forEach((cause) => errors.push(cause));
+              } else {
+                errors.push(
+                  new GraphQLError(
+                    err.message,
+                    undefined,
+                    undefined,
+                    undefined,
+                    undefined,
+                    undefined,
+                    { noSchemaDefined: true, serviceName: key, message: err },
+                  ),
+                );
+              }
+            }
+          }
+        }
+
+        if (errors.length > 0) {
+          return { errors };
+        }
+
+        const compositionResults = compose(subgraphs);
+
+        if (Object.keys(workbenchFile.schemas).length == 0) {
+          compositionResults.errors = [
+            new GraphQLError(
+              'No schemas defined in workbench yet',
+              undefined,
+              undefined,
+              undefined,
+              undefined,
+              undefined,
+              { noServicesDefined: true },
+            ),
+          ];
+        }
+
+        return { ...compositionResults } as CompositionResult_2;
+      } catch (err: any) {
+        log(err);
+        if (err.causes) return { errors: err.causes as GraphQLError[] };
+        return {
+          errors: [
+            new GraphQLError('Unexpected composition error in Workbench'),
+          ],
+        };
+      }
     }
   }
 
@@ -128,7 +254,7 @@ export class WorkbenchFederationProvider {
       }
     }
     if (errors.length > 0) {
-      return { errors } as CompositionFailure;
+      return { errors } as CompositionFailure_1;
     } else {
       //This blocks UI thread, why I have no clue but it is overworking VS Code
       const compositionResults = composeAndValidate(sdls);
@@ -146,12 +272,17 @@ export class WorkbenchFederationProvider {
           ),
         ];
 
-      return { ...compositionResults } as CompositionResult;
+      return { ...compositionResults } as CompositionResult_1;
     }
   }
 
-  static normalizeSchema(schema: string) {
-    const doc = defaultRootOperationTypes(parse(schema));
+  static normalizeSchema(schema: string, federationComposition: string = '1') {
+    let doc;
+    const document = parse(schema);
+    if (federationComposition == '1')
+      doc = defaultRootOperationTypes_1(document);
+    else doc = defaultRootOperationTypes_2(document);
+
     const modifiedDOc = visit(doc, {
       Document(node) {
         const isFedSpec = (i: FieldDefinitionNode) =>
@@ -219,7 +350,7 @@ export class WorkbenchFederationProvider {
 
     return WorkbenchFederationProvider.createQueryPlan(
       operation,
-      workbenchFile.supergraphSdl,
+      workbenchFile,
     );
   }
   static async getRemoteTypeDefs(
@@ -253,7 +384,7 @@ export class WorkbenchFederationProvider {
       const { data, errors } = await source.process({
         request,
         context: {},
-        kind: GraphQLDataSourceRequestKind.HEALTH_CHECK,
+        kind: GraphQLDataSourceRequestKind_1.HEALTH_CHECK,
       });
 
       if (data && !errors) {
@@ -303,7 +434,7 @@ export class WorkbenchFederationProvider {
     const { data, errors } = await source.process({
       request,
       context: {},
-      kind: GraphQLDataSourceRequestKind.HEALTH_CHECK,
+      kind: GraphQLDataSourceRequestKind_1.HEALTH_CHECK,
     });
     if (data && !errors) {
       const schema = buildClientSchema(data as any);
@@ -313,26 +444,45 @@ export class WorkbenchFederationProvider {
       errors.map((error) => log(error.message));
     }
   }
-  private static createQueryPlan(operation: string, supergraphSDL: string) {
+  private static createQueryPlan(
+    operation: string,
+    workbenchFile: ApolloWorkbenchFile,
+  ) {
+    const supergraphSdl = workbenchFile.supergraphSdl;
     try {
-      const schema = buildComposedSchema(parse(supergraphSDL));
-      const documentNode = parse(operation);
-      const operationDefinition = documentNode.definitions.find(
-        (def) => def.kind === 'OperationDefinition',
-      ) as any;
-      const operationName = operationDefinition?.name?.value ?? '';
-      const operationContext = buildOperationContext(
-        schema,
-        documentNode,
-        operationName,
-      );
-      const queryPlanner = new QueryPlanner(schema);
-      const queryPlan = queryPlanner.buildQueryPlan(operationContext, {
-        autoFragmentization: false,
-      });
-      const queryPlanString = serializeQueryPlan(queryPlan);
+      if (workbenchFile.federation == '1') {
+        const schema = buildComposedSchema(parse(supergraphSdl));
+        const documentNode = parse(operation);
+        const operationDefinition = documentNode.definitions.find(
+          (def) => def.kind === 'OperationDefinition',
+        ) as any;
+        const operationName = operationDefinition?.name?.value ?? '';
+        const operationContext = buildOperationContext(
+          schema,
+          documentNode,
+          operationName,
+        );
+        const queryPlanner = new QueryPlanner_1(schema);
+        const queryPlan = queryPlanner.buildQueryPlan(operationContext, {
+          autoFragmentization: false,
+        });
+        const queryPlanString = serializeQueryPlan(queryPlan);
 
-      return queryPlanString;
+        return queryPlanString;
+      } else {
+        const schema = buildSchema(supergraphSdl, federationBuiltIns);
+        const documentNode = parse(operation);
+        const operationDefinition = documentNode.definitions.find(
+          (def) => def.kind === 'OperationDefinition',
+        ) as any;
+        const operationName = operationDefinition?.name?.value ?? '';
+        const op = parseOperation(schema, operation, operationName);
+        const queryPlanner = new QueryPlanner_2(schema);
+        const queryPlan = queryPlanner.buildQueryPlan(op);
+        const queryPlanString = serializeQueryPlan(queryPlan);
+
+        return queryPlanString;
+      }
     } catch (err: any) {
       log(err);
       return err?.message ?? '';
@@ -410,7 +560,15 @@ export class WorkbenchFederationProvider {
 
     return entities;
   }
-  static extractDefinedEntitiesByService(supergraphSdl: string) {
+  static extractDefinedEntitiesByService(wbFile: ApolloWorkbenchFile) {
+    if (wbFile.federation == '2') {
+      return this.extractDefinedEntitiesByService_2(wbFile.supergraphSdl);
+    } else {
+      return this.extractDefinedEntitiesByService_1(wbFile.supergraphSdl);
+    }
+  }
+
+  private static extractDefinedEntitiesByService_1(supergraphSdl: string) {
     const extendables: {
       [serviceName: string]: {
         type: string;
@@ -512,6 +670,121 @@ export class WorkbenchFederationProvider {
               extendables[joinGraphEnumValue].push(entity);
             }
           }
+        },
+        EnumTypeDefinition(node) {
+          if (node.name.value == 'join__Graph') {
+            node.values?.forEach((enumValueDefinition) => {
+              joinGraphEnumValues[enumValueDefinition.name.value] = (
+                enumValueDefinition.directives
+                  ?.find((d) => d.name.value == 'join__graph')
+                  ?.arguments?.find((a) => a.name.value == 'name')
+                  ?.value as StringValueNode
+              )?.value;
+            });
+          }
+        },
+      });
+      Object.keys(extendables).forEach((k) => {
+        extendables[joinGraphEnumValues[k]] = extendables[k];
+        delete extendables[k];
+      });
+    } catch (err: any) {
+      log(err);
+    }
+
+    return extendables;
+  }
+  private static extractDefinedEntitiesByService_2(supergraphSdl: string) {
+    const extendables: {
+      [serviceName: string]: {
+        type: string;
+        keys: { [key: string]: FieldWithType[] };
+      }[];
+    } = {};
+    const joinGraphEnumValues: { [joinGraphEnum: string]: string } = {};
+
+    try {
+      visit(parse(supergraphSdl), {
+        ObjectTypeDefinition(node) {
+          //There can be many types now
+          node.directives?.forEach((d) => {
+            //Remove from many types what is owned by subgraph open
+            if (d && d.name.value == 'join__type' && d.arguments) {
+              const joinGraphEnumValue = (
+                (d.arguments[0] as ArgumentNode).value as EnumValueNode
+              ).value;
+              const entity: {
+                type: string;
+                keys: { [key: string]: FieldWithType[] };
+              } = { type: node.name.value, keys: {} };
+
+              const keyArg = d.arguments?.find((a) => a.name.value == 'key');
+              const extensionArg = d.arguments?.find(
+                (a) => a.name.value == 'extension',
+              );
+
+              if (keyArg && !extensionArg) {
+                const keyBlock = (keyArg?.value as StringValueNode).value;
+                const parsedFields: string[] = [];
+                let startIndex = -1;
+                let notComposite = true;
+                for (let i = 0; i < keyBlock.length; i++) {
+                  let lastParsedField = '';
+                  const char = keyBlock[i];
+                  switch (char) {
+                    case ' ':
+                      if (startIndex != -1 && notComposite) {
+                        lastParsedField = keyBlock.substring(startIndex, i);
+                        parsedFields.push(lastParsedField);
+                      }
+
+                      startIndex = -1;
+                      break;
+                    case '{':
+                      notComposite = false;
+                      break;
+                    case '}':
+                      notComposite = true;
+                      break;
+                    default:
+                      if (startIndex == 0 && i == keyBlock.length - 1)
+                        parsedFields.push(keyBlock);
+                      else if (i == keyBlock.length - 1)
+                        parsedFields.push(keyBlock.substring(startIndex));
+                      else if (startIndex == -1) startIndex = i;
+                      break;
+                  }
+                }
+
+                parsedFields.forEach((parsedField) => {
+                  const finalKey = keyBlock.trim();
+                  const field = node.fields?.find(
+                    (f) => f.name.value == parsedField,
+                  );
+                  let fieldType = '';
+                  if (field)
+                    fieldType =
+                      WorkbenchFederationProvider.getFieldTypeString(field);
+
+                  if (entity.keys[finalKey])
+                    entity.keys[finalKey].push({
+                      field: parsedField,
+                      type: fieldType,
+                    });
+                  else
+                    entity.keys[finalKey] = [
+                      { field: parsedField, type: fieldType },
+                    ];
+                });
+              }
+
+              if (Object.keys(entity.keys).length > 0) {
+                if (!extendables[joinGraphEnumValue])
+                  extendables[joinGraphEnumValue] = [entity];
+                else extendables[joinGraphEnumValue].push(entity);
+              }
+            }
+          });
         },
         EnumTypeDefinition(node) {
           if (node.name.value == 'join__Graph') {

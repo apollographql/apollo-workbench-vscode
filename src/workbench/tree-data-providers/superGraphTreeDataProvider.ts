@@ -38,7 +38,7 @@ export class LocalSupergraphTreeDataProvider
 
   async getChildren(element?: TreeItem): Promise<TreeItem[]> {
     if (element == undefined) {
-this.items = new Array<SupergraphTreeItem>();
+      this.items = new Array<SupergraphTreeItem>();
       FileProvider.instance.refreshLocalWorkbenchFiles();
       FileProvider.instance
         .getWorkbenchFiles()
@@ -62,21 +62,14 @@ this.items = new Array<SupergraphTreeItem>();
       switch (element.contextValue) {
         case 'supergraphTreeItem': {
           const supergraphItem = element as SupergraphTreeItem;
-          const subgraphItem = element as SupergraphTreeItem;
+          const federationIdentifierItem = new FederationVersionItem(
+            supergraphItem.wbFile,
+            supergraphItem.filePath,
+          );
 
-          //Support legacy composition in workbench files
-          if (
-            (supergraphItem.wbFile as any)?.composedSchema &&
-            !subgraphItem.wbFile.supergraphSdl
-          ) {
-            subgraphItem.wbFile.supergraphSdl = (
-              supergraphItem.wbFile as any
-            )?.composedSchema;
-            delete (supergraphItem.wbFile as any)?.composedSchema;
-          }
-
-          if (subgraphItem.wbFile.supergraphSdl) {
+          if (supergraphItem.wbFile.supergraphSdl) {
             return Promise.resolve([
+              federationIdentifierItem,
               new SupergraphSchemaTreeItem(
                 supergraphItem.wbFile,
                 supergraphItem.filePath,
@@ -97,9 +90,10 @@ this.items = new Array<SupergraphTreeItem>();
               'notebook-state-error',
             );
             return Promise.resolve([
+              federationIdentifierItem,
               invalidCompositionItem,
-              subgraphItem.subgraphsChild,
-              subgraphItem.operationsChild,
+              supergraphItem.subgraphsChild,
+              supergraphItem.operationsChild,
             ]);
           }
         }
@@ -338,5 +332,32 @@ export class OperationTreeItem extends TreeItem {
         light: path.join(__filename, '..', '..', '..', '..', 'media', 'q.svg'),
         dark: path.join(__filename, '..', '..', '..', '..', 'media', 'q.svg'),
       };
+  }
+}
+export class FederationVersionItem extends TreeItem {
+  constructor(
+    public readonly wbFile: ApolloWorkbenchFile,
+    public readonly wbFilePath: string,
+  ) {
+    super(
+      `Apollo Federation ${wbFile.federation ?? '1'} (click to change)`,
+      TreeItemCollapsibleState.None,
+    );
+    this.command = {
+      command: 'local-supergraph-designs.switchFederationComposition',
+      arguments: [this],
+      title:
+        'Switch Apollo Federation composition being used by current design',
+    };
+    this.contextValue = 'federationVersionItem';
+    this.iconPath = path.join(
+      __filename,
+      '..',
+      '..',
+      '..',
+      '..',
+      'media',
+      'versions.svg',
+    );
   }
 }

@@ -115,6 +115,22 @@ const createGraphFromDesign = gql`
   }
 `;
 
+const setVariantComposition = (version: string = '1') => gql`
+  mutation WorkbenchSetComposition(
+    $graphId: ID!
+    $variant: String!
+    $version: String
+  ) {
+    service(id: $graphId) {
+      variant(name: $variant) {
+        configureComposition(version: $version) {
+          compositionVersion
+        }
+      }
+    }
+  }
+`;
+
 const UPLOAD_AND_COMPOSE_PARTIAL_SCHEMA = gql`
   mutation UploadAndComposePartialSchema(
     $id: ID!
@@ -226,7 +242,25 @@ export async function createGraph(
   );
   const routerApiKey = result.data?.newService?.apiKeys[0]?.token;
 
-  return result.errors ? result.errors : routerApiKey;
+  return result.errors ? result : routerApiKey;
+}
+
+export async function setFederationCompositionTwo(
+  apiKey: string,
+  graphId: string,
+) {
+  const result = await toPromise(
+    execute(createLink({ apiKey, graphId }), {
+      query: setVariantComposition('2'),
+      variables: {
+        variant: 'workbench',
+        graphId,
+        version: '2',
+      },
+    }),
+  );
+
+  return result.errors ? false : true;
 }
 
 export async function publishSubgraph(

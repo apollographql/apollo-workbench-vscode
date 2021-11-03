@@ -8,6 +8,7 @@ import {
   SupergraphSchemaTreeItem,
   SupergraphApiSchemaTreeItem,
   SupergraphTreeItem,
+  FederationVersionItem,
 } from '../workbench/tree-data-providers/superGraphTreeDataProvider';
 import {
   WorkbenchUri,
@@ -25,6 +26,7 @@ import {
   getGraphSchemasByVariant,
   getUserMemberships,
   publishSubgraph,
+  setFederationCompositionTwo,
 } from '../graphql/graphClient';
 import {
   GetGraphSchemas_service_implementingServices_NonFederatedImplementingService,
@@ -41,6 +43,7 @@ import { enterStudioApiKey } from './extension';
 import { UserMemberships_me_User } from '../graphql/types/UserMemberships';
 import { createJavascriptTemplate } from '../utils/createJavascriptTemplate';
 import { execSync } from 'child_process';
+import { createTypescriptTemplate } from '../utils/createTypescriptTemplate';
 
 let startingMocks = false;
 
@@ -630,17 +633,26 @@ export async function createDesignInStudio(item: SupergraphTreeItem) {
         }
 
         if (accountToCreateIn) {
-          const graphCreationResults = await createGraph(
+          const graphApiKey = await createGraph(
             userApiKey,
             accountToCreateIn,
             graphName,
           );
-          if (graphCreationResults == true) {
+          if (
+            graphApiKey != undefined &&
+            !graphApiKey?.errors &&
+            graphApiKey.length > 0
+          ) {
             log(`Graph Created Successfully!`);
             progress.report({
               message: `Graph Created Successfully!`,
               increment: 25,
             });
+
+            if (wbFile.federation == '2') {
+              await setFederationCompositionTwo(userApiKey, graphName);
+            }
+
             let counter = 0;
             const increment = 75 / Object.keys(wbFile.schemas).length;
 
@@ -648,15 +660,17 @@ export async function createDesignInStudio(item: SupergraphTreeItem) {
               log(`Publishing ${subgraphName} to ${accountToCreateIn}...`);
               const subgraph = wbFile.schemas[subgraphName];
               const schema = subgraph.sdl;
+              let subgraphUrl = `http://localhost:${
+                StateManager.settings_startingServerPort + counter
+              }`;
+              if (subgraph.url && subgraph.url != '')
+                subgraphUrl = subgraph.url;
 
               const publishResponse = await publishSubgraph(
                 userApiKey,
                 graphName,
                 subgraphName,
-                subgraph.url ??
-                  `http://localhost:${
-                    StateManager.settings_startingServerPort + counter
-                  }`,
+                subgraphUrl,
                 schema,
               );
 
@@ -680,13 +694,13 @@ export async function createDesignInStudio(item: SupergraphTreeItem) {
               counter++;
             }
 
-            await exportDesign(graphName, wbFile);
+            await exportDesign(graphName, wbFile, graphApiKey);
 
             const studioUrl = `https://studio.apollographql.com/graph/${graphName}?variant=workbench`;
             log(`View your newly created graph at ${studioUrl}`);
             env.openExternal(Uri.parse(studioUrl));
           } else {
-            const errorMessage = graphCreationResults[0].message;
+            const errorMessage = graphApiKey.errors[0].message;
             if (errorMessage.toLowerCase().includes('already exists')) {
               const existsMessage = `A graph with that name already exists.`;
               log(existsMessage);
@@ -713,7 +727,11 @@ export async function exportDesignToProject(item: SupergraphTreeItem) {
   await exportDesign(item.wbFile.graphName, item.wbFile);
 }
 
-async function exportDesign(graphName: string, wbFile: ApolloWorkbenchFile) {
+async function exportDesign(
+  graphName: string,
+  wbFile: ApolloWorkbenchFile,
+  apiKey?: string,
+) {
   const buildLocalProject = await window.showQuickPick(
     ['JavaScript', 'Typescript', 'None'],
     {
@@ -730,17 +748,12 @@ async function exportDesign(graphName: string, wbFile: ApolloWorkbenchFile) {
       shouldPromptToOpen = false;
       break;
     case 'JavaScript':
-      assetPath = createJavascriptTemplate(wbFile, graphName);
+      assetPath = createJavascriptTemplate(wbFile, graphName, apiKey);
 
       break;
     case 'Typescript':
-      shouldPromptToOpen = false;
+      assetPath = createTypescriptTemplate(wbFile, graphName, apiKey);
 
-      // createTypescriptTemplate(wbFile);
-      // assetPath = resolve(
-      //   StateManager.workspaceRoot ?? __dirname,
-      //   `${graphName}`,
-      // );
       break;
   }
 
@@ -754,4 +767,41 @@ async function exportDesign(graphName: string, wbFile: ApolloWorkbenchFile) {
       execSync(`code ${assetPath}`);
     }
   }
+}
+
+export async function switchFederationComposition(item: FederationVersionItem) {
+  let versionToChangeTo = '2';
+  if (item.wbFile.federation == '2') versionToChangeTo = '1';
+
+  const message = `${item.wbFile.graphName} is now using Apollo Federation composition ${versionToChangeTo}`;
+  const uri = WorkbenchUri.supergraph(
+    item.wbFilePath,
+    versionToChangeTo,
+    WorkbenchUriType.FEDERATION_COMPOSITION,
+  );
+
+  if (versionToChangeTo == '2') {
+    //We should prompt the user about the alpha
+    const message = `Federation 2 is available as an opt-in preview.
+
+Note that this feature is in the alpha release stage and only supported in newer versions of Apollo Gateway. If you are running a gateway prior to version v2.0-alpha.0, this could lead to runtime errors. Please confirm you are running an updated gateway version before using the schemas designed with Federation 2.
+
+https://www.apollographql.com/docs/federation/v2
+`;
+    const acknowledge = await window.showWarningMessage(
+      'Upgrade design configuration to Apollo Federation 2?',
+      {
+        modal: true,
+        detail: message,
+      },
+      'Upgrade',
+    );
+    if (acknowledge != 'Upgrade') {
+      log(`${item.wbFile.graphName} upgrade to Federation 2 was cancelled.`);
+      return;
+    }
+  }
+  await FileProvider.instance.write(uri, '');
+  log(message);
+  window.showInformationMessage(message);
 }

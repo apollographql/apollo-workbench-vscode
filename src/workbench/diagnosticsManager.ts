@@ -10,7 +10,6 @@ import {
   Range,
   Uri,
 } from 'vscode';
-import { Location as CodeLocation } from 'vscode-languageserver-types';
 import { getTypeUsageRanges } from '../graphql/parsers/schemaParser';
 import { log } from '../utils/logger';
 import { collectExecutableDefinitionDiagnositics } from '../utils/operation-diagnostics/diagnostics';
@@ -192,6 +191,7 @@ export class WorkbenchDiagnostics {
         compiledSchemas[subgraphName] =
           WorkbenchFederationProvider.normalizeSchema(
             schemas[subgraphName].sdl,
+            wb.federation,
           );
       }
     });
@@ -214,7 +214,10 @@ export class WorkbenchDiagnostics {
           const nodeLoc = node.loc;
           if (nodeLoc?.source.body) {
             const normalizedSource =
-              WorkbenchFederationProvider.normalizeSchema(nodeLoc?.source.body);
+              WorkbenchFederationProvider.normalizeSchema(
+                nodeLoc?.source.body,
+                wb.federation,
+              );
             for (const subgraphName in wb.schemas) {
               if (normalizedSource == compiledSchemas[subgraphName]) {
                 //Create and add a diagnostic

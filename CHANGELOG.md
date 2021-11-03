@@ -1,3 +1,9 @@
+## Apollo Workbench VSCode 2.0
+
+- Federation 2 Alpha support
+- Create a new Apollo Studio graph from a workbench design
+- Export project capabilities for any design
+
 ## Apollo Workbench VSCode 1.1
 
 - Support multiple workbench design files with errors and context
