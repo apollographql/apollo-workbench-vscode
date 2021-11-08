@@ -121,6 +121,7 @@ const federatedServerPackageJson: any = {
     '@apollo/federation': 'latest',
     'apollo-datasource': 'latest',
     'apollo-server': 'latest',
+    graphql: '^15.5.0',
     faker: 'latest',
   },
   devDependencies: {
@@ -156,11 +157,14 @@ export function generateTsFederatedServerPackageJson(serviceName: string) {
 
 //TODO: Federation 2 packages to be installed for router things
 const gatewayPackageJson: any = (version: string) => {
+  const roverCompose =
+    version == '2'
+      ? `rover supergraph fed2 compose --config supergraph.yaml  > supergraph-schema.graphql`
+      : 'rover supergraph compose --config supergraph.yaml  > supergraph-schema.graphql';
   return {
     name: 'graphql-gateway',
     scripts: {
-      compose:
-        'rover supergraph compose --config supergraph.yaml  > supergraph-schema.graphql',
+      compose: roverCompose,
       start: 'node src/index.js',
       postinstall: 'npm run compose',
     },
@@ -168,6 +172,7 @@ const gatewayPackageJson: any = (version: string) => {
     dependencies: {
       '@apollo/gateway': version == '2' ? '2.0.0-alpha.1' : 'latest',
       'apollo-server': 'latest',
+      graphql: '^15.5.0',
       dotenv: 'latest',
     },
     devDependencies: {

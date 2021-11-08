@@ -279,6 +279,7 @@ export class WorkbenchDiagnostics {
             range = new Range(lineNumber - 1, 0, lineNumber, 0);
           } else {
           }
+        } else {
         }
       } else if (
         errorMessage.includes('Type Query must define one or more fields')
