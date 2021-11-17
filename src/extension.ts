@@ -8,7 +8,7 @@ import {
   Uri,
 } from 'vscode';
 
-import { StateManager } from './workbench/stateManager';
+// import { StateManager } from './workbench/stateManager';
 import { ServerManager } from './workbench/serverManager';
 import { FileProvider } from './workbench/file-system/fileProvider';
 import { federationCompletionProvider } from './workbench/federationCompletionProvider';
@@ -78,23 +78,23 @@ export async function deactivate(context: ExtensionContext) {
 }
 
 export async function activate(context: ExtensionContext) {
-  StateManager.init(context);
+  // StateManager.init(context);
   context.workspaceState.update('selectedWbFile', '');
   context.globalState.update('APOLLO_SELCTED_GRAPH_ID', '');
 
   //Setting up the mocks project folder - need to isolate to mocks running
-  if (StateManager.instance.extensionGlobalStoragePath) {
-    const mocksPath = resolve(
-      StateManager.instance.extensionGlobalStoragePath,
-      `mocks`,
-    );
-    const packageJsonPath = resolve(mocksPath, `package.json`);
-    mkdirSync(mocksPath, { recursive: true });
-    writeFileSync(packageJsonPath, '{"name":"mocks", "version":"1.0"}', {
-      encoding: 'utf-8',
-    });
-    execSync(`npm i faker`, { cwd: mocksPath });
-  }
+  // if (StateManager.instance.extensionGlobalStoragePath) {
+  //   const mocksPath = resolve(
+  //     StateManager.instance.extensionGlobalStoragePath,
+  //     `mocks`,
+  //   );
+  //   const packageJsonPath = resolve(mocksPath, `package.json`);
+  //   mkdirSync(mocksPath, { recursive: true });
+  //   writeFileSync(packageJsonPath, '{"name":"mocks", "version":"1.0"}', {
+  //     encoding: 'utf-8',
+  //   });
+  //   execSync(`npm i faker`, { cwd: mocksPath });
+  // }
 
   context.subscriptions.push(
     workspace.registerFileSystemProvider('workbench', FileProvider.instance, {
@@ -112,18 +112,18 @@ export async function activate(context: ExtensionContext) {
   );
 
   //Register Tree Data Providers
-  window.registerTreeDataProvider(
-    'local-supergraph-designs',
-    StateManager.instance.localSupergraphTreeDataProvider,
-  );
-  window.registerTreeDataProvider(
-    'studio-graphs',
-    StateManager.instance.apolloStudioGraphsProvider,
-  );
-  window.registerTreeDataProvider(
-    'studio-operations',
-    StateManager.instance.apolloStudioGraphOpsProvider,
-  );
+  // window.registerTreeDataProvider(
+  //   'local-supergraph-designs',
+  //   StateManager.instance.localSupergraphTreeDataProvider,
+  // );
+  // window.registerTreeDataProvider(
+  //   'studio-graphs',
+  //   StateManager.instance.apolloStudioGraphsProvider,
+  // );
+  // window.registerTreeDataProvider(
+  //   'studio-operations',
+  //   StateManager.instance.apolloStudioGraphOpsProvider,
+  // );
 
   //Register commands to ensure a folder is open in the window to store workbench files
   commands.executeCommand('extension.ensureFolderIsOpen');
@@ -311,9 +311,9 @@ export async function activate(context: ExtensionContext) {
       if (f.path.includes('.apollo-workbench')) deletedWorkbenchFile = true;
     });
 
-    if (deletedWorkbenchFile) {
-      StateManager.instance.localSupergraphTreeDataProvider.refresh();
-    }
+    // if (deletedWorkbenchFile) {
+    //   StateManager.instance.localSupergraphTreeDataProvider.refresh();
+    // }
   });
   workspace.onDidChangeTextDocument((e) => {
     if (e.contentChanges.length == 0) return;

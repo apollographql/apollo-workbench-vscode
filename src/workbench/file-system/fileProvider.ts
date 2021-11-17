@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, readFileSync, writeFileSync } from 'fs';
+// import { existsSync, readdirSync, readFileSync, writeFileSync } from 'fs';
 import path, { join, normalize, relative, resolve } from 'path';
 import {
   commands,
@@ -245,9 +245,10 @@ export class FileProvider implements FileSystemProvider {
     }
   }
   private writeWorbenchFile(wbFilePath: string, wbFile: any) {
-    writeFileSync(normalize(wbFilePath), JSON.stringify(wbFile, null, 2), {
-      encoding: 'utf8',
-    });
+    workspace.fs.writeFile(
+      Uri.parse(normalize(wbFilePath)),
+      Buffer.from(JSON.stringify(wbFile, null, 2)),
+    );
     this.workbenchFiles.set(wbFilePath, wbFile);
     StateManager.instance.localSupergraphTreeDataProvider.refresh();
   }
@@ -282,10 +283,10 @@ export class FileProvider implements FileSystemProvider {
     }
   }
 
-  refreshLocalWorkbenchFile(wbFilePath: string) {
+  async refreshLocalWorkbenchFile(wbFilePath: string) {
     try {
-      const wbString = readFileSync(wbFilePath, { encoding: 'utf-8' });
-      let wbFile = JSON.parse(wbString) as ApolloWorkbenchFile;
+      const wbString = await workspace.fs.readFile(Uri.parse(wbFilePath));
+      let wbFile = JSON.parse(wbString.toString()) as ApolloWorkbenchFile;
 
       const compResults = WorkbenchFederationProvider.compose(wbFile);
       if (compResults.errors) {
@@ -314,22 +315,24 @@ export class FileProvider implements FileSystemProvider {
   }
 
   //All workbench files in opened VS Code folder
-  refreshLocalWorkbenchFiles(shouldCompose: boolean = true) {
+  async refreshLocalWorkbenchFiles(shouldCompose: boolean = true) {
     // Clear all workbench files and workbench diagnostics
     this.workbenchFiles.clear();
     WorkbenchDiagnostics.instance.clearAllDiagnostics();
 
     const workspaceRoot = StateManager.workspaceRoot;
     if (workspaceRoot) {
-      const workbenchFiles = this.getWorkbenchFilesInDirectory(workspaceRoot);
+      const workbenchFiles = await this.getWorkbenchFilesInDirectory(
+        workspaceRoot,
+      );
 
       if (workbenchFiles.length > 0) {
-        workbenchFiles.forEach((workbenchFile) => {
+        workbenchFiles.forEach(async (workbenchFile) => {
           const wbFilePath = workbenchFile.path;
 
           try {
-            const wbString = readFileSync(wbFilePath, { encoding: 'utf-8' });
-            let wbFile = JSON.parse(wbString) as ApolloWorkbenchFile;
+            const wbString = await workspace.fs.readFile(Uri.parse(wbFilePath));
+            let wbFile = JSON.parse(wbString.toString()) as ApolloWorkbenchFile;
 
             this.workbenchFiles.set(wbFilePath, wbFile);
             WorkbenchDiagnostics.instance.createWorkbenchFileDiagnostics(
@@ -397,9 +400,10 @@ export class FileProvider implements FileSystemProvider {
         StateManager.workspaceRoot,
         `${wbFile.graphName}.apollo-workbench`,
       );
-      writeFileSync(normalize(path), JSON.stringify(wbFile), {
-        encoding: 'utf8',
-      });
+      workspace.fs.writeFile(
+        Uri.parse(normalize(path)),
+        Buffer.from(JSON.stringify(wbFile)),
+      );
       StateManager.instance.localSupergraphTreeDataProvider.refresh();
     }
   }
@@ -484,7 +488,7 @@ export class FileProvider implements FileSystemProvider {
   onDidChangeEmitter = new EventEmitter<FileChangeEvent[]>();
   onDidChangeFile = this.onDidChangeEmitter.event;
 
-  private getWorkbenchFilesInDirectory(dirPath: string) {
+  private async getWorkbenchFilesInDirectory(dirPath: string) {
     if (!dirPath || dirPath == '.') return [];
 
     const workbenchFiles = new Array<Uri>();
@@ -493,12 +497,12 @@ export class FileProvider implements FileSystemProvider {
 
     while (directories.length > 0) {
       const directory = directories[0];
-      const dirents = readdirSync(directory, { withFileTypes: true });
-      for (const dirent of dirents) {
-        const directoryPath = path.resolve(directory, dirent.name);
-        if (dirent.isDirectory() && dirent.name != 'node_modules') {
+      const dirents = await workspace.fs.readDirectory(Uri.parse(directory));
+      for (const [name, fileType] of dirents) {
+        const directoryPath = path.resolve(directory, name);
+        if (fileType == FileType.Directory && name != 'node_modules') {
           directories.push(directoryPath);
-        } else if (dirent.name.includes('.apollo-workbench')) {
+        } else if (name.includes('.apollo-workbench')) {
           const uri = WorkbenchUri.parse(directoryPath);
           workbenchFiles.push(uri);
         }
@@ -520,17 +524,17 @@ export class FileProvider implements FileSystemProvider {
       'media',
       `preloaded-files`,
     );
-    if (existsSync(preloadFileDir)) {
-      const preloadedDirectory = readdirSync(preloadFileDir, {
-        encoding: 'utf-8',
-      });
-      preloadedDirectory.map((item) => {
-        items.push({
-          fileName: item.split('.')[0],
-          path: `${preloadFileDir}/${item}`,
-        });
-      });
-    }
+    // if (existsSync(preloadFileDir)) {
+    //   const preloadedDirectory = readdirSync(preloadFileDir, {
+    //     encoding: 'utf-8',
+    //   });
+    //   preloadedDirectory.map((item) => {
+    //     items.push({
+    //       fileName: item.split('.')[0],
+    //       path: `${preloadFileDir}/${item}`,
+    //     });
+    //   });
+    // }
     return items;
   }
 }

@@ -18,6 +18,7 @@
   "activationEvents": [
     "onView:local-supergraph-designs"
   ],
+  "browser": "./out/extension.js",
   "main": "./out/extension.js",
   "scripts": {
     "codegen": "apollo client:codegen --target=typescript  src/graphql/types --outputFlat",
