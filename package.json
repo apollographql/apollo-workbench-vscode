@@ -56,7 +56,7 @@
     "@apollo/query-graphs": "npm:@apollo/query-graphs@2.0.0-alpha.2",
     "@apollo/query-planner-1": "npm:@apollo/query-planner@^0.5.1",
     "@apollo/query-planner-2": "npm:@apollo/query-planner@2.0.0-alpha.2",
-    "apollo-server": "^3.4.0",
+    "apollo-server": "^3.4.1",
     "archiver": "^5.2.0",
     "chokidar": "^3.4.3",
     "codemirror": "^5.63.3",
