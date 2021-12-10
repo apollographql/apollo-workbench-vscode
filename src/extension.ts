@@ -301,7 +301,6 @@ export async function activate(context: ExtensionContext) {
         WorkbenchDiagnostics.instance.validateAllOperations(
           FileProvider.instance.loadedWorbenchFilePath,
         );
-      } else if (uri.path.includes('subgraphs')) {
       }
     }
   });

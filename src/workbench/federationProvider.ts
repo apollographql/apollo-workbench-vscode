@@ -32,7 +32,7 @@ import {
   QueryPlanner as QueryPlanner_1,
   serializeQueryPlan,
 } from '@apollo/query-planner-1';
-import { defaultRootOperationTypes as defaultRootOperationTypes_1 } from '@apollo/federation-2/dist/composition/normalize';
+import { defaultRootOperationTypes } from '@apollo/federation-1/dist/composition/normalize';
 import {
   CompositionFailure as CompositionFailure_1,
   CompositionResult as CompositionResult_1,
@@ -46,7 +46,6 @@ import {
   CompositionResult as CompositionResult_2,
   CompositionSuccess as CompositionSuccess_2,
 } from '@apollo/composition';
-import { defaultRootOperationTypes as defaultRootOperationTypes_2 } from '@apollo/federation-2/dist/composition/normalize';
 import {
   buildSchema,
   federationBuiltIns,
@@ -276,12 +275,9 @@ export class WorkbenchFederationProvider {
     }
   }
 
-  static normalizeSchema(schema: string, federationComposition: string = '1') {
-    let doc;
-    const document = parse(schema);
-    if (federationComposition == '1')
-      doc = defaultRootOperationTypes_1(document);
-    else doc = defaultRootOperationTypes_2(document);
+  static normalizeSchema(schema: string) {
+    // convert `schema { query: MyQuery } type MyQuery {}` to `schema { query: Query } type Query {}`
+    const doc = defaultRootOperationTypes(parse(schema));
 
     const modifiedDOc = visit(doc, {
       Document(node) {

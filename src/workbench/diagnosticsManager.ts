@@ -191,7 +191,6 @@ export class WorkbenchDiagnostics {
         compiledSchemas[subgraphName] =
           WorkbenchFederationProvider.normalizeSchema(
             schemas[subgraphName].sdl,
-            wb.federation,
           );
       }
     });
@@ -214,10 +213,7 @@ export class WorkbenchDiagnostics {
           const nodeLoc = node.loc;
           if (nodeLoc?.source.body) {
             const normalizedSource =
-              WorkbenchFederationProvider.normalizeSchema(
-                nodeLoc?.source.body,
-                wb.federation,
-              );
+              WorkbenchFederationProvider.normalizeSchema(nodeLoc?.source.body);
             for (const subgraphName in wb.schemas) {
               if (normalizedSource == compiledSchemas[subgraphName]) {
                 //Create and add a diagnostic
@@ -277,9 +273,7 @@ export class WorkbenchDiagnostics {
             const lineNumber = location.line - 1;
 
             range = new Range(lineNumber - 1, 0, lineNumber, 0);
-          } else {
           }
-        } else {
         }
       } else if (
         errorMessage.includes('Type Query must define one or more fields')
