@@ -86,7 +86,7 @@ export function generateSubgraphAction(graph: string, port: number) {
 name: Publish Schema to Apollo Studio
 
 on:
-  push: 
+  push:
     branches: [main]
 
   # Allows you to run this workflow manually from the Actions tab
@@ -101,10 +101,10 @@ jobs:
       APOLLO_KEY: \${{ secrets.APOLLO_KEY }}
       APOLLO_GRAPH_REF: ${graph}@production
       ROUTING_URL: http://localhost:${port}
-    steps: 
+    steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-node@v2
-        with: 
+        with:
           node-version: '14'
           check-latest: true
       - run: curl -sSL https://rover.apollo.dev/nix/latest | sh
@@ -170,7 +170,7 @@ const gatewayPackageJson: any = (version: string) => {
     },
     main: 'src/index.js',
     dependencies: {
-      '@apollo/gateway': version == '2' ? '2.0.0-alpha.1' : 'latest',
+      '@apollo/gateway': version == '2' ? '2.0.0-alpha.2' : 'latest',
       'apollo-server': 'latest',
       graphql: '^15.5.0',
       dotenv: 'latest',
@@ -181,11 +181,11 @@ const gatewayPackageJson: any = (version: string) => {
   };
 };
 
-export function generateJsgatewayPackageJson(version: string = '1') {
+export function generateJsgatewayPackageJson(version = '1') {
   return JSON.stringify(gatewayPackageJson(version));
 }
 
-export function generateTsgatewayPackageJson(version: string = '1') {
+export function generateTsgatewayPackageJson(version = '1') {
   const base = gatewayPackageJson(version);
   base.devDependencies = {
     '@types/node': 'latest',
@@ -258,7 +258,7 @@ const resolvers = require('./resolvers.js');
 const typeDefs = gql(readFileSync(resolve(__dirname, "..","schema.graphql"), { encoding: "utf8" }));
 const schema = buildSubgraphSchema({ typeDefs, resolvers });
 const server = new ApolloServer({ schema, mocks });
-    
+
 const port = process.env.PORT || ${port};
 server.listen({ port }).then(({ url }) => {
     console.log(\`🚀 Subgraph ${serviceName} ready at \${url}\`);
@@ -279,7 +279,7 @@ const mocks = require('./mocks.js');
 const typeDefs = gql(readFileSync(resolve(__dirname, "..","schema.graphql"), { encoding: "utf8" }));
 const schema = buildSubgraphSchema({ typeDefs, resolvers });
 const server = new ApolloServer({ schema, mocks });
-    
+
 const port = process.env.PORT || ${port};
 server.listen({ port }).then(({ url }) => {
     console.log(\`🚀 Subgraph ${serviceName} ready at \${url}\`);
@@ -304,7 +304,7 @@ if(process.env.APOLLO_KEY && process.env.APOLLO_GRAPH_REF) {
   gateway = new ApolloGateway({ supergraphSdl });
 }
 const server = new ApolloServer({ gateway });
-    
+
 const port = process.env.PORT ||4000;
 server.listen({ port }).then(({ url }) => {
     console.log(\`🚀 Graph Router ready at \${url}\`);
@@ -329,7 +329,7 @@ if(process.env.APOLLO_KEY && process.env.APOLLO_GRAPH_REF) {
   gateway = new ApolloGateway({ supergraphSdl });
 }
 const server = new ApolloServer({ gateway });
-    
+
 const port = process.env.PORT ||4000;
 server.listen({ port }).then(({ url }) => {
     console.log(\`🚀 Graph Router ready at \${url}\`);

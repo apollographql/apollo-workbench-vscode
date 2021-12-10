@@ -40,7 +40,7 @@ export class ServerManager {
   //serverState will hold the ApolloServer/ApolloGateway instances based on the ports they are running on
   private serversState: { [port: string]: any } = {};
   mocksWorkbenchFile?: ApolloWorkbenchFile;
-  mocksWorkbenchFilePath: string = '';
+  mocksWorkbenchFilePath = '';
 
   private corsConfiguration = {
     origin: '*',
