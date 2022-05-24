@@ -369,12 +369,12 @@ async function createWorkbench(graphId: string, selectedVariant: string) {
         ?.implementingServices as GetGraphSchemas_service_implementingServices_FederatedImplementingServices;
       implementingServices?.services?.map(
         (service) =>
-          (workbenchFile.schemas[service.name] = {
-            sdl: service.activePartialSchema.sdl,
-            url: service.url ?? '',
-            shouldMock: true,
-            autoUpdateSchemaFromUrl: false,
-          }),
+        (workbenchFile.schemas[service.name] = {
+          sdl: service.activePartialSchema.sdl,
+          url: service.url ?? '',
+          shouldMock: true,
+          autoUpdateSchemaFromUrl: false,
+        }),
       );
     }
 
@@ -660,9 +660,8 @@ export async function createDesignInStudio(item: SupergraphTreeItem) {
               log(`Publishing ${subgraphName} to ${accountToCreateIn}...`);
               const subgraph = wbFile.schemas[subgraphName];
               const schema = subgraph.sdl;
-              let subgraphUrl = `http://localhost:${
-                StateManager.settings_startingServerPort + counter
-              }`;
+              let subgraphUrl = `http://localhost:${StateManager.settings_startingServerPort + counter
+                }`;
               if (subgraph.url && subgraph.url != '')
                 subgraphUrl = subgraph.url;
 
@@ -770,9 +769,7 @@ async function exportDesign(
 }
 
 export async function switchFederationComposition(item: FederationVersionItem) {
-  let versionToChangeTo = '2';
-  if (item.wbFile.federation == '2') versionToChangeTo = '1';
-
+  let versionToChangeTo = item.wbFile.federation === "2" ? "1" : "2";
   const message = `${item.wbFile.graphName} is now using Apollo Federation composition ${versionToChangeTo}`;
   const uri = WorkbenchUri.supergraph(
     item.wbFilePath,
@@ -780,27 +777,6 @@ export async function switchFederationComposition(item: FederationVersionItem) {
     WorkbenchUriType.FEDERATION_COMPOSITION,
   );
 
-  if (versionToChangeTo == '2') {
-    //We should prompt the user about the alpha
-    const message = `Federation 2 is available as an opt-in preview.
-
-Note that this feature is in the alpha release stage and only supported in newer versions of Apollo Gateway. If you are running a gateway prior to version v2.0-alpha.0, this could lead to runtime errors. Please confirm you are running an updated gateway version before using the schemas designed with Federation 2.
-
-https://www.apollographql.com/docs/federation/v2
-`;
-    const acknowledge = await window.showWarningMessage(
-      'Upgrade design configuration to Apollo Federation 2?',
-      {
-        modal: true,
-        detail: message,
-      },
-      'Upgrade',
-    );
-    if (acknowledge != 'Upgrade') {
-      log(`${item.wbFile.graphName} upgrade to Federation 2 was cancelled.`);
-      return;
-    }
-  }
   await FileProvider.instance.write(uri, '');
   log(message);
   window.showInformationMessage(message);

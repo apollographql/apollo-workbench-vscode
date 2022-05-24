@@ -125,17 +125,18 @@ export class WorkbenchFederationProvider {
               if (err.causes) {
                 err.causes.forEach((cause) => errors.push(cause));
               } else {
-                errors.push(
-                  new GraphQLError(
-                    err.message,
-                    undefined,
-                    undefined,
-                    undefined,
-                    undefined,
-                    undefined,
-                    { noSchemaDefined: true, serviceName: key, message: err },
-                  ),
-                );
+                err.extensions['subgraph'] = key;
+                errors.push(err);
+                //   new GraphQLError(
+                //     err.message,
+                //     undefined,
+                //     undefined,
+                //     undefined,
+                //     undefined,
+                //     undefined,
+                //     { noSchemaDefined: true, serviceName: key, message: err },
+                //   ),
+                // );
               }
             }
           }

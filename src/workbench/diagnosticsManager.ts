@@ -188,10 +188,14 @@ export class WorkbenchDiagnostics {
     const compiledSchemas: { [subgraphName: string]: string } = {};
     Object.keys(schemas).forEach((subgraphName) => {
       if (schemas[subgraphName].sdl) {
-        compiledSchemas[subgraphName] =
-          WorkbenchFederationProvider.normalizeSchema(
-            schemas[subgraphName].sdl,
-          );
+        try {
+          compiledSchemas[subgraphName] =
+            WorkbenchFederationProvider.normalizeSchema(
+              schemas[subgraphName].sdl,
+            );
+        } catch (err: any) {
+          compiledSchemas[subgraphName] = schemas[subgraphName].sdl;
+        }
       }
     });
 
@@ -200,7 +204,12 @@ export class WorkbenchDiagnostics {
       const errorMessage = error.message;
       let diagnosticCode = '';
       let range = new Range(0, 0, 0, 1);
-      let serviceName: string = (error.extensions as any)?.serviceName ?? 'workbench';
+      let serviceName: string = (error.extensions as any)?.subgraph ?? 'workbench';
+
+      if (error.locations && error.locations.length > 0) {
+        const location = error.locations[0];
+        range = new Range(location.line - 1, location.column - 1, location.line - 1, location.column)
+      }
 
       const diagnostic = new Diagnostic(
         range,
