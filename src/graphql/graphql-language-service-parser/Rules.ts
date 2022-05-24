@@ -1,7 +1,7 @@
 //Sourced from: https://github.com/graphql/graphiql
 // This was necessary due to Apollo Federation packages requiring graphql@15.5.3
 
-import { State, Token, Rule, RuleKind, ParseRule } from './types';
+import { State, Token, Rule, RuleKind, ParseRule, RuleKinds } from './types';
 import CharacterStream from './CharacterStream';
 import { opt, list, butNot, t, p } from './RuleHelpers';
 
@@ -56,7 +56,7 @@ export const ParseRules: { [name: string]: ParseRule } = {
       case 'subscription':
         return 'Subscription';
       case 'fragment':
-        return 'FragmentDefinition';
+        return RuleKinds.FRAGMENT_DEFINITION;
       case 'schema':
         return 'SchemaDef';
       case 'scalar':
@@ -114,8 +114,8 @@ export const ParseRules: { [name: string]: ParseRule } = {
         ? 'InlineFragment'
         : 'FragmentSpread'
       : stream.match(/[\s\u00a0,]*:/, false)
-      ? 'AliasedField'
-      : 'Field';
+        ? 'AliasedField'
+        : 'Field';
   },
   // Note: this minor deviation of "AliasedField" simplifies the lookahead.
   AliasedField: [

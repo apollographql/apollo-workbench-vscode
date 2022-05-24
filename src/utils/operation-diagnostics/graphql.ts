@@ -306,45 +306,6 @@ const typenameField = {
     name: { kind: Kind.NAME, value: "__typename" }
 };
 
-export function withTypenameFieldAddedWhereNeeded(ast: ASTNode) {
-    return visit(ast, {
-        enter: {
-            SelectionSet(node: SelectionSetNode) {
-                return {
-                    ...node,
-                    selections: node.selections.filter(
-                        selection =>
-                            !(
-                                selection.kind === "Field" &&
-                                (selection as FieldNode).name.value === "__typename"
-                            )
-                    )
-                };
-            }
-        },
-        leave(node: ASTNode) {
-            if (
-                !(
-                    node.kind === Kind.FIELD ||
-                    node.kind === Kind.FRAGMENT_DEFINITION ||
-                    node.kind === Kind.INLINE_FRAGMENT
-                )
-            ) {
-                return undefined;
-            }
-            if (!node.selectionSet) return undefined;
-
-            return {
-                ...node,
-                selectionSet: {
-                    ...node.selectionSet,
-                    selections: [typenameField, ...node.selectionSet.selections]
-                }
-            };
-        }
-    });
-}
-
 function getFieldEntryKey(node: FieldNode): string {
     return node.alias ? node.alias.value : node.name.value;
 }

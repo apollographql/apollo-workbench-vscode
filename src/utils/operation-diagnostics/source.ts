@@ -4,7 +4,6 @@ import {
     BREAK,
     TypeInfo,
     getVisitFn,
-    Visitor,
     ASTKindToNode
 } from "graphql";
 import { SourceLocation, getLocation } from "graphql/language/location";
@@ -24,45 +23,7 @@ type applyArg = [
     readonly any[]
 ];
 
-/**
- * Creates a new visitor instance which maintains a provided TypeInfo instance
- * along with visiting visitor.
- */
-export function visitWithTypeInfo(
-    typeInfo: TypeInfo,
-    visitor: Visitor<ASTKindToNode>
-): Visitor<ASTKindToNode> {
-    return {
-        enter(node: ASTNode) {
-            typeInfo.enter(node);
-            const fn = getVisitFn(visitor, node.kind, /* isLeaving */ false);
-            if (fn) {
-                const result = fn.apply(visitor, (arguments as unknown) as applyArg);
-                if (result !== undefined) {
-                    typeInfo.leave(node);
-                    if (isNode(result)) {
-                        typeInfo.enter(result);
-                    }
-                }
-                return result;
-            }
-        },
-        leave(node: ASTNode) {
-            const fn = getVisitFn(visitor, node.kind, /* isLeaving */ true);
-            let result;
-            if (fn) {
-                result = fn.apply(visitor, (arguments as unknown) as applyArg);
-            }
-            // XXX we can't replace this function until we handle this
-            // case better. If we replace with the function in `graphql-js`,
-            // it breaks onHover types
-            if (result !== BREAK) {
-                typeInfo.leave(node);
-            }
-            return result;
-        }
-    };
-}
+
 function positionInContainingDocument(
     source: Source,
     position: Position

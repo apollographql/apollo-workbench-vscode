@@ -2,7 +2,6 @@ import {
     GraphQLSchema,
     GraphQLError,
     FragmentDefinitionNode,
-    findDeprecatedUsages,
     isExecutableDefinitionNode,
     DocumentNode,
     OperationDefinitionNode,
@@ -94,15 +93,16 @@ export function collectExecutableDefinitionDiagnositics(
         );
     }
 
-    for (const error of findDeprecatedUsages(
-        schema,
-        astWithExecutableDefinitions
-    )) {
-        diagnostics.push(
-            //@ts-ignore
-            ...diagnosticsFromError(error, DiagnosticSeverity.Warning, "Deprecation")
-        );
-    }
+    //TODO: `findDeprecationUsages isn't exported upgrading from graphql@15 to 16
+    // for (const error of findDeprecatedUsages(
+    //     schema,
+    //     astWithExecutableDefinitions
+    // )) {
+    //     diagnostics.push(
+    //         //@ts-ignore
+    //         ...diagnosticsFromError(error, DiagnosticSeverity.Warning, "Deprecation")
+    //     );
+    // }
 
     return diagnostics;
 }
@@ -136,11 +136,12 @@ export interface GraphQLDiagnostic extends Diagnostic {
 
 const specifiedRulesToBeRemoved = [NoUnusedFragmentsRule];
 
+
 export const defaultValidationRules: ValidationRule[] = [
     NoAnonymousQueries,
     NoTypenameAlias,
     NoMissingClientDirectives,
-    ...specifiedRules.filter(rule => !specifiedRulesToBeRemoved.includes(rule))
+    ...specifiedRules.filter(rule => !specifiedRulesToBeRemoved.includes(rule as any))
 ];
 
 export function NoAnonymousQueries(context: ValidationContext) {
@@ -181,15 +182,11 @@ function NoMissingClientDirectives(context: ValidationContext) {
     // together correctly
     // XXX we have a simplified version of this in @apollo/gateway that we could probably use
     // intead of this
-    const executionContext = buildExecutionContext(
+    const executionContext = buildExecutionContext({
         schema,
-        root,
-        Object.create(null),
-        Object.create(null),
-        undefined,
-        undefined,
-        undefined
-    );
+        rootValue: root,
+        document: context.getDocument()
+    });
     function visitor(
         node: FieldNode | InlineFragmentNode | FragmentDefinitionNode
     ) {

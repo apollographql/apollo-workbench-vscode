@@ -6,7 +6,7 @@ import {
   ParseRules as ParseRulesType,
 } from './Rules';
 import CharacterStream from './CharacterStream';
-import { State, Token, Rule, RuleKind } from './types';
+import { State, Token, Rule, RuleKind, RuleKinds } from './types';
 
 import { LexRules, ParseRules, isIgnored } from './Rules';
 
@@ -41,7 +41,7 @@ export default function onlineParser(
         prevState: null,
       };
 
-      pushRule(options.parseRules, initialState, 'Document');
+      pushRule(options.parseRules, initialState, RuleKinds.DOCUMENT);
       return initialState;
     },
     token(stream: CharacterStream, state: State) {

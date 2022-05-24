@@ -48,8 +48,8 @@ import {
 } from '@apollo/composition';
 import {
   buildSchema,
-  federationBuiltIns,
   parseOperation,
+  FederationBlueprint,
   Subgraph,
   Subgraphs,
 } from '@apollo/federation-internals';
@@ -114,7 +114,9 @@ export class WorkbenchFederationProvider {
               // const printedSchema = WorkbenchFederationProvider.normalizeSchema(localSchemaString);
               const builtSchema = buildSchema(
                 localSchemaString,
-                federationBuiltIns,
+                {
+                  blueprint: new FederationBlueprint(false)
+                }
               );
               const subgraph = new Subgraph(key, url, builtSchema);
               subgraphs.add(subgraph);
@@ -339,10 +341,10 @@ export class WorkbenchFederationProvider {
       workbenchFile.operations[opToGenerateQueryPlan] instanceof String
         ? (workbenchFile.operations[opToGenerateQueryPlan] as string) ?? ''
         : (
-            workbenchFile.operations[
-              opToGenerateQueryPlan
-            ] as WorkbenchOperation
-          ).operation ?? '';
+          workbenchFile.operations[
+          opToGenerateQueryPlan
+          ] as WorkbenchOperation
+        ).operation ?? '';
 
     return WorkbenchFederationProvider.createQueryPlan(
       operation,
@@ -466,7 +468,7 @@ export class WorkbenchFederationProvider {
 
         return queryPlanString;
       } else {
-        const schema = buildSchema(supergraphSdl, federationBuiltIns);
+        const schema = buildSchema(supergraphSdl);
         const documentNode = parse(operation);
         const operationDefinition = documentNode.definitions.find(
           (def) => def.kind === 'OperationDefinition',

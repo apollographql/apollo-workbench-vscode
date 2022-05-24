@@ -200,7 +200,7 @@ export class WorkbenchDiagnostics {
       const errorMessage = error.message;
       let diagnosticCode = '';
       let range = new Range(0, 0, 0, 1);
-      let serviceName = error.extensions?.serviceName ?? 'workbench';
+      let serviceName: string = (error.extensions as any)?.serviceName ?? 'workbench';
 
       const diagnostic = new Diagnostic(
         range,
@@ -253,26 +253,28 @@ export class WorkbenchDiagnostics {
           error.extensions?.noSchemaDefined ||
           error.extensions?.invalidSchema
         ) {
-          if (error.extensions.unexpectedName) {
-            const unexpectedName = error.extensions.unexpectedName;
-            const location = error.extensions.locations[0];
-            const lineNumber = location.line - 1;
-            const textIndex = location.column - 1;
+          if (error.extensions?.unexpectedName) {
+            // const unexpectedName = error.extensions.unexpectedName;
+            //TODO: exception has details
+            // const location = error.extensions.exception..locations[0];
+            // const lineNumber = location.line - 1;
+            // const textIndex = location.column - 1;
 
-            if (unexpectedName == '[') diagnosticCode = 'makeArray:deleteRange';
-            else diagnosticCode = 'deleteRange';
+            // if (unexpectedName == '[') diagnosticCode = 'makeArray:deleteRange';
+            // else diagnosticCode = 'deleteRange';
 
-            range = new Range(
-              lineNumber,
-              textIndex,
-              lineNumber,
-              textIndex + unexpectedName.length,
-            );
+            // range = new Range(
+            //   lineNumber,
+            //   textIndex,
+            //   lineNumber,
+            //   textIndex + unexpectedName.length,
+            // );
           } else if (error.extensions.noFieldsDefined) {
-            const location = error.extensions.locations[0];
-            const lineNumber = location.line - 1;
+            //TODO: exception has details
+            // const location = error.extensions.locations[0];
+            // const lineNumber = location.line - 1;
 
-            range = new Range(lineNumber - 1, 0, lineNumber, 0);
+            // range = new Range(lineNumber - 1, 0, lineNumber, 0);
           }
         }
       } else if (
@@ -295,6 +297,8 @@ export class WorkbenchDiagnostics {
             serviceName = sn;
           }
         }
+
+        if (serviceName) continue;
 
         const typeUsage = getTypeUsageRanges(
           unknownType,
