@@ -67,16 +67,11 @@ import {
 const collectFragmentDefs = (op: string | undefined) => {
   const externalFragments: FragmentDefinitionNode[] = [];
   if (op) {
-    visit(
-      parse(op, {
-        allowLegacyFragmentVariables: true,
-      }),
-      {
-        FragmentDefinition(def) {
-          externalFragments.push(def);
-        },
+    visit(parse(op, {}), {
+      FragmentDefinition(def) {
+        externalFragments.push(def);
       },
-    );
+    });
   }
   return externalFragments;
 };
@@ -395,7 +390,7 @@ function getSuggestionsForImplements(
             interfaces: [
               ...interfaceConfig.interfaces,
               (type as GraphQLInterfaceType) ||
-              new GraphQLInterfaceType({ name: state.name, fields: {} }),
+                new GraphQLInterfaceType({ name: state.name, fields: {} }),
             ],
           });
         } else if (typeInfo.objectTypeDef) {
@@ -412,7 +407,7 @@ function getSuggestionsForImplements(
             interfaces: [
               ...objectTypeConfig.interfaces,
               (type as GraphQLInterfaceType) ||
-              new GraphQLInterfaceType({ name: state.name, fields: {} }),
+                new GraphQLInterfaceType({ name: state.name, fields: {} }),
             ],
           });
         }
@@ -818,9 +813,13 @@ export function canUseDirective(
       const prevStateKind = state.prevState && state.prevState.kind;
       switch (prevStateKind) {
         case RuleKinds.ARGUMENTS_DEF:
-          return locations.indexOf(DirectiveLocation.ARGUMENT_DEFINITION) !== -1;
+          return (
+            locations.indexOf(DirectiveLocation.ARGUMENT_DEFINITION) !== -1
+          );
         case RuleKinds.INPUT_DEF:
-          return locations.indexOf(DirectiveLocation.INPUT_FIELD_DEFINITION) !== -1;
+          return (
+            locations.indexOf(DirectiveLocation.INPUT_FIELD_DEFINITION) !== -1
+          );
       }
   }
 
@@ -910,10 +909,13 @@ export function getTypeInfo(
         } else {
           switch (state.prevState.kind) {
             case RuleKinds.FIELD:
-              argDefs = fieldDef && new Array<GraphQLArgument>(...fieldDef.args);
+              argDefs =
+                fieldDef && new Array<GraphQLArgument>(...fieldDef.args);
               break;
             case RuleKinds.DIRECTIVE:
-              argDefs = directiveDef && new Array<GraphQLArgument>(...directiveDef.args);
+              argDefs =
+                directiveDef &&
+                new Array<GraphQLArgument>(...directiveDef.args);
               break;
             case RuleKinds.ALIASED_FIELD: {
               const name = state.prevState && state.prevState.name;
@@ -954,9 +956,9 @@ export function getTypeInfo(
         enumValue =
           enumType instanceof GraphQLEnumType
             ? find(
-              new Array<GraphQLEnumValue>(...enumType.getValues()),
-              (val: GraphQLEnumValue) => val.value === state.name,
-            )
+                new Array<GraphQLEnumValue>(...enumType.getValues()),
+                (val: GraphQLEnumValue) => val.value === state.name,
+              )
             : null;
         break;
       case RuleKinds.LIST_VALUE:

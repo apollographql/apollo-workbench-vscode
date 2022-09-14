@@ -48,12 +48,14 @@ import {
 } from '@apollo/composition';
 import {
   buildSchema,
+  buildSchemaFromAST,
   parseOperation,
   FederationBlueprint,
   Subgraph,
   Subgraphs,
 } from '@apollo/federation-internals';
 import { QueryPlanner as QueryPlanner_2 } from '@apollo/query-planner-2';
+import { gql } from 'graphql-tag';
 
 export class WorkbenchFederationProvider {
   static getSchemaFromResults(
@@ -111,32 +113,20 @@ export class WorkbenchFederationProvider {
           const localSchemaString = workbenchFile.schemas[key].sdl;
           if (localSchemaString) {
             try {
-              // const printedSchema = WorkbenchFederationProvider.normalizeSchema(localSchemaString);
-              const builtSchema = buildSchema(
-                localSchemaString,
-                {
-                  blueprint: new FederationBlueprint(false)
-                }
-              );
+              const builtSchema = buildSchema(localSchemaString, {
+                blueprint: new FederationBlueprint(false),
+                validate: false,
+              });
               const subgraph = new Subgraph(key, url, builtSchema);
               subgraphs.add(subgraph);
             } catch (err: any) {
               log(err.message);
+
               if (err.causes) {
                 err.causes.forEach((cause) => errors.push(cause));
               } else {
                 err.extensions['subgraph'] = key;
                 errors.push(err);
-                //   new GraphQLError(
-                //     err.message,
-                //     undefined,
-                //     undefined,
-                //     undefined,
-                //     undefined,
-                //     undefined,
-                //     { noSchemaDefined: true, serviceName: key, message: err },
-                //   ),
-                // );
               }
             }
           }
@@ -342,10 +332,10 @@ export class WorkbenchFederationProvider {
       workbenchFile.operations[opToGenerateQueryPlan] instanceof String
         ? (workbenchFile.operations[opToGenerateQueryPlan] as string) ?? ''
         : (
-          workbenchFile.operations[
-          opToGenerateQueryPlan
-          ] as WorkbenchOperation
-        ).operation ?? '';
+            workbenchFile.operations[
+              opToGenerateQueryPlan
+            ] as WorkbenchOperation
+          ).operation ?? '';
 
     return WorkbenchFederationProvider.createQueryPlan(
       operation,
@@ -478,7 +468,7 @@ export class WorkbenchFederationProvider {
         const op = parseOperation(schema, operation, operationName);
         const queryPlanner = new QueryPlanner_2(schema);
         const queryPlan = queryPlanner.buildQueryPlan(op);
-        const queryPlanString = serializeQueryPlan(queryPlan);
+        const queryPlanString = serializeQueryPlan(queryPlan as any);
 
         return queryPlanString;
       }

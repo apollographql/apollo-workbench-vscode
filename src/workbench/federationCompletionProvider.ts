@@ -10,6 +10,7 @@ import {
 import { Position } from 'vscode-languageserver';
 import { getServiceAvailableTypes } from '../graphql/parsers/schemaParser';
 import { StateManager } from './stateManager';
+import { FileProvider } from './file-system/fileProvider';
 
 export interface FieldWithType {
   field: string;
@@ -105,13 +106,32 @@ export const federationCompletionProvider = {
             StateManager.instance
               .workspaceState_selectedWorkbenchAvailableEntities;
 
+          //TODO: Need to de-dedup extendable types
+
           for (const sn in extendableTypes)
             if (sn != serviceName)
               extendableTypes[sn].map(({ type, keys }) => {
                 Object.keys(keys).forEach((key) => {
-                  completionItems.push(
-                    new FederationEntityExtensionItem(key, type, keys[key], sn),
-                  );
+                  if (
+                    FileProvider.instance.loadedWorkbenchFile?.federation != '2'
+                  )
+                    completionItems.push(
+                      new FederationEntityExtensionItem(
+                        key,
+                        type,
+                        keys[key],
+                        sn,
+                      ),
+                    );
+                  else
+                    completionItems.push(
+                      new Federation2EntityExtensionItem(
+                        key,
+                        type,
+                        keys[key],
+                        sn,
+                      ),
+                    );
                 });
               });
 
@@ -256,6 +276,48 @@ export class FederationEntityExtensionItem extends CompletionItem {
 
     this.documentation = mkdDocs;
     this.detail = `Extend entity ${typeToExtend}`;
+    this.insertText = insertSnippet;
+  }
+}
+export class Federation2EntityExtensionItem extends CompletionItem {
+  constructor(
+    key: string,
+    entityType: string,
+    keyFields: FieldWithType[],
+    owningServiceName: string,
+  ) {
+    super(`${entityType} by "${key}"`, CompletionItemKind.Reference);
+    this.sortText = 'a';
+
+    const insertSnippet = new SnippetString(`type `);
+    let typeExtensionCodeBlock = `type ${entityType} @key(fields:"${key}") {\n`;
+
+    insertSnippet.appendVariable('entityType', entityType);
+    insertSnippet.appendText(' @key(fields:"');
+    insertSnippet.appendVariable('key', key);
+    insertSnippet.appendText('") {\n');
+
+    for (let i = 0; i < keyFields.length; i++) {
+      const keyField = keyFields[i];
+      const fieldLine = `\t${keyField.field}: ${keyField.type}\n`;
+      typeExtensionCodeBlock += fieldLine;
+      insertSnippet.appendText(fieldLine);
+    }
+
+    insertSnippet.appendText(`\t`);
+    insertSnippet.appendTabstop(1);
+    typeExtensionCodeBlock += '}';
+    insertSnippet.appendText(`\n}`);
+
+    const mkdDocs = new MarkdownString();
+    mkdDocs.appendCodeblock(typeExtensionCodeBlock, 'graphql');
+    mkdDocs.appendText(`Owning Service: ${owningServiceName}\n`);
+    mkdDocs.appendMarkdown(
+      `To learn more about entities, click [here](https://www.apollographql.com/docs/federation/entities).`,
+    );
+
+    this.documentation = mkdDocs;
+    this.detail = `Entity ${entityType}`;
     this.insertText = insertSnippet;
   }
 }

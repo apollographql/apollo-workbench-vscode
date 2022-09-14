@@ -11,7 +11,6 @@ import {
   Uri,
 } from 'vscode';
 import { getTypeUsageRanges } from '../graphql/parsers/schemaParser';
-import { log } from '../utils/logger';
 import { collectExecutableDefinitionDiagnositics } from '../utils/operation-diagnostics/diagnostics';
 import { GraphQLDocument } from '../utils/operation-diagnostics/document';
 import { WorkbenchFederationProvider } from './federationProvider';
@@ -202,13 +201,35 @@ export class WorkbenchDiagnostics {
     for (let i = 0; i < errors.length; i++) {
       const error = errors[i];
       const errorMessage = error.message;
-      let diagnosticCode = '';
+      const source = error.source?.body ?? (error.source as any);
       let range = new Range(0, 0, 0, 1);
-      let serviceName: string = (error.extensions as any)?.subgraph ?? 'workbench';
+      let serviceName: string =
+        (error.extensions as any)?.subgraph ?? 'workbench';
 
-      if (error.locations && error.locations.length > 0) {
+      if (serviceName == 'workbench') {
+        Object.keys(schemas).forEach((subgraphName) => {
+          if (schemas[subgraphName].sdl == source) {
+            serviceName = subgraphName;
+          }
+        });
+      }
+
+      if (error.nodes && error.nodes.length > 0) {
+        let nodeLoc = error.nodes[0].loc;
+        range = new Range(
+          nodeLoc?.startToken.line ? nodeLoc?.startToken.line - 1 : 0,
+          nodeLoc?.startToken.start ? nodeLoc?.startToken.column - 1 : 0,
+          nodeLoc?.endToken.line ? nodeLoc?.endToken.line - 1 : 0,
+          nodeLoc?.endToken.end ? nodeLoc?.endToken.column - 1 : 1,
+        );
+      } else if (error.locations && error.locations.length > 0) {
         const location = error.locations[0];
-        range = new Range(location.line - 1, location.column - 1, location.line - 1, location.column)
+        range = new Range(
+          location.line - 1,
+          location.column - 1,
+          location.line - 1,
+          location.column,
+        );
       }
 
       const diagnostic = new Diagnostic(
@@ -217,38 +238,15 @@ export class WorkbenchDiagnostics {
         DiagnosticSeverity.Error,
       );
 
-      if (error.nodes) {
-        error.nodes.forEach((node) => {
-          const nodeLoc = node.loc;
-          if (nodeLoc?.source.body) {
-            const normalizedSource =
-              WorkbenchFederationProvider.normalizeSchema(nodeLoc?.source.body);
-            for (const subgraphName in wb.schemas) {
-              if (normalizedSource == compiledSchemas[subgraphName]) {
-                //Create and add a diagnostic
-                const diagnostic = new Diagnostic(
-                  new Range(
-                    nodeLoc?.startToken.line ? nodeLoc?.startToken.line - 1 : 0,
-                    nodeLoc?.startToken.start
-                      ? nodeLoc?.startToken.column - 1
-                      : 0,
-                    nodeLoc?.endToken.line ? nodeLoc?.endToken.line - 1 : 0,
-                    nodeLoc?.endToken.end ? nodeLoc?.endToken.column - 1 : 1,
-                  ),
-                  errorMessage,
-                  DiagnosticSeverity.Error,
-                );
-                if (!diagnosticsGroups[subgraphName])
-                  diagnosticsGroups[subgraphName] = new Array<Diagnostic>();
-
-                diagnosticsGroups[subgraphName].push(diagnostic);
-              }
-            }
-          } else {
-            log('UNHANDLED ERROR WITH NODE');
+      if (errorMessage.includes('No root Query in subgraph')) {
+        Object.keys(schemas).forEach((subgraphName) => {
+          if (schemas[subgraphName].sdl == source) {
+            serviceName == subgraphName;
           }
         });
-      } else if (error.extensions) {
+
+        diagnostic.severity = DiagnosticSeverity.Hint;
+      } else if (error.extensions && Object.keys(error.extensions).length > 0) {
         if (error.extensions?.noServicesDefined) {
           const emptySchemas = `"schemas":{}`;
           const schemasIndex = 0;
@@ -268,10 +266,8 @@ export class WorkbenchDiagnostics {
             // const location = error.extensions.exception..locations[0];
             // const lineNumber = location.line - 1;
             // const textIndex = location.column - 1;
-
             // if (unexpectedName == '[') diagnosticCode = 'makeArray:deleteRange';
             // else diagnosticCode = 'deleteRange';
-
             // range = new Range(
             //   lineNumber,
             //   textIndex,
@@ -282,16 +278,19 @@ export class WorkbenchDiagnostics {
             //TODO: exception has details
             // const location = error.extensions.locations[0];
             // const lineNumber = location.line - 1;
-
             // range = new Range(lineNumber - 1, 0, lineNumber, 0);
           }
-        }
-      } else if (
-        errorMessage.includes('Type Query must define one or more fields')
-      ) {
-        const serviceNames = Object.keys(schemas);
-        if (serviceNames.length >= 1) {
-          serviceName = serviceNames[0];
+        } else {
+          try {
+            let tryName = errorMessage
+              ?.split('from subgraph "')[1]
+              ?.split('":')[0];
+            if (tryName) serviceName = tryName;
+          } catch (err) {}
+          switch (error.extensions.code) {
+            case 'SATISFIABILITY_ERROR':
+              break;
+          }
         }
       } else if (errorMessage.includes('Unknown type: ')) {
         const splitMessage = errorMessage.split('"');
@@ -349,7 +348,6 @@ export class WorkbenchDiagnostics {
           }
         });
       } else {
-        if (diagnosticCode) diagnostic.code = diagnosticCode;
         diagnostic.range = range;
 
         if (!diagnosticsGroups[serviceName])
