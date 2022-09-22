@@ -5,11 +5,9 @@ import {
   window,
   ExtensionContext,
   WebviewPanel,
-  Uri,
 } from 'vscode';
 
 import { StateManager } from './workbench/stateManager';
-import { ServerManager } from './workbench/serverManager';
 import { FileProvider } from './workbench/file-system/fileProvider';
 import { federationCompletionProvider } from './workbench/federationCompletionProvider';
 import { FederationCodeActionProvider } from './workbench/federationCodeActionProvider';
@@ -33,8 +31,6 @@ import {
 } from './commands/studio-graphs';
 import {
   createWorkbenchFromPreloaded,
-  startMocksWithDialog,
-  stopMocks,
   deleteOperation,
   addOperation,
   viewQueryPlan,
@@ -51,51 +47,24 @@ import {
   exportSupergraphApiSchema,
   viewSupergraphApiSchema,
   updateSubgraphSchemaFromURL,
-  viewSubgraphCustomMocks,
   exportSubgraphSchema,
-  exportSubgraphResolvers,
   createWorkbenchFromSupergraphVariant,
-  createDesignInStudio,
-  exportDesignToProject,
   switchFederationComposition,
   addFederationDirective,
 } from './commands/local-supergraph-designs';
-import { resolve } from 'path';
-import { mkdirSync, writeFileSync } from 'fs';
-import { execSync } from 'child_process';
 import { log } from './utils/logger';
 import { WorkbenchDiagnostics } from './workbench/diagnosticsManager';
 import { WorkbenchFederationProvider } from './workbench/federationProvider';
-import {
-  WorkbenchUri,
-  WorkbenchUriType,
-} from './workbench/file-system/WorkbenchUri';
 
 export const outputChannel = window.createOutputChannel('Apollo Workbench');
 
 // Our event when vscode deactivates
-export async function deactivate(context: ExtensionContext) {
-  ServerManager.instance.stopMocks();
-}
+export async function deactivate(context: ExtensionContext) {}
 
 export async function activate(context: ExtensionContext) {
   StateManager.init(context);
   context.workspaceState.update('selectedWbFile', '');
   context.globalState.update('APOLLO_SELCTED_GRAPH_ID', '');
-
-  //Setting up the mocks project folder - need to isolate to mocks running
-  if (StateManager.instance.extensionGlobalStoragePath) {
-    const mocksPath = resolve(
-      StateManager.instance.extensionGlobalStoragePath,
-      `mocks`,
-    );
-    const packageJsonPath = resolve(mocksPath, `package.json`);
-    mkdirSync(mocksPath, { recursive: true });
-    writeFileSync(packageJsonPath, '{"name":"mocks", "version":"1.0"}', {
-      encoding: 'utf-8',
-    });
-    execSync(`npm i faker`, { cwd: mocksPath });
-  }
 
   context.subscriptions.push(
     workspace.registerFileSystemProvider('workbench', FileProvider.instance, {
@@ -163,11 +132,6 @@ export async function activate(context: ExtensionContext) {
     exportSupergraphApiSchema,
   ); //right-click
   //****Subgraph Summary Commands
-  commands.registerCommand(
-    'local-supergraph-designs.startMocks',
-    startMocksWithDialog,
-  );
-  commands.registerCommand('local-supergraph-designs.stopMocks', stopMocks);
   commands.registerCommand('local-supergraph-designs.addSubgraph', addSubgraph);
   //****Subgraph Commands
   commands.registerCommand(
@@ -179,16 +143,8 @@ export async function activate(context: ExtensionContext) {
     updateSubgraphSchemaFromURL,
   ); //right-click
   commands.registerCommand(
-    'local-supergraph-designs.exportSubgraphResolvers',
-    exportSubgraphResolvers,
-  ); //right-click
-  commands.registerCommand(
     'local-supergraph-designs.exportSubgraphSchema',
     exportSubgraphSchema,
-  ); //right-click
-  commands.registerCommand(
-    'local-supergraph-designs.viewSubgraphCustomMocks',
-    viewSubgraphCustomMocks,
   ); //right-click
   commands.registerCommand(
     'local-supergraph-designs.deleteSubgraph',
@@ -198,7 +154,6 @@ export async function activate(context: ExtensionContext) {
     'local-supergraph-designs.viewSettings',
     viewSubgraphSettings,
   ); //inline
-
   commands.registerCommand(
     'local-supergraph-designs.editOperation',
     editSupergraphOperation,
@@ -214,14 +169,6 @@ export async function activate(context: ExtensionContext) {
   commands.registerCommand(
     'local-supergraph-designs.viewQueryPlan',
     viewQueryPlan,
-  );
-  commands.registerCommand(
-    'local-supergraph-designs.createInStudio',
-    createDesignInStudio,
-  );
-  commands.registerCommand(
-    'local-supergraph-designs.exportDesignToProject',
-    exportDesignToProject,
   );
   commands.registerCommand(
     'local-supergraph-designs.switchFederationComposition',
@@ -354,27 +301,6 @@ export async function activate(context: ExtensionContext) {
             );
           }
         }
-      }
-    }
-  });
-  workspace.onDidSaveTextDocument(async (document) => {
-    const uri = document.uri;
-    if (uri.path.includes('mocks')) {
-      const querySplit = uri.query.split(':');
-      const { wbFile, path } = FileProvider.instance.workbenchFileByGraphName(
-        querySplit[0],
-      );
-      const serviceName = querySplit[1];
-      const newMocksText = document.getText();
-      if (newMocksText != wbFile.schemas[serviceName].customMocks) {
-        const mocksUri = Uri.parse(`workbench:${path}/mocks?${serviceName}`);
-        FileProvider.instance.writeFile(
-          mocksUri,
-          Buffer.from(newMocksText, 'utf8'),
-          { create: true, overwrite: true },
-        );
-        log(`Detected changes to subgraph ${serviceName} mocks.`);
-        await ServerManager.instance.restartSubgraph(path, serviceName);
       }
     }
   });

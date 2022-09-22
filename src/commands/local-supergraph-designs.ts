@@ -5,7 +5,6 @@ import {
   Uri,
   workspace,
   commands,
-  Progress,
   TextDocument,
   Position,
   SnippetString,
@@ -18,112 +17,30 @@ import {
   SubgraphSummaryTreeItem,
   SupergraphSchemaTreeItem,
   SupergraphApiSchemaTreeItem,
-  SupergraphTreeItem,
   FederationVersionItem,
 } from '../workbench/tree-data-providers/superGraphTreeDataProvider';
 import {
   WorkbenchUri,
   WorkbenchUriType,
 } from '../workbench/file-system/WorkbenchUri';
-import { ServerManager } from '../workbench/serverManager';
 import {
   StudioGraphVariantTreeItem,
   StudioGraphTreeItem,
   PreloadedWorkbenchFile,
 } from '../workbench/tree-data-providers/apolloStudioGraphsTreeDataProvider';
 import { ApolloWorkbenchFile } from '../workbench/file-system/fileTypes';
-import {
-  createGraph,
-  getGraphSchemasByVariant,
-  getUserMemberships,
-  publishSubgraph,
-  setFederationCompositionTwo,
-} from '../graphql/graphClient';
+import { getGraphSchemasByVariant } from '../graphql/graphClient';
 import {
   GetGraphSchemas_service_implementingServices_NonFederatedImplementingService,
   GetGraphSchemas_service_implementingServices_FederatedImplementingServices,
 } from '../graphql/types/GetGraphSchemas';
 import { join, resolve } from 'path';
-import { writeFileSync, existsSync, readFileSync } from 'fs';
-import {
-  GraphQLSchema,
-  parse,
-  extendSchema,
-  printSchema,
-  visit,
-  Kind,
-  print,
-} from 'graphql';
-import { generateJsFederatedResolvers } from '../utils/exportFiles';
-import { outputChannel } from '../extension';
+import { writeFileSync, readFileSync } from 'fs';
+import { printSchema, visit, print } from 'graphql';
 import { log } from '../utils/logger';
 import { WorkbenchFederationProvider } from '../workbench/federationProvider';
-import { enterStudioApiKey } from './extension';
-import { UserMemberships_me_User } from '../graphql/types/UserMemberships';
-import { createJavascriptTemplate } from '../utils/createJavascriptTemplate';
-import { execSync } from 'child_process';
-import { createTypescriptTemplate } from '../utils/createTypescriptTemplate';
 import gql from 'graphql-tag';
 
-let startingMocks = false;
-
-export async function startMocksWithDialog(item: SubgraphSummaryTreeItem) {
-  if (startingMocks) return;
-  startingMocks = true;
-
-  await window.withProgress(
-    { location: 15, title: `${item.wbFile.graphName}`, cancellable: false },
-    async (progress, token) => {
-      progress.report({ message: `Starting mocks` });
-      return new Promise(async (resolve) => {
-        await startMocks(item, progress);
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        startingMocks = false;
-        resolve(100);
-      });
-    },
-  );
-}
-
-async function startMocks(
-  item: SubgraphSummaryTreeItem,
-  progress: Progress<{
-    message?: string | undefined;
-    increment?: number | undefined;
-  }>,
-) {
-  outputChannel.show();
-  if (item) {
-    await ServerManager.instance.startSupergraphMocks(item.filePath, progress);
-  } else {
-    const wbFiles: string[] = [];
-    FileProvider.instance
-      .getWorkbenchFiles()
-      .forEach((value, key) => wbFiles.push(value.graphName));
-    const wbFileToStartMocks = await window.showQuickPick(wbFiles, {
-      placeHolder: 'Select which supergraph design file to mock',
-    });
-    if (wbFileToStartMocks) {
-      let wbFilePath = '';
-      FileProvider.instance.getWorkbenchFiles().forEach((value, key) => {
-        if (value.graphName == wbFileToStartMocks) wbFilePath = key;
-      });
-
-      if (existsSync(wbFilePath)) {
-        await ServerManager.instance.startSupergraphMocks(wbFilePath, progress);
-      } else
-        window.showInformationMessage(
-          'There was an error loading your workbench file for mocking, please file an issue on the repo with what happened and your workbench file',
-        );
-    } else
-      window.showInformationMessage(
-        'No supergraph was selected, cancelling mocks',
-      );
-  }
-}
-export async function stopMocks(item: SubgraphTreeItem) {
-  ServerManager.instance.stopMocks();
-}
 export async function editSubgraph(item: SubgraphTreeItem) {
   const uri = WorkbenchUri.supergraph(
     item.wbFilePath,
@@ -381,7 +298,6 @@ async function createWorkbench(graphId: string, selectedVariant: string) {
     if (monolithicService?.graphID) {
       workbenchFile.schemas['monolith'] = {
         sdl: results.service?.schema?.document,
-        shouldMock: true,
         autoUpdateSchemaFromUrl: false,
       };
     } else {
@@ -392,7 +308,6 @@ async function createWorkbench(graphId: string, selectedVariant: string) {
           (workbenchFile.schemas[service.name] = {
             sdl: service.activePartialSchema.sdl,
             url: service.url ?? '',
-            shouldMock: true,
             autoUpdateSchemaFromUrl: false,
           }),
       );
@@ -467,33 +382,6 @@ export async function updateSubgraphSchemaFromURL(item: SubgraphTreeItem) {
   }
 }
 
-export async function viewSubgraphCustomMocks(item: SubgraphTreeItem) {
-  const subgraphMocksUri = WorkbenchUri.supergraph(
-    item.supergraphName,
-    item.subgraphName,
-    WorkbenchUriType.MOCKS,
-  );
-  if (!existsSync(subgraphMocksUri.fsPath)) {
-    const wbFile = FileProvider.instance.workbenchFileFromPath(item.wbFilePath);
-    const customMocks = wbFile?.schemas[item.subgraphName].customMocks;
-    if (customMocks)
-      writeFileSync(subgraphMocksUri.fsPath, customMocks, {
-        encoding: 'utf-8',
-      });
-    else
-      writeFileSync(
-        subgraphMocksUri.fsPath,
-        "const faker = require('faker')\n\nconst mocks = {\n\n}\nmodule.exports = mocks;",
-        { encoding: 'utf-8' },
-      );
-  }
-  try {
-    await window.showTextDocument(subgraphMocksUri);
-  } catch (err: any) {
-    log(err);
-  }
-}
-
 export async function exportSupergraphSchema(item: SupergraphSchemaTreeItem) {
   if (item.wbFile.supergraphSdl && StateManager.workspaceRoot) {
     const exportPath = resolve(
@@ -543,33 +431,6 @@ export async function exportSubgraphSchema(item: SubgraphTreeItem) {
   }
 }
 
-export async function exportSubgraphResolvers(item: SubgraphTreeItem) {
-  const exportPath = StateManager.workspaceRoot
-    ? resolve(StateManager.workspaceRoot, `${item.subgraphName}-resolvers`)
-    : null;
-  if (exportPath) {
-    let resolvers = '';
-    const schema =
-      FileProvider.instance.workbenchFileFromPath(item.wbFilePath)?.schemas[
-        item.subgraphName
-      ].sdl ?? '';
-    resolvers = generateJsFederatedResolvers(schema);
-    //TODO: Future Feature could have a more robust typescript generation version
-    // let exportLanguage = await window.showQuickPick(["Javascript", "Typescript"], { canPickMany: false, placeHolder: "Would you like to use Javascript or Typescript for the exported project?" });
-    // if (exportLanguage == "Typescript") {
-    //     resolvers = generateTsFederatedResolvers(schema);
-    //     exportPath += ".ts";
-    // } else {
-    //     resolvers = generateJsFederatedResolvers(schema);
-    //     exportPath += ".js";
-    // }
-
-    writeFileSync(`${exportPath}.js`, resolvers, { encoding: 'utf-8' });
-    window.showInformationMessage(
-      `${item.subgraphName} resolvers was exported to ${exportPath}`,
-    );
-  }
-}
 export async function createWorkbenchFromPreloaded(
   preloadedItem: PreloadedWorkbenchFile,
 ) {
@@ -599,194 +460,6 @@ export async function promptOpenFolder() {
   );
   if (response == openFolder)
     await commands.executeCommand('extension.openFolder');
-}
-
-export async function createDesignInStudio(item: SupergraphTreeItem) {
-  await window.withProgress({ location: 15 }, async (progress) => {
-    const wbFile = item.wbFile;
-    outputChannel.show();
-    if (!StateManager.instance.globalState_userApiKey) {
-      log('No user api key found, prompting user to enter API key');
-      await enterStudioApiKey();
-    }
-
-    const userApiKey = StateManager.instance.globalState_userApiKey;
-
-    if (!userApiKey) {
-      const noApiKeyMessage = 'No API key entered to create graph';
-      log(noApiKeyMessage);
-      window.showErrorMessage(noApiKeyMessage);
-    } else {
-      let graphName: string | undefined = wbFile.graphName;
-      log(`Prompting user for graph name\n\tdefault: ${graphName}`);
-
-      graphName = await window.showInputBox({
-        value: graphName,
-        placeHolder: 'Graph Name for Apollo Studio',
-        ignoreFocusOut: true,
-      });
-      if (graphName) {
-        const graphNamePublishMessage = `Publishing ${graphName}`;
-        log(graphNamePublishMessage);
-        progress.report({ message: graphNamePublishMessage, increment: 10 });
-
-        const graphResponse = await getUserMemberships(userApiKey);
-        const memberships =
-          (graphResponse.me as UserMemberships_me_User)?.memberships ?? [];
-        let accountToCreateIn: string | undefined;
-        if (memberships.length == 0) {
-          accountToCreateIn = undefined;
-        } else if (memberships.length == 1) {
-          accountToCreateIn = memberships[0].account.id;
-        } else {
-          log(
-            `${memberships.length} membershipps found for user, prompting which to use for graph creation`,
-          );
-          const accountNames = memberships.map(
-            (membership) => membership.account.id,
-          );
-          accountToCreateIn = await window.showQuickPick(accountNames, {
-            canPickMany: false,
-            ignoreFocusOut: true,
-            title: 'Which account would you like to create the graph in?',
-          });
-        }
-
-        if (accountToCreateIn) {
-          const graphApiKey = await createGraph(
-            userApiKey,
-            accountToCreateIn,
-            graphName,
-          );
-          if (
-            graphApiKey != undefined &&
-            !graphApiKey?.errors &&
-            graphApiKey.length > 0
-          ) {
-            log(`Graph Created Successfully!`);
-            progress.report({
-              message: `Graph Created Successfully!`,
-              increment: 25,
-            });
-
-            if (wbFile.federation == '2') {
-              await setFederationCompositionTwo(userApiKey, graphName);
-            }
-
-            let counter = 0;
-            const increment = 75 / Object.keys(wbFile.schemas).length;
-
-            for (var subgraphName in wbFile.schemas) {
-              log(`Publishing ${subgraphName} to ${accountToCreateIn}...`);
-              const subgraph = wbFile.schemas[subgraphName];
-              const schema = subgraph.sdl;
-              let subgraphUrl = `http://localhost:${
-                StateManager.settings_startingServerPort + counter
-              }`;
-              if (subgraph.url && subgraph.url != '')
-                subgraphUrl = subgraph.url;
-
-              const publishResponse = await publishSubgraph(
-                userApiKey,
-                graphName,
-                subgraphName,
-                subgraphUrl,
-                schema,
-              );
-
-              if (publishResponse !== true) {
-                log(`There was a problem publishing subgraph ${subgraphName}`);
-                publishResponse.map((e) => log(`\t${e.message}`));
-
-                progress.report({
-                  message: `Error publishing shcema for subgraph ${subgraphName}, see VS Code Output window with Apollo Workbench selected for more details.`,
-                  increment,
-                });
-              } else {
-                const successMessage = `Subgraph ${subgraphName} schema published successfully!`;
-                log(successMessage);
-                progress.report({
-                  message: successMessage,
-                  increment,
-                });
-              }
-
-              counter++;
-            }
-
-            await exportDesign(graphName, wbFile, graphApiKey);
-
-            const studioUrl = `https://studio.apollographql.com/graph/${graphName}?variant=workbench`;
-            log(`View your newly created graph at ${studioUrl}`);
-            env.openExternal(Uri.parse(studioUrl));
-          } else {
-            const errorMessage = graphApiKey.errors[0].message;
-            if (errorMessage.toLowerCase().includes('already exists')) {
-              const existsMessage = `A graph with that name already exists.`;
-              log(existsMessage);
-              window.showErrorMessage(existsMessage);
-            } else {
-              const errorMessage = `Unable to create graph: ${graphName}`;
-              log(errorMessage);
-              window.showErrorMessage(errorMessage);
-            }
-          }
-        } else {
-          `You must select an account for the graph to be created in Apollo Studio`;
-        }
-      } else {
-        const noGraphNameErrorMessage = `You must provide a name for the graph you are creating in Apollo Studio`;
-        log(noGraphNameErrorMessage);
-        window.showErrorMessage(noGraphNameErrorMessage);
-      }
-    }
-  });
-}
-
-export async function exportDesignToProject(item: SupergraphTreeItem) {
-  await exportDesign(item.wbFile.graphName, item.wbFile);
-}
-
-async function exportDesign(
-  graphName: string,
-  wbFile: ApolloWorkbenchFile,
-  apiKey?: string,
-) {
-  const buildLocalProject = await window.showQuickPick(
-    ['JavaScript', 'Typescript', 'None'],
-    {
-      ignoreFocusOut: true,
-      title:
-        'Would you like to create a getting started project locally that is configured for the newly created graph in Apollo Studio?',
-    },
-  );
-
-  let assetPath: string | undefined = undefined;
-  let shouldPromptToOpen = true;
-  switch (buildLocalProject) {
-    case 'None':
-      shouldPromptToOpen = false;
-      break;
-    case 'JavaScript':
-      assetPath = createJavascriptTemplate(wbFile, graphName, apiKey);
-
-      break;
-    case 'Typescript':
-      assetPath = createTypescriptTemplate(wbFile, graphName, apiKey);
-
-      break;
-  }
-
-  if (shouldPromptToOpen) {
-    const shouldOpenProject = await window.showQuickPick(['Yes', 'No'], {
-      ignoreFocusOut: true,
-      title:
-        'Would you like to have the project setup and opened in another VS Code window?',
-    });
-    if (shouldOpenProject == 'Yes') {
-      execSync(`code ${assetPath}`);
-    }
-  }
 }
 
 export async function switchFederationComposition(item: FederationVersionItem) {

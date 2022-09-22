@@ -352,20 +352,13 @@ export class WorkbenchFederationProvider {
       return '';
     }
 
-    const requiredHeaders = workbenchFile.schemas[serviceName]?.requiredHeaders;
-    const headers = new Headers();
-    requiredHeaders?.forEach((requiredHeader) => {
-      if (requiredHeader && requiredHeader.value)
-        headers.append(requiredHeader.key, requiredHeader.value);
-    });
-
     const source = new RemoteGraphQLDataSource({ url: serviceURLOverride });
     const request = {
       query: 'query __ApolloGetServiceDefinition__ { _service { sdl } }',
       http: {
         url: serviceURLOverride,
         method: 'POST',
-        headers: headers,
+        headers: new Headers(),
       },
     } as any;
 
@@ -382,11 +375,7 @@ export class WorkbenchFederationProvider {
         errors.map((error) => log(error.message));
         //If we got errors, it could be that the graphql server running at that url doesn't support Apollo Federation Spec
         //  In this case, we can try and get the server schema from introspection
-        return await this.getSchemaByIntrospection(
-          serviceURLOverride,
-          source,
-          headers,
-        );
+        return await this.getSchemaByIntrospection(serviceURLOverride, source);
       }
     } catch (err: any) {
       if (err.code == 'ECONNREFUSED')
@@ -396,11 +385,7 @@ export class WorkbenchFederationProvider {
       else if (err.message == 'Only absolute URLs are supported')
         log(`${serviceName}-${err.message}`);
       else
-        return await this.getSchemaByIntrospection(
-          serviceURLOverride,
-          source,
-          headers,
-        );
+        return await this.getSchemaByIntrospection(serviceURLOverride, source);
     }
 
     return;
@@ -408,7 +393,7 @@ export class WorkbenchFederationProvider {
   private static async getSchemaByIntrospection(
     serviceURLOverride: string,
     source: RemoteGraphQLDataSource,
-    requiredHeaders: Headers,
+    requiredHeaders: Headers = new Headers(),
   ) {
     const introspectionQuery = getIntrospectionQuery();
     const request = {

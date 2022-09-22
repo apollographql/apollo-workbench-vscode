@@ -237,40 +237,12 @@
         "icon": "$(trash)"
       },
       {
-        "command": "local-supergraph-designs.startMocks",
-        "title": "Start Supergraph Mocks",
-        "icon": "$(play)",
-        "category": "Apollo Workbench"
-      },
-      {
-        "command": "local-supergraph-designs.stopMocks",
-        "title": "Stop Supergraph Mocks",
-        "icon": "$(debug-stop)",
-        "category": "Apollo Workbench"
-      },
-      {
         "command": "local-supergraph-designs.updateSubgraphSchemaFromURL",
         "title": "Update Subgraph Schema from URL"
       },
       {
-        "command": "local-supergraph-designs.viewSubgraphCustomMocks",
-        "title": "View Subgraph Custom Mocks"
-      },
-      {
         "command": "local-supergraph-designs.exportSubgraphSchema",
         "title": "Export Subgraph Schema"
-      },
-      {
-        "command": "local-supergraph-designs.exportSubgraphResolvers",
-        "title": "Export Subgraph Entity Resolvers"
-      },
-      {
-        "command": "local-supergraph-designs.createInStudio",
-        "title": "Create new Apollo Studio Graph from design"
-      },
-      {
-        "command": "local-supergraph-designs.exportDesignToProject",
-        "title": "Export design into a local project"
       },
       {
         "command": "local-supergraph-designs.switchFederationComposition",
@@ -374,29 +346,9 @@
       ],
       "view/item/context": [
         {
-          "command": "local-supergraph-designs.createInStudio",
-          "when": "view == local-supergraph-designs && viewItem == supergraphTreeItem",
-          "group": "1"
-        },
-        {
-          "command": "local-supergraph-designs.exportDesignToProject",
-          "when": "view == local-supergraph-designs && viewItem == supergraphTreeItem",
-          "group": "2"
-        },
-        {
           "command": "local-supergraph-designs.viewSettings",
           "when": "view == local-supergraph-designs && viewItem == subgraphTreeItem",
           "group": "inline"
-        },
-        {
-          "command": "local-supergraph-designs.startMocks",
-          "when": "view == local-supergraph-designs && viewItem == subgraphSummaryTreeItem",
-          "group": "inline@1"
-        },
-        {
-          "command": "local-supergraph-designs.stopMocks",
-          "when": "view == local-supergraph-designs && viewItem == subgraphSummaryTreeItem",
-          "group": "inline@2"
         },
         {
           "command": "local-supergraph-designs.addSubgraph",
@@ -419,19 +371,9 @@
           "group": "1@1"
         },
         {
-          "command": "local-supergraph-designs.viewSubgraphCustomMocks",
-          "when": "view == local-supergraph-designs && viewItem == subgraphTreeItem",
-          "group": "1@2"
-        },
-        {
           "command": "local-supergraph-designs.exportSubgraphSchema",
           "when": "view == local-supergraph-designs && viewItem == subgraphTreeItem",
           "group": "2@1"
-        },
-        {
-          "command": "local-supergraph-designs.exportSubgraphResolvers",
-          "when": "view == local-supergraph-designs && viewItem == subgraphTreeItem",
-          "group": "2@2"
         },
         {
           "command": "local-supergraph-designs.deleteSubgraph",

@@ -1,5 +1,5 @@
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'fs';
-import path, { join, normalize, relative, resolve } from 'path';
+import path, { join, normalize, resolve } from 'path';
 import {
   commands,
   Disposable,
@@ -10,7 +10,6 @@ import {
   FileType,
   Uri,
   window,
-  workspace,
 } from 'vscode';
 import { StateManager } from '../stateManager';
 import { ApolloWorkbenchFile, WorkbenchSettings } from './fileTypes';
@@ -18,7 +17,6 @@ import { printSchema } from 'graphql';
 import { WorkbenchDiagnostics } from '../diagnosticsManager';
 import { WorkbenchFederationProvider } from '../federationProvider';
 import { WorkbenchUri, WorkbenchUriType } from './WorkbenchUri';
-import { ServerManager } from '../serverManager';
 import { log } from '../../utils/logger';
 
 export class FileProvider implements FileSystemProvider {
@@ -99,12 +97,6 @@ export class FileProvider implements FileSystemProvider {
         if (subgraph) {
           const settings: WorkbenchSettings = {
             url: subgraph?.url ?? '',
-            requiredHeaders: subgraph?.requiredHeaders ?? [],
-            mocks: {
-              shouldMock: subgraph?.shouldMock ?? true,
-              autoUpdateSchemaFromUrl:
-                subgraph?.autoUpdateSchemaFromUrl ?? false,
-            },
           };
 
           return Buffer.from(JSON.stringify(settings, null, 2));
@@ -154,7 +146,6 @@ export class FileProvider implements FileSystemProvider {
         //Since we are making a change to a subgraph, we should notify the ServerManager
         if (!wbFile.schemas[name]) {
           wbFile.schemas[name] = {
-            shouldMock: true,
             sdl: stringContent ?? '',
             autoUpdateSchemaFromUrl: false,
           };
@@ -180,11 +171,6 @@ export class FileProvider implements FileSystemProvider {
               this.loadedWorkbenchFile = wbFile;
           }
         }
-
-        if (wbFilePath == ServerManager.instance.mocksWorkbenchFilePath) {
-          ServerManager.instance.mocksWorkbenchFile = wbFile;
-          ServerManager.instance.restartSubgraph(wbFilePath, name);
-        }
       } else if (uri.path.includes('/queries')) {
         wbFile.operations[name] = { operation: stringContent };
 
@@ -195,12 +181,6 @@ export class FileProvider implements FileSystemProvider {
       } else if (uri.path.includes('/subgraph-settings')) {
         const savedSettings: WorkbenchSettings = JSON.parse(stringContent);
         wbFile.schemas[name].url = savedSettings.url;
-        wbFile.schemas[name].shouldMock = savedSettings.mocks.shouldMock;
-        wbFile.schemas[name].autoUpdateSchemaFromUrl =
-          savedSettings.mocks.autoUpdateSchemaFromUrl;
-        wbFile.schemas[name].requiredHeaders = savedSettings.requiredHeaders;
-      } else if (uri.path.includes('/mocks')) {
-        wbFile.schemas[name].customMocks = stringContent;
       } else if (uri.path.includes('/supergraph-schema')) {
         wbFile.supergraphSdl = stringContent;
       } else if (uri.path.includes('/supergraph-api-schema')) {
@@ -228,12 +208,7 @@ export class FileProvider implements FileSystemProvider {
           delete wbFile.operations[name];
         } else if (uri.path.includes('/subgraph-settings')) {
           wbFile.schemas[name].autoUpdateSchemaFromUrl = false;
-          wbFile.schemas[name].customMocks = '';
-          wbFile.schemas[name].requiredHeaders = [];
-          wbFile.schemas[name].shouldMock = true;
           wbFile.schemas[name].url = '';
-        } else if (uri.path.includes('/mocks')) {
-          wbFile.schemas[name].customMocks = '';
         } else if (uri.path.includes('/supergraph-schema')) {
           wbFile.supergraphSdl = '';
         } else if (uri.path.includes('/supergraph-api-schema')) {
@@ -428,8 +403,6 @@ export class FileProvider implements FileSystemProvider {
       return path.split('/queryplans')[0];
     } else if (path.includes('/subgraph-settings')) {
       return path.split('/subgraph-settings')[0];
-    } else if (path.includes('/mocks')) {
-      return path.split('/mocks')[0];
     } else if (path.includes('/supergraph-schema')) {
       return path.split('/supergraph-schema')[0];
     } else if (path.includes('/supergraph-api-schema')) {
