@@ -138,7 +138,10 @@ export class FileProvider implements FileSystemProvider {
   writeFile(
     uri: Uri,
     content: Uint8Array,
-    options: { create: boolean; overwrite: boolean },
+    options: { create: boolean; overwrite: boolean } = {
+      create: true,
+      overwrite: true,
+    },
   ): void | Thenable<void> {
     const name = uri.query;
     const stringContent = content.toString();

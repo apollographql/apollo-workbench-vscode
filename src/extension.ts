@@ -58,6 +58,7 @@ import {
   createDesignInStudio,
   exportDesignToProject,
   switchFederationComposition,
+  addFederationDirective,
 } from './commands/local-supergraph-designs';
 import { resolve } from 'path';
 import { mkdirSync, writeFileSync } from 'fs';
@@ -243,9 +244,10 @@ export async function activate(context: ExtensionContext) {
       },
     });
   }
-  // commands.registerCommand('current-workbench-schemas.deleteSchemaDocTextRange', deleteSchemaDocTextRange);
-  // commands.registerCommand('current-workbench-schemas.makeSchemaDocTextRangeArray', makeSchemaDocTextRangeArray);
-
+  commands.registerCommand(
+    'current-workbench-schemas.addFederationDirective',
+    addFederationDirective,
+  );
   //Apollo Studio Graphs Commands
   commands.registerCommand('studio-graphs.refresh', refreshStudioGraphs);
   commands.registerCommand(

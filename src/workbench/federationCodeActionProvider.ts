@@ -15,29 +15,18 @@ export class FederationCodeActionProvider implements CodeActionProvider {
   ): CodeAction[] | undefined {
     const code = context.diagnostics[0]?.code as string;
     const selectors: CodeAction[] = [];
-    if (code?.includes('makeArray')) {
-      const line = document.lineAt(range.start.line);
-      const trimmedText = line.text.trim();
-      if (trimmedText != '[' && trimmedText != '[]' && trimmedText != '[ ]') {
-        const selector = new CodeAction('Make array', CodeActionKind.QuickFix);
-        selector.command = {
-          command: 'current-workbench-schemas.makeSchemaDocTextRangeArray',
-          title: 'Make into array',
-          arguments: [document, range],
-        };
-
-        selectors.push(selector);
-      }
-    }
-    if (code?.includes('deleteRange')) {
+    if (code?.includes('addDirective')) {
+      const codeSplit = code.split(':');
+      const directive = codeSplit[1];
+      const subgraphName = codeSplit[2];
       const selector = new CodeAction(
-        'Delete this selection',
+        `Add ${directive}`,
         CodeActionKind.QuickFix,
       );
       selector.command = {
-        command: 'current-workbench-schemas.deleteSchemaDocTextRange',
-        title: 'Delete this selection',
-        arguments: [document, range],
+        command: 'current-workbench-schemas.addFederationDirective',
+        title: `Add ${directive} to schema`,
+        arguments: [directive, subgraphName, document],
       };
 
       selectors.push(selector);

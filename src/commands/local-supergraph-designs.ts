@@ -1,5 +1,16 @@
 import { FileProvider } from '../workbench/file-system/fileProvider';
-import { window, env, Uri, workspace, commands, Progress } from 'vscode';
+import {
+  window,
+  env,
+  Uri,
+  workspace,
+  commands,
+  Progress,
+  TextDocument,
+  Position,
+  SnippetString,
+  Range,
+} from 'vscode';
 import { StateManager } from '../workbench/stateManager';
 import {
   SubgraphTreeItem,
@@ -34,7 +45,15 @@ import {
 } from '../graphql/types/GetGraphSchemas';
 import { join, resolve } from 'path';
 import { writeFileSync, existsSync, readFileSync } from 'fs';
-import { GraphQLSchema, parse, extendSchema, printSchema } from 'graphql';
+import {
+  GraphQLSchema,
+  parse,
+  extendSchema,
+  printSchema,
+  visit,
+  Kind,
+  print,
+} from 'graphql';
 import { generateJsFederatedResolvers } from '../utils/exportFiles';
 import { outputChannel } from '../extension';
 import { log } from '../utils/logger';
@@ -44,6 +63,7 @@ import { UserMemberships_me_User } from '../graphql/types/UserMemberships';
 import { createJavascriptTemplate } from '../utils/createJavascriptTemplate';
 import { execSync } from 'child_process';
 import { createTypescriptTemplate } from '../utils/createTypescriptTemplate';
+import gql from 'graphql-tag';
 
 let startingMocks = false;
 
@@ -246,7 +266,6 @@ export function refreshSupergraphs() {
   StateManager.instance.localSupergraphTreeDataProvider.refresh();
 }
 export async function addSubgraph(item: SubgraphSummaryTreeItem) {
-  const wbFile = item.wbFile;
   const serviceName =
     (await window.showInputBox({
       placeHolder: 'Enter a unique name for the subgraph',
@@ -262,8 +281,9 @@ export async function addSubgraph(item: SubgraphSummaryTreeItem) {
         serviceName,
         WorkbenchUriType.SCHEMAS,
       ),
-      Buffer.from(''),
-      { create: true, overwrite: true },
+      Buffer.from(
+        'extend schema \n\t@link(url: "https://specs.apollo.dev/federation/v2.0", import: ["@key"])\n\n',
+      ),
     );
   }
 }
@@ -369,12 +389,12 @@ async function createWorkbench(graphId: string, selectedVariant: string) {
         ?.implementingServices as GetGraphSchemas_service_implementingServices_FederatedImplementingServices;
       implementingServices?.services?.map(
         (service) =>
-        (workbenchFile.schemas[service.name] = {
-          sdl: service.activePartialSchema.sdl,
-          url: service.url ?? '',
-          shouldMock: true,
-          autoUpdateSchemaFromUrl: false,
-        }),
+          (workbenchFile.schemas[service.name] = {
+            sdl: service.activePartialSchema.sdl,
+            url: service.url ?? '',
+            shouldMock: true,
+            autoUpdateSchemaFromUrl: false,
+          }),
       );
     }
 
@@ -660,8 +680,9 @@ export async function createDesignInStudio(item: SupergraphTreeItem) {
               log(`Publishing ${subgraphName} to ${accountToCreateIn}...`);
               const subgraph = wbFile.schemas[subgraphName];
               const schema = subgraph.sdl;
-              let subgraphUrl = `http://localhost:${StateManager.settings_startingServerPort + counter
-                }`;
+              let subgraphUrl = `http://localhost:${
+                StateManager.settings_startingServerPort + counter
+              }`;
               if (subgraph.url && subgraph.url != '')
                 subgraphUrl = subgraph.url;
 
@@ -769,7 +790,7 @@ async function exportDesign(
 }
 
 export async function switchFederationComposition(item: FederationVersionItem) {
-  let versionToChangeTo = item.wbFile.federation === "2" ? "1" : "2";
+  let versionToChangeTo = item.wbFile.federation === '2' ? '1' : '2';
   const message = `${item.wbFile.graphName} is now using Apollo Federation composition ${versionToChangeTo}`;
   const uri = WorkbenchUri.supergraph(
     item.wbFilePath,
@@ -780,4 +801,57 @@ export async function switchFederationComposition(item: FederationVersionItem) {
   await FileProvider.instance.write(uri, '');
   log(message);
   window.showInformationMessage(message);
+}
+
+export async function addFederationDirective(
+  directive: string,
+  subgraphName: string,
+  document: TextDocument,
+) {
+  let addedDirective = false;
+  const loadedWorkbenchFilePath = WorkbenchUri.supergraph(
+    FileProvider.instance.loadedWorbenchFilePath,
+    subgraphName,
+    WorkbenchUriType.SCHEMAS,
+  );
+  const ast = gql(document.getText());
+  visit(ast, {
+    SchemaExtension(node) {
+      const linkDirective = node.directives?.find(
+        (d) => d.name.value == 'link',
+      );
+      if (linkDirective) {
+        const importArg = linkDirective.arguments?.find(
+          (a) => a.name.value == 'import',
+        );
+        if (importArg) {
+          (importArg.value as any).values.push({
+            block: false,
+            kind: 'StringValue',
+            value: directive,
+          });
+          addedDirective = true;
+        }
+      }
+    },
+  });
+
+  const editor = window.activeTextEditor;
+  if (addedDirective) {
+    await editor?.edit((editBuilder) => {
+      editBuilder.delete(
+        new Range(new Position(0, 0), new Position(document.lineCount, 0)),
+      );
+      editBuilder.insert(new Position(0, 0), print(ast));
+    });
+  } else {
+    await editor?.insertSnippet(
+      new SnippetString(
+        `extend schema @link(url: "https://specs.apollo.dev/federation/v2.0", import: ["${directive}"])\n\n`,
+      ),
+      new Position(0, 0),
+    );
+  }
+
+  await document.save();
 }

@@ -220,7 +220,9 @@ export class WorkbenchDiagnostics {
           nodeLoc?.startToken.line ? nodeLoc?.startToken.line - 1 : 0,
           nodeLoc?.startToken.start ? nodeLoc?.startToken.column - 1 : 0,
           nodeLoc?.endToken.line ? nodeLoc?.endToken.line - 1 : 0,
-          nodeLoc?.endToken.end ? nodeLoc?.endToken.column - 1 : 1,
+          nodeLoc?.end
+            ? nodeLoc?.startToken.column - 1 + (nodeLoc.end - nodeLoc.start)
+            : 1,
         );
       } else if (error.locations && error.locations.length > 0) {
         const location = error.locations[0];
@@ -279,6 +281,24 @@ export class WorkbenchDiagnostics {
             // const location = error.extensions.locations[0];
             // const lineNumber = location.line - 1;
             // range = new Range(lineNumber - 1, 0, lineNumber, 0);
+          }
+        } else if (error.extensions?.code == 'INVALID_GRAPHQL') {
+          if (errorMessage.includes('Unknown directive')) {
+            if (errorMessage.includes('@key')) {
+              diagnostic.code = `addDirective:@key:${serviceName}`;
+            } else if (errorMessage.includes('@shareable')) {
+              diagnostic.code = `addDirective:@shareable:${serviceName}`;
+            } else if (errorMessage.includes('@extends')) {
+              diagnostic.code = `addDirective:@extends:${serviceName}`;
+            } else if (errorMessage.includes('@inaccessible')) {
+              diagnostic.code = `addDirective:@inaccessible:${serviceName}`;
+            } else if (errorMessage.includes('@override')) {
+              diagnostic.code = `addDirective:@override:${serviceName}`;
+            } else if (errorMessage.includes('@external')) {
+              diagnostic.code = `addDirective:@external:${serviceName}`;
+            } else if (errorMessage.includes('@provides')) {
+              diagnostic.code = `addDirective:@provides:${serviceName}`;
+            }
           }
         } else {
           try {
