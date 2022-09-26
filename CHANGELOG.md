@@ -1,3 +1,17 @@
+## Apollo Workbench VSCode 3.0
+
+- Federation 2 support
+- Support for `@link` and all Federation directives with quick actions
+
+A number of breaking changes were made to simplify the workbench code base. Various functionality has begun to migrate to `rover` and with a smaller codebase, workbench will be more maintainable. If there are features missing that you previously used, please open an issue to start a community conversation around it being re-introduced .
+
+### Breaking Changes
+
+- Remove Federation 1 support. Downgrade to Workbench 2.x to use Federation 1
+- Removed "export project" capabilities in favor of `rover template` features
+- Removed "mocking" capabilities in favor of `rover dev` feature
+- Removed export of resolvers because `__resolveReference` isn't always required with Federation 2
+
 ## Apollo Workbench VSCode 2.0
 
 - Federation 2 Alpha support

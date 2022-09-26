@@ -49,7 +49,6 @@ import {
   updateSubgraphSchemaFromURL,
   exportSubgraphSchema,
   createWorkbenchFromSupergraphVariant,
-  switchFederationComposition,
   addFederationDirective,
 } from './commands/local-supergraph-designs';
 import { log } from './utils/logger';
@@ -169,10 +168,6 @@ export async function activate(context: ExtensionContext) {
   commands.registerCommand(
     'local-supergraph-designs.viewQueryPlan',
     viewQueryPlan,
-  );
-  commands.registerCommand(
-    'local-supergraph-designs.switchFederationComposition',
-    switchFederationComposition,
   );
 
   //TODO: Need to implemnt loading image in a custom view, will come in following release

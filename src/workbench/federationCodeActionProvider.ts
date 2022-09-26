@@ -18,7 +18,6 @@ export class FederationCodeActionProvider implements CodeActionProvider {
     if (code?.includes('addDirective')) {
       const codeSplit = code.split(':');
       const directive = codeSplit[1];
-      const subgraphName = codeSplit[2];
       const selector = new CodeAction(
         `Add ${directive}`,
         CodeActionKind.QuickFix,
@@ -26,7 +25,7 @@ export class FederationCodeActionProvider implements CodeActionProvider {
       selector.command = {
         command: 'current-workbench-schemas.addFederationDirective',
         title: `Add ${directive} to schema`,
-        arguments: [directive, subgraphName, document],
+        arguments: [directive, document],
       };
 
       selectors.push(selector);

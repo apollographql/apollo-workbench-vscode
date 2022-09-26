@@ -162,7 +162,7 @@ export class FileProvider implements FileSystemProvider {
           } else {
             wbFile.supergraphSdl = compResults.supergraphSdl;
             StateManager.instance.workspaceState_schema =
-              WorkbenchFederationProvider.getSchemaFromResults(compResults);
+              compResults.schema.toGraphQLJSSchema();
             WorkbenchDiagnostics.instance.clearCompositionDiagnostics(
               wbFilePath,
             );
@@ -251,8 +251,9 @@ export class FileProvider implements FileSystemProvider {
         this.loadedWorkbenchFile.supergraphSdl = compResults.supergraphSdl;
       }
 
-      StateManager.instance.workspaceState_schema =
-        WorkbenchFederationProvider.getSchemaFromResults(compResults);
+      if (compResults.schema)
+        StateManager.instance.workspaceState_schema =
+          compResults.schema?.toGraphQLJSSchema();
       StateManager.instance.workspaceState_selectedWorkbenchAvailableEntities =
         WorkbenchFederationProvider.extractDefinedEntitiesByService(
           this.loadedWorkbenchFile,

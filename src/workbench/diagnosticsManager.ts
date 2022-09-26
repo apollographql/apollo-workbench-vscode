@@ -1,12 +1,11 @@
 import { GraphQLError, GraphQLSchema, Kind, Source } from 'graphql';
 import {
-  commands,
   Diagnostic,
   DiagnosticCollection,
   DiagnosticRelatedInformation,
   DiagnosticSeverity,
-  languages,
   Position,
+  languages,
   Range,
   Uri,
 } from 'vscode';
@@ -285,19 +284,19 @@ export class WorkbenchDiagnostics {
         } else if (error.extensions?.code == 'INVALID_GRAPHQL') {
           if (errorMessage.includes('Unknown directive')) {
             if (errorMessage.includes('@key')) {
-              diagnostic.code = `addDirective:@key:${serviceName}`;
+              diagnostic.code = `addDirective:@key`;
             } else if (errorMessage.includes('@shareable')) {
-              diagnostic.code = `addDirective:@shareable:${serviceName}`;
+              diagnostic.code = `addDirective:@shareable`;
             } else if (errorMessage.includes('@extends')) {
-              diagnostic.code = `addDirective:@extends:${serviceName}`;
+              diagnostic.code = `addDirective:@extends`;
             } else if (errorMessage.includes('@inaccessible')) {
-              diagnostic.code = `addDirective:@inaccessible:${serviceName}`;
+              diagnostic.code = `addDirective:@inaccessible`;
             } else if (errorMessage.includes('@override')) {
-              diagnostic.code = `addDirective:@override:${serviceName}`;
+              diagnostic.code = `addDirective:@override`;
             } else if (errorMessage.includes('@external')) {
-              diagnostic.code = `addDirective:@external:${serviceName}`;
+              diagnostic.code = `addDirective:@external`;
             } else if (errorMessage.includes('@provides')) {
-              diagnostic.code = `addDirective:@provides:${serviceName}`;
+              diagnostic.code = `addDirective:@provides`;
             }
           }
         } else {

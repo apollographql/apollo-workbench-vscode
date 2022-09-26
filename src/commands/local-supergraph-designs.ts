@@ -462,31 +462,11 @@ export async function promptOpenFolder() {
     await commands.executeCommand('extension.openFolder');
 }
 
-export async function switchFederationComposition(item: FederationVersionItem) {
-  let versionToChangeTo = item.wbFile.federation === '2' ? '1' : '2';
-  const message = `${item.wbFile.graphName} is now using Apollo Federation composition ${versionToChangeTo}`;
-  const uri = WorkbenchUri.supergraph(
-    item.wbFilePath,
-    versionToChangeTo,
-    WorkbenchUriType.FEDERATION_COMPOSITION,
-  );
-
-  await FileProvider.instance.write(uri, '');
-  log(message);
-  window.showInformationMessage(message);
-}
-
 export async function addFederationDirective(
   directive: string,
-  subgraphName: string,
   document: TextDocument,
 ) {
   let addedDirective = false;
-  const loadedWorkbenchFilePath = WorkbenchUri.supergraph(
-    FileProvider.instance.loadedWorbenchFilePath,
-    subgraphName,
-    WorkbenchUriType.SCHEMAS,
-  );
   const ast = gql(document.getText());
   visit(ast, {
     SchemaExtension(node) {
@@ -526,5 +506,5 @@ export async function addFederationDirective(
     );
   }
 
-  await document.save();
+  // await document.save();
 }
