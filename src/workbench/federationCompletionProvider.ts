@@ -113,7 +113,7 @@ export const federationCompletionProvider = {
               extendableTypes[sn].map(({ type, keys }) => {
                 Object.keys(keys).forEach((key) => {
                   if (
-                    FileProvider.instance.loadedWorkbenchFile?.federation != '2'
+                    FileProvider.instance.loadedWorkbenchFile?.federation_version != '2'
                   )
                     completionItems.push(
                       new FederationEntityExtensionItem(

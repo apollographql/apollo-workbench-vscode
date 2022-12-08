@@ -1,22 +1,23 @@
-import { GraphQLError, GraphQLSchema, Kind, Source } from 'graphql';
+import { GraphQLSchema, Kind, Source } from 'graphql';
 import {
   Diagnostic,
   DiagnosticCollection,
-  DiagnosticRelatedInformation,
   DiagnosticSeverity,
   Position,
   languages,
   Range,
   Uri,
 } from 'vscode';
-import { getTypeUsageRanges } from '../graphql/parsers/schemaParser';
 import { collectExecutableDefinitionDiagnositics } from '../utils/operation-diagnostics/diagnostics';
 import { GraphQLDocument } from '../utils/operation-diagnostics/document';
-import { WorkbenchFederationProvider } from './federationProvider';
-import { FileProvider } from './file-system/fileProvider';
-import { ApolloWorkbenchFile } from './file-system/fileTypes';
+import { ApolloConfig } from './file-system/ApolloConfig';
+import {
+  RoverCompositionError,
+} from './file-system/CompositionResults';
+import { schemaFileUri, tempSchemaFilePath } from './file-system/fileProvider';
 import { WorkbenchUri, WorkbenchUriType } from './file-system/WorkbenchUri';
 import { StateManager } from './stateManager';
+import { getFileName } from '../utils/path';
 
 interface WorkbenchDiagnosticCollections {
   operationDiagnostics: DiagnosticCollection;
@@ -54,49 +55,59 @@ export class WorkbenchDiagnostics {
     }
   }
 
-  setCompositionErrors(
+  async setCompositionErrors(
     wbFilePath: string,
-    wbFile: ApolloWorkbenchFile,
-    errors: GraphQLError[],
+    wbFile: ApolloConfig,
+    errors: RoverCompositionError[],
   ) {
     const compositionDiagnostics = this.getCompositionDiagnostics(wbFilePath);
     compositionDiagnostics.clear();
 
-    const diagnosticsGroups = this.handleErrors(wbFilePath, wbFile, errors);
+    const diagnosticsGroups = this.handleErrors(wbFilePath, errors);
     for (const sn in diagnosticsGroups) {
-      if (sn.toLowerCase() == 'workbench')
+      const subgraph = wbFile.subgraphs[sn];
+      if (subgraph) {
+        if (subgraph.schema.file) {
+          compositionDiagnostics.set(
+            schemaFileUri(subgraph.schema.file, wbFilePath),
+            diagnosticsGroups[sn],
+          );
+        }
+        else if(subgraph.schema.workbench_design){
+          compositionDiagnostics.set(
+            schemaFileUri(subgraph.schema.workbench_design, wbFilePath),
+            diagnosticsGroups[sn],
+          );
+        }
+        //    Account for a local change to remote source that we can't edit
+        else {
+          compositionDiagnostics.set(tempSchemaFilePath(wbFilePath, sn), diagnosticsGroups[sn]);
+        }
+      } else {
         compositionDiagnostics.set(
           Uri.parse(wbFilePath),
           diagnosticsGroups[sn],
         );
-      else
-        compositionDiagnostics.set(
-          WorkbenchUri.supergraph(wbFilePath, sn, WorkbenchUriType.SCHEMAS),
-          diagnosticsGroups[sn],
-        );
+      }
     }
-
-    // if (Object.keys(diagnosticsGroups).length > 0)
-    //   commands.executeCommand('workbench.action.problems.focus', '1 == 2');
   }
 
   validateAllOperations(wbFilePath: string) {
-    const wbFileUri = Uri.parse(wbFilePath);
-    const workbenchFile = FileProvider.instance.workbenchFileFromPath(
-      wbFileUri.path,
-    );
-    if (workbenchFile) {
-      if (Object.keys(workbenchFile.operations).length == 0) {
-        this.getOperationDiagnostics(wbFilePath).clear();
-      } else {
-        Object.keys(workbenchFile.operations).forEach((opName) => {
-          const op = workbenchFile.operations[opName];
-          const operation = typeof op == 'string' ? op : op.operation;
-
-          this.validateOperation(opName, operation, wbFilePath);
-        });
-      }
-    }
+    // const wbFileUri = Uri.parse(wbFilePath);
+    // const workbenchFile = FileProvider.instance.workbenchFileFromPath(
+    //   wbFileUri.path,
+    // );
+    // if (workbenchFile) {
+    //   if (Object.keys(workbenchFile.operations).length == 0) {
+    //     this.getOperationDiagnostics(wbFilePath).clear();
+    //   } else {
+    //     Object.keys(workbenchFile.operations).forEach((opName) => {
+    //       const op = workbenchFile.operations[opName];
+    //       const operation = typeof op == 'string' ? op : op.operation;
+    //       this.validateOperation(opName, operation, wbFilePath);
+    //     });
+    //   }
+    // }
   }
   validateOperation(opName: string, operation: string, wbFilePath: string) {
     const schema = StateManager.instance.workspaceState_schema;
@@ -175,204 +186,32 @@ export class WorkbenchDiagnostics {
     if (wbFileDiagnostics != undefined) return wbFileDiagnostics;
     else throw new Error(`No Operation Diagnostic found for ${wbFilePath}`);
   }
-  private handleErrors(
-    wbFilePath: string,
-    wb: ApolloWorkbenchFile,
-    errors: GraphQLError[],
-  ) {
-    const schemas = wb.schemas;
+  private handleErrors(wbFilePath: string, errors: RoverCompositionError[]) {
     const diagnosticsGroups: { [key: string]: Diagnostic[] } = {};
-
-    const compiledSchemas: { [subgraphName: string]: string } = {};
-    Object.keys(schemas).forEach((subgraphName) => {
-      if (schemas[subgraphName].sdl) {
-        try {
-          compiledSchemas[subgraphName] =
-            WorkbenchFederationProvider.normalizeSchema(
-              schemas[subgraphName].sdl,
-            );
-        } catch (err: any) {
-          compiledSchemas[subgraphName] = schemas[subgraphName].sdl;
-        }
-      }
-    });
 
     for (let i = 0; i < errors.length; i++) {
       const error = errors[i];
       const errorMessage = error.message;
-      const source = error.source?.body ?? (error.source as any);
-      let range = new Range(0, 0, 0, 1);
-      let serviceName: string =
-        (error.extensions as any)?.subgraph ?? 'workbench';
 
-      if (serviceName == 'workbench') {
-        Object.keys(schemas).forEach((subgraphName) => {
-          if (schemas[subgraphName].sdl == source) {
-            serviceName = subgraphName;
-          }
-        });
-      }
-
-      if (error.nodes && error.nodes.length > 0) {
-        let nodeLoc = error.nodes[0].loc;
-        range = new Range(
-          nodeLoc?.startToken.line ? nodeLoc?.startToken.line - 1 : 0,
-          nodeLoc?.startToken.start ? nodeLoc?.startToken.column - 1 : 0,
-          nodeLoc?.endToken.line ? nodeLoc?.endToken.line - 1 : 0,
-          nodeLoc?.end
-            ? nodeLoc?.startToken.column - 1 + (nodeLoc.end - nodeLoc.start)
-            : 1,
+      error.nodes.forEach((errorNode) => {
+        const subgraphName = errorNode.subgraph ?? getFileName(wbFilePath);
+        //TODO - Need all of locs info from harmonizer, the offset looks like it's important
+        const range = new Range(
+          errorNode.start.line - 1,
+          errorNode.start.column - 1,
+          errorNode.end.line - 1,
+          errorNode.start.column + errorNode.end.column - 1,
         );
-      } else if (error.locations && error.locations.length > 0) {
-        const location = error.locations[0];
-        range = new Range(
-          location.line - 1,
-          location.column - 1,
-          location.line - 1,
-          location.column,
+        const diagnostic = new Diagnostic(
+          range,
+          errorMessage,
+          DiagnosticSeverity.Error,
         );
-      }
 
-      const diagnostic = new Diagnostic(
-        range,
-        errorMessage,
-        DiagnosticSeverity.Error,
-      );
-
-      if (errorMessage.includes('No root Query in subgraph')) {
-        Object.keys(schemas).forEach((subgraphName) => {
-          if (schemas[subgraphName].sdl == source) {
-            serviceName == subgraphName;
-          }
-        });
-
-        diagnostic.severity = DiagnosticSeverity.Hint;
-      } else if (error.extensions && Object.keys(error.extensions).length > 0) {
-        if (error.extensions?.noServicesDefined) {
-          const emptySchemas = `"schemas":{}`;
-          const schemasIndex = 0;
-          range = new Range(
-            0,
-            schemasIndex,
-            0,
-            schemasIndex + emptySchemas.length,
-          );
-        } else if (
-          error.extensions?.noSchemaDefined ||
-          error.extensions?.invalidSchema
-        ) {
-          if (error.extensions?.unexpectedName) {
-            // const unexpectedName = error.extensions.unexpectedName;
-            //TODO: exception has details
-            // const location = error.extensions.exception..locations[0];
-            // const lineNumber = location.line - 1;
-            // const textIndex = location.column - 1;
-            // if (unexpectedName == '[') diagnosticCode = 'makeArray:deleteRange';
-            // else diagnosticCode = 'deleteRange';
-            // range = new Range(
-            //   lineNumber,
-            //   textIndex,
-            //   lineNumber,
-            //   textIndex + unexpectedName.length,
-            // );
-          } else if (error.extensions.noFieldsDefined) {
-            //TODO: exception has details
-            // const location = error.extensions.locations[0];
-            // const lineNumber = location.line - 1;
-            // range = new Range(lineNumber - 1, 0, lineNumber, 0);
-          }
-        } else if (error.extensions?.code == 'INVALID_GRAPHQL') {
-          if (errorMessage.includes('Unknown directive')) {
-            if (errorMessage.includes('@key')) {
-              diagnostic.code = `addDirective:@key`;
-            } else if (errorMessage.includes('@shareable')) {
-              diagnostic.code = `addDirective:@shareable`;
-            } else if (errorMessage.includes('@extends')) {
-              diagnostic.code = `addDirective:@extends`;
-            } else if (errorMessage.includes('@inaccessible')) {
-              diagnostic.code = `addDirective:@inaccessible`;
-            } else if (errorMessage.includes('@override')) {
-              diagnostic.code = `addDirective:@override`;
-            } else if (errorMessage.includes('@external')) {
-              diagnostic.code = `addDirective:@external`;
-            } else if (errorMessage.includes('@provides')) {
-              diagnostic.code = `addDirective:@provides`;
-            }
-          }
-        } else {
-          try {
-            let tryName = errorMessage
-              ?.split('from subgraph "')[1]
-              ?.split('":')[0];
-            if (tryName) serviceName = tryName;
-          } catch (err) {}
-          switch (error.extensions.code) {
-            case 'SATISFIABILITY_ERROR':
-              break;
-          }
-        }
-      } else if (errorMessage.includes('Unknown type: ')) {
-        const splitMessage = errorMessage.split('"');
-        const unknownType = splitMessage[1];
-
-        for (const sn in schemas) {
-          const schema = schemas[sn].sdl;
-          if (
-            schema.includes(unknownType) &&
-            !schema.includes(`type ${unknownType}`)
-          ) {
-            serviceName = sn;
-          }
-        }
-
-        if (serviceName) continue;
-
-        const typeUsage = getTypeUsageRanges(
-          unknownType,
-          schemas[serviceName].sdl,
-        );
-        if (typeUsage.length > 0) {
-          diagnostic.relatedInformation = [];
-          const uri = WorkbenchUri.supergraph(
-            wbFilePath,
-            serviceName,
-            WorkbenchUriType.SCHEMAS,
-          );
-          typeUsage.forEach((range) => {
-            const location = {
-              range,
-              uri,
-            };
-            diagnostic.relatedInformation?.push(
-              new DiagnosticRelatedInformation(location, errorMessage),
-            );
-          });
-        }
-      }
-
-      //If we have multiple services, we'll need to create multiple diagnostics
-      if (serviceName.includes('-:-')) {
-        const services = serviceName.split('-:-');
-        services.map((s) => {
-          if (s) {
-            const diagnostic = new Diagnostic(
-              range,
-              errorMessage,
-              DiagnosticSeverity.Error,
-            );
-            if (!diagnosticsGroups[s])
-              diagnosticsGroups[s] = new Array<Diagnostic>();
-
-            diagnosticsGroups[s].push(diagnostic);
-          }
-        });
-      } else {
-        diagnostic.range = range;
-
-        if (!diagnosticsGroups[serviceName])
-          diagnosticsGroups[serviceName] = new Array<Diagnostic>();
-        diagnosticsGroups[serviceName].push(diagnostic);
-      }
+        if (!diagnosticsGroups[subgraphName])
+          diagnosticsGroups[subgraphName] = [diagnostic];
+        else diagnosticsGroups[subgraphName].push(diagnostic);
+      });
     }
 
     return diagnosticsGroups;

@@ -8,7 +8,10 @@ import {
 } from 'vscode';
 
 import { StateManager } from './workbench/stateManager';
-import { FileProvider } from './workbench/file-system/fileProvider';
+import {
+  FileProvider,
+  schemaFileUri,
+} from './workbench/file-system/fileProvider';
 import { federationCompletionProvider } from './workbench/federationCompletionProvider';
 import { FederationCodeActionProvider } from './workbench/federationCodeActionProvider';
 import {
@@ -31,34 +34,25 @@ import {
 } from './commands/studio-graphs';
 import {
   createWorkbenchFromPreloaded,
-  deleteOperation,
-  addOperation,
-  viewQueryPlan,
   editSubgraph,
   deleteSubgraph,
   refreshSupergraphs,
   viewSubgraphSettings,
   addSubgraph,
   viewSupergraphSchema,
-  editSupergraphOperation,
   newDesign,
   createWorkbenchFromSupergraph,
   exportSupergraphSchema,
-  exportSupergraphApiSchema,
-  viewSupergraphApiSchema,
-  updateSubgraphSchemaFromURL,
-  exportSubgraphSchema,
   createWorkbenchFromSupergraphVariant,
   addFederationDirective,
 } from './commands/local-supergraph-designs';
 import { log } from './utils/logger';
 import { WorkbenchDiagnostics } from './workbench/diagnosticsManager';
-import { WorkbenchFederationProvider } from './workbench/federationProvider';
 
 export const outputChannel = window.createOutputChannel('Apollo Workbench');
 
 // Our event when vscode deactivates
-export async function deactivate(context: ExtensionContext) {}
+// export async function deactivate(context: ExtensionContext) {}
 
 export async function activate(context: ExtensionContext) {
   StateManager.init(context);
@@ -119,16 +113,8 @@ export async function activate(context: ExtensionContext) {
     viewSupergraphSchema,
   ); //on-click
   commands.registerCommand(
-    'local-supergraph-designs.viewSupergraphApiSchema',
-    viewSupergraphApiSchema,
-  ); //on-click
-  commands.registerCommand(
     'local-supergraph-designs.exportSupergraphSchema',
     exportSupergraphSchema,
-  ); //right-click
-  commands.registerCommand(
-    'local-supergraph-designs.exportSupergraphApiSchema',
-    exportSupergraphApiSchema,
   ); //right-click
   //****Subgraph Summary Commands
   commands.registerCommand('local-supergraph-designs.addSubgraph', addSubgraph);
@@ -138,14 +124,6 @@ export async function activate(context: ExtensionContext) {
     editSubgraph,
   ); //on-click
   commands.registerCommand(
-    'local-supergraph-designs.updateSubgraphSchemaFromURL',
-    updateSubgraphSchemaFromURL,
-  ); //right-click
-  commands.registerCommand(
-    'local-supergraph-designs.exportSubgraphSchema',
-    exportSubgraphSchema,
-  ); //right-click
-  commands.registerCommand(
     'local-supergraph-designs.deleteSubgraph',
     deleteSubgraph,
   );
@@ -153,28 +131,6 @@ export async function activate(context: ExtensionContext) {
     'local-supergraph-designs.viewSettings',
     viewSubgraphSettings,
   ); //inline
-  commands.registerCommand(
-    'local-supergraph-designs.editOperation',
-    editSupergraphOperation,
-  );
-  commands.registerCommand(
-    'local-supergraph-designs.addOperation',
-    addOperation,
-  );
-  commands.registerCommand(
-    'local-supergraph-designs.deleteOperation',
-    deleteOperation,
-  );
-  commands.registerCommand(
-    'local-supergraph-designs.viewQueryPlan',
-    viewQueryPlan,
-  );
-
-  //TODO: Need to implemnt loading image in a custom view, will come in following release
-  // commands.registerCommand(
-  //   'local-supergraph-designs.setOperationDesignMock',
-  //   setOperationDesignMock,
-  // );
 
   if (window.registerWebviewPanelSerializer) {
     // Make sure we register a serializer in activation event
@@ -222,22 +178,6 @@ export async function activate(context: ExtensionContext) {
     ApolloStudioOperationsProvider.scheme,
     new ApolloStudioOperationsProvider(),
   );
-  //This ensures the visible text editor loads the correct design for composition errors
-  window.onDidChangeActiveTextEditor((e) => {
-    if (e) {
-      const uri = e.document.uri;
-      const path = uri.path;
-      if (uri.scheme == 'workbench') {
-        if (uri.path.includes('subgraphs')) {
-          const wbFilePath = path.split('/subgraphs')[0];
-          if (wbFilePath != FileProvider.instance.loadedWorbenchFilePath)
-            FileProvider.instance.load(wbFilePath);
-        }
-      }
-    } else {
-      FileProvider.instance.refreshLocalWorkbenchFiles(false);
-    }
-  });
   workspace.onDidCloseTextDocument((e) => {
     const uri = e.uri;
     if (uri.scheme == 'workbench') {
@@ -258,45 +198,21 @@ export async function activate(context: ExtensionContext) {
       StateManager.instance.localSupergraphTreeDataProvider.refresh();
     }
   });
-  workspace.onDidChangeTextDocument((e) => {
-    if (e.contentChanges.length == 0) return;
+  workspace.onDidSaveTextDocument((doc) => {
+    const docPath = doc.uri.fsPath;
 
-    const uri = e.document.uri;
-    if (uri.scheme == 'workbench') {
-      const documentText = e.document.getText();
-      if (uri.path.includes('queries')) {
-        WorkbenchDiagnostics.instance.validateOperation(
-          uri.query,
-          documentText,
-          FileProvider.instance.loadedWorbenchFilePath,
-        );
-      } else if (uri.path.includes('subgraphs')) {
-        const subgraphName = uri.query;
+    FileProvider.instance.getWorkbenchFiles().forEach((wbFile, wbFilePath) => {
+      Object.keys(wbFile.subgraphs).forEach(async (subgraphName) => {
+        const { file, workbench_design } =
+          wbFile.subgraphs[subgraphName].schema;
         if (
-          FileProvider.instance.loadedWorkbenchFile &&
-          FileProvider.instance.loadedWorkbenchFile.schemas[subgraphName] &&
-          FileProvider.instance.loadedWorkbenchFile.schemas[subgraphName].sdl !=
-            documentText
-        ) {
-          const editedWorkbenchFile = {
-            ...FileProvider.instance.loadedWorkbenchFile,
-          };
-          editedWorkbenchFile.schemas[subgraphName].sdl = documentText;
-          const tryNewComposition =
-            WorkbenchFederationProvider.compose(editedWorkbenchFile);
-          if (tryNewComposition.errors)
-            WorkbenchDiagnostics.instance.setCompositionErrors(
-              FileProvider.instance.loadedWorbenchFilePath,
-              FileProvider.instance.loadedWorkbenchFile,
-              tryNewComposition.errors,
-            );
-          else {
-            WorkbenchDiagnostics.instance.clearCompositionDiagnostics(
-              FileProvider.instance.loadedWorbenchFilePath,
-            );
-          }
-        }
-      }
-    }
+          schemaFileUri(file, wbFilePath).fsPath == docPath ||
+          schemaFileUri(workbench_design, wbFilePath).fsPath == docPath
+        )
+          await FileProvider.instance.refreshWorkbenchFileComposition(
+            wbFilePath,
+          );
+      });
+    });
   });
 }

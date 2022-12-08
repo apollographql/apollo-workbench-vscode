@@ -10,7 +10,7 @@ export interface WorkbenchSchema {
 }
 
 export class WorkbenchOperation {
-  operation: string = '';
+  operation = '';
   remoteVisualDesignURL?: string;
 }
 
@@ -19,7 +19,7 @@ export class ApolloWorkbenchFile {
   queryPlans: { [opName: string]: string } = {};
   schemas: { [serviceName: string]: WorkbenchSchema } = {};
   supergraphSdl = '';
-  federation: string = '2';
+  federation = '2';
 
   constructor(public graphName: string) {}
 }

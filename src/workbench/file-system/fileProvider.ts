@@ -1,5 +1,5 @@
-import { existsSync, readdirSync, readFileSync, writeFileSync } from 'fs';
-import path, { join, normalize, resolve } from 'path';
+import { existsSync, readdirSync } from 'fs';
+import path, { join, parse, resolve, normalize } from 'path';
 import {
   commands,
   Disposable,
@@ -8,33 +8,68 @@ import {
   FileStat,
   FileSystemProvider,
   FileType,
+  ProgressLocation,
   Uri,
   window,
+  workspace,
 } from 'vscode';
 import { StateManager } from '../stateManager';
-import { ApolloWorkbenchFile, WorkbenchSettings } from './fileTypes';
-import { printSchema } from 'graphql';
 import { WorkbenchDiagnostics } from '../diagnosticsManager';
-import { WorkbenchFederationProvider } from '../federationProvider';
-import { WorkbenchUri, WorkbenchUriType } from './WorkbenchUri';
 import { log } from '../../utils/logger';
+import { load, dump } from 'js-yaml';
+import { TextDecoder, TextEncoder } from 'util';
+import { ApolloConfig } from './ApolloConfig';
+import { execSync } from 'child_process';
+import { Rover } from '../rover';
+import { getFileName } from '../../utils/path';
+
+export const schemaFileUri = (filePath: string, wbFilePath: string) => {
+  if (parse(filePath).dir == '.') {
+    const wbFileFolder = wbFilePath.split(getFileName(wbFilePath))[0];
+    return Uri.parse(resolve(wbFileFolder, normalize(filePath)));
+  }
+  return Uri.parse(filePath);
+};
+
+export const tempSchemaFilePath = (wbFilePath: string, subgraphName: string) =>
+  Uri.parse(
+    resolve(
+      StateManager.instance.extensionGlobalStoragePath,
+      'schemas',
+      `${getFileName(wbFilePath)}-${subgraphName}.graphql`,
+    ),
+  );
 
 export class FileProvider implements FileSystemProvider {
-  constructor(private workspaceRoot?: string) {}
-
   private static _instance: FileProvider;
   static get instance(): FileProvider {
-    if (!this._instance)
-      this._instance = new FileProvider(StateManager.workspaceRoot);
+    if (!this._instance) this._instance = new FileProvider();
 
     return this._instance;
   }
 
   loadedWorbenchFilePath = '';
-  loadedWorkbenchFile?: ApolloWorkbenchFile;
-  private workbenchFiles: Map<string, ApolloWorkbenchFile> = new Map();
+  loadedWorkbenchFile?: ApolloConfig;
+  private workbenchFiles: Map<string, ApolloConfig> = new Map();
 
-  load(wbFilePath: string): boolean {
+  async writeTempSchemaFile(
+    wbFilePath: string,
+    subgraphName: string,
+    sdl?: string,
+  ) {
+    if (sdl == undefined) {
+      const subgraph =
+        this.workbenchFileFromPath(wbFilePath)?.subgraphs[subgraphName];
+      sdl = await Rover.instance.subgraphFetch(subgraph);
+    }
+
+    const tempLocation = tempSchemaFilePath(wbFilePath, subgraphName);
+    await workspace.fs.writeFile(tempLocation, new TextEncoder().encode(sdl));
+
+    return tempLocation;
+  }
+
+  async load(wbFilePath: string, shouldCompose = true): Promise<boolean> {
     this.loadedWorkbenchFile =
       this.workbenchFileFromPath(wbFilePath) ?? undefined;
 
@@ -42,10 +77,8 @@ export class FileProvider implements FileSystemProvider {
     if (workbenchFileToLoad) {
       this.loadedWorbenchFilePath = wbFilePath;
 
-      window.setStatusBarMessage(
-        'Composition Running',
-        new Promise<void>((resolve) => resolve(this.loadCurrent())),
-      );
+      if (shouldCompose)
+        await this.refreshWorkbenchFileComposition(this.loadedWorbenchFilePath);
 
       return true;
     }
@@ -53,71 +86,92 @@ export class FileProvider implements FileSystemProvider {
     return false;
   }
 
-  workbenchFileFromPath(path: string): ApolloWorkbenchFile | null {
+  workbenchFileFromPath(path: string): ApolloConfig {
     let wbFile = this.workbenchFiles.get(path);
     if (!wbFile)
       //we're on Windows
       wbFile = this.workbenchFiles.get(path.replace(/\//g, '\\'));
 
-    return wbFile ?? null;
+    if (!wbFile) throw new Error(`Unable to get workbench file from ${path}`);
+
+    return wbFile;
   }
-  readFile(uri: Uri): Uint8Array | Thenable<Uint8Array> {
-    const name = uri.query;
+  async readFile(uri: Uri): Promise<Uint8Array> {
+    const name = uri.fragment;
     const wbFilePath = this.getPath(uri.path);
     const wbFile = this.workbenchFileFromPath(wbFilePath);
     if (wbFile) {
       this.load(wbFilePath);
 
-      if (uri.path.includes('/subgraphs')) {
-        return Buffer.from(wbFile?.schemas[name].sdl ?? '');
-      } else if (uri.path.includes('/queries')) {
-        const op = wbFile?.operations[name];
-
-        //Support Legacy format of operation as a string only
-        if (typeof op == 'string') return Buffer.from(op);
-        else if (op?.operation) return Buffer.from(op.operation);
-        else return Buffer.from('');
-      } else if (uri.path.includes('/queryplans')) {
-        let queryPlan = '';
-
-        if (this.loadedWorkbenchFile) {
-          queryPlan = WorkbenchFederationProvider.generateQueryPlan(
-            name,
-            this.loadedWorkbenchFile,
-          );
-
-          if (queryPlan.length == 0)
-            queryPlan =
-              'Unable to generate Query Plan, do you have a supergraph schema available?';
-        } else queryPlan = `Unable to load workbench file: ${wbFilePath}`;
-
-        return Buffer.from(queryPlan);
-      } else if (uri.path.includes('/subgraph-settings')) {
-        const subgraph = wbFile?.schemas[name];
+      if (uri.query == 'subgraphs') {
+        const subgraph = wbFile?.subgraphs[name];
         if (subgraph) {
-          const settings: WorkbenchSettings = {
-            url: subgraph?.url ?? '',
-          };
-
-          return Buffer.from(JSON.stringify(settings, null, 2));
-        } else
-          return Buffer.from(JSON.stringify(new WorkbenchSettings(), null, 2));
-      } else if (uri.path.includes('/supergraph-schema')) {
-        return Buffer.from(wbFile?.supergraphSdl ?? '');
-      } else if (uri.path.includes('/supergraph-api-schema')) {
-        if (wbFile && wbFile.supergraphSdl) {
-          const schema = WorkbenchFederationProvider.superSchemaToApiSchema(
-            wbFile.supergraphSdl,
-          );
-          return Buffer.from(printSchema(schema));
-        } else if (!wbFile)
-          return Buffer.from(
-            `Workbench file could not be loaded: ${wbFilePath}`,
-          );
-        else return Buffer.from(`There is no supergraphSDL currently defined`);
+          if (subgraph.schema.file) {
+            return await workspace.fs.readFile(Uri.parse(subgraph.schema.file));
+          } else if (subgraph.schema.graphref) {
+            return execSync(
+              `rover subgraph fetch ${subgraph.schema.graphref} --name=${
+                subgraph.schema.subgraph || subgraph.name
+              }`,
+            );
+          } else if (subgraph.schema.subgraph_url) {
+            return execSync(
+              `rover subgraph introspect ${subgraph.schema.subgraph_url}`,
+            );
+          } else {
+            //error
+          }
+        }
+        return Buffer.from('Could not find subgraph in raml');
       }
+      //   else if (uri.path.includes('/queries')) {
+      //     const op = wbFile?.operations[name];
 
-      throw new Error('Unhandled workbench URI');
+      //     //Support Legacy format of operation as a string only
+      //     if (typeof op == 'string') return Buffer.from(op);
+      //     else if (op?.operation) return Buffer.from(op.operation);
+      //     else return Buffer.from('');
+      //   } else if (uri.path.includes('/queryplans')) {
+      //     let queryPlan = '';
+
+      //     if (this.loadedWorkbenchFile) {
+      //       queryPlan = WorkbenchFederationProvider.generateQueryPlan(
+      //         name,
+      //         this.loadedWorkbenchFile,
+      //       );
+
+      //       if (queryPlan.length == 0)
+      //         queryPlan =
+      //           'Unable to generate Query Plan, do you have a supergraph schema available?';
+      //     } else queryPlan = `Unable to load workbench file: ${wbFilePath}`;
+
+      //     return Buffer.from(queryPlan);
+      //   } else if (uri.path.includes('/subgraph-settings')) {
+      //     const subgraph = wbFile?.schemas[name];
+      //     if (subgraph) {
+      //       const settings: WorkbenchSettings = {
+      //         url: subgraph?.url ?? '',
+      //       };
+
+      //       return Buffer.from(JSON.stringify(settings, null, 2));
+      //     } else
+      //       return Buffer.from(JSON.stringify(new WorkbenchSettings(), null, 2));
+      //   } else if (uri.path.includes('/supergraph-schema')) {
+      //     return Buffer.from(wbFile?.supergraphSdl ?? '');
+      //   } else if (uri.path.includes('/supergraph-api-schema')) {
+      //     if (wbFile && wbFile.supergraphSdl) {
+      //       const schema = WorkbenchFederationProvider.superSchemaToApiSchema(
+      //         wbFile.supergraphSdl,
+      //       );
+      //       return Buffer.from(printSchema(schema));
+      //     } else if (!wbFile)
+      //       return Buffer.from(
+      //         `Workbench file could not be loaded: ${wbFilePath}`,
+      //       );
+      //     else return Buffer.from(`There is no supergraphSDL currently defined`);
+      //   }
+
+      //   throw new Error('Unhandled workbench URI');
     }
     throw new Error(`Unable to load workbench file for ${wbFilePath}`);
   }
@@ -137,219 +191,203 @@ export class FileProvider implements FileSystemProvider {
   ): void | Thenable<void> {
     const name = uri.query;
     const stringContent = content.toString();
-    const wbFilePath = this.getPath(uri.path);
-    let wbFile = this.workbenchFileFromPath(wbFilePath);
+    const wbFilePath = uri.path;
+    const wbFile = this.workbenchFileFromPath(wbFilePath);
 
-    if (wbFile) {
-      let shouldSave = true;
-      if (uri.path.includes('/subgraphs')) {
-        //Since we are making a change to a subgraph, we should notify the ServerManager
-        if (!wbFile.schemas[name]) {
-          wbFile.schemas[name] = {
-            sdl: stringContent ?? '',
-            autoUpdateSchemaFromUrl: false,
-          };
-        } else {
-          wbFile.schemas[name].sdl = stringContent;
-          const compResults = WorkbenchFederationProvider.compose(wbFile);
-          if (compResults.errors) {
-            WorkbenchDiagnostics.instance.setCompositionErrors(
-              wbFilePath,
-              wbFile,
-              compResults.errors,
-            );
-            wbFile.supergraphSdl = '';
-          } else {
-            wbFile.supergraphSdl = compResults.supergraphSdl;
-            StateManager.instance.workspaceState_schema =
-              compResults.schema.toGraphQLJSSchema();
-            WorkbenchDiagnostics.instance.clearCompositionDiagnostics(
-              wbFilePath,
-            );
+    // if (wbFile) {
+    //   let shouldSave = true;
+    //   if (uri.path.includes('/subgraphs')) {
+    //     //Since we are making a change to a subgraph, we should notify the ServerManager
+    //     if (!wbFile.schemas[name]) {
+    //       wbFile.schemas[name] = {
+    //         sdl: stringContent ?? '',
+    //         autoUpdateSchemaFromUrl: false,
+    //       };
+    //     } else {
+    //       wbFile.schemas[name].sdl = stringContent;
+    //       const compResults = WorkbenchFederationProvider.compose(wbFile);
+    //       if (compResults.errors) {
+    //         WorkbenchDiagnostics.instance.setCompositionErrors(
+    //           wbFilePath,
+    //           wbFile,
+    //           compResults.errors,
+    //         );
+    //         wbFile.supergraphSdl = '';
+    //       } else {
+    //         wbFile.supergraphSdl = compResults.supergraphSdl;
+    //         StateManager.instance.workspaceState_schema =
+    //           compResults.schema.toGraphQLJSSchema();
+    //         WorkbenchDiagnostics.instance.clearCompositionDiagnostics(
+    //           wbFilePath,
+    //         );
 
-            if (this.loadedWorbenchFilePath == uri.path)
-              this.loadedWorkbenchFile = wbFile;
-          }
-        }
-      } else if (uri.path.includes('/queries')) {
-        wbFile.operations[name] = { operation: stringContent };
+    //         if (this.loadedWorbenchFilePath == uri.path)
+    //           this.loadedWorkbenchFile = wbFile;
+    //       }
+    //     }
+    //   } else if (uri.path.includes('/queries')) {
+    //     wbFile.operations[name] = { operation: stringContent };
 
-        if (wbFile.supergraphSdl) {
-          wbFile.queryPlans[name] =
-            WorkbenchFederationProvider.generateQueryPlan(name, wbFile);
-        }
-      } else if (uri.path.includes('/subgraph-settings')) {
-        const savedSettings: WorkbenchSettings = JSON.parse(stringContent);
-        wbFile.schemas[name].url = savedSettings.url;
-      } else if (uri.path.includes('/supergraph-schema')) {
-        wbFile.supergraphSdl = stringContent;
-      } else if (uri.path.includes('/supergraph-api-schema')) {
-        shouldSave = false; //This is read-only if a user edits it in editor
-      } else if (uri.path.includes('/queryplans')) {
-        shouldSave = false; //This is read-only if a user edits it in editor
-      } else if (uri.path.includes('/federation-composition')) {
-        wbFile.federation = name ?? '1';
-      }
+    //     if (wbFile.supergraphSdl) {
+    //       wbFile.queryPlans[name] =
+    //         WorkbenchFederationProvider.generateQueryPlan(name, wbFile);
+    //     }
+    //   } else if (uri.path.includes('/subgraph-settings')) {
+    //     const savedSettings: WorkbenchSettings = JSON.parse(stringContent);
+    //     wbFile.schemas[name].url = savedSettings.url;
+    //   } else if (uri.path.includes('/supergraph-schema')) {
+    //     wbFile.supergraphSdl = stringContent;
+    //   } else if (uri.path.includes('/supergraph-api-schema')) {
+    //     shouldSave = false; //This is read-only if a user edits it in editor
+    //   } else if (uri.path.includes('/queryplans')) {
+    //     shouldSave = false; //This is read-only if a user edits it in editor
+    //   } else if (uri.path.includes('/federation-composition')) {
+    //     wbFile.federation = name ?? '1';
+    //   }
 
-      if (shouldSave) {
-        this.writeWorbenchFile(wbFilePath, wbFile);
-      }
-    } else throw new Error('Workbench file was unable to load');
+    //   if (shouldSave) {
+    //     this.writeWorbenchFile(wbFilePath, wbFile);
+    //   }
+    // } else throw new Error('Workbench file was unable to load');
   }
   delete(uri: Uri, options: { recursive: boolean }): void | Thenable<void> {
-    if (uri.scheme == 'workbench') {
-      const wbFilePath = this.getPath(uri.path);
-      const wbFile = this.workbenchFileFromPath(wbFilePath);
-      if (wbFile) {
-        const name = uri.query;
-        if (uri.path.includes('/subgraphs')) {
-          delete wbFile.schemas[name];
-        } else if (uri.path.includes('/queries')) {
-          delete wbFile.operations[name];
-        } else if (uri.path.includes('/subgraph-settings')) {
-          wbFile.schemas[name].autoUpdateSchemaFromUrl = false;
-          wbFile.schemas[name].url = '';
-        } else if (uri.path.includes('/supergraph-schema')) {
-          wbFile.supergraphSdl = '';
-        } else if (uri.path.includes('/supergraph-api-schema')) {
-        } else if (uri.path.includes('/queryplans')) {
-          delete wbFile.queryPlans[name];
-        } else {
-          throw new Error('Unknown uri format');
-        }
-
-        this.writeWorbenchFile(wbFilePath, wbFile);
-      }
-    }
+    // if (uri.scheme == 'workbench') {
+    //   const wbFilePath = this.getPath(uri.path);
+    //   const wbFile = this.workbenchFileFromPath(wbFilePath);
+    //   if (wbFile) {
+    //     const name = uri.query;
+    //     if (uri.path.includes('/subgraphs')) {
+    //       delete wbFile.schemas[name];
+    //     } else if (uri.path.includes('/queries')) {
+    //       delete wbFile.operations[name];
+    //     } else if (uri.path.includes('/subgraph-settings')) {
+    //       wbFile.schemas[name].autoUpdateSchemaFromUrl = false;
+    //       wbFile.schemas[name].url = '';
+    //     } else if (uri.path.includes('/supergraph-schema')) {
+    //       wbFile.supergraphSdl = '';
+    //     }
+    //     // else if (uri.path.includes('/supergraph-api-schema')) {
+    //     // }
+    //     else if (uri.path.includes('/queryplans')) {
+    //       delete wbFile.queryPlans[name];
+    //     } else {
+    //       throw new Error('Unknown uri format');
+    //     }
+    //     this.writeWorbenchFile(wbFilePath, wbFile);
+    //   }
+    // }
   }
-  private writeWorbenchFile(wbFilePath: string, wbFile: any) {
-    writeFileSync(normalize(wbFilePath), JSON.stringify(wbFile, null, 2), {
-      encoding: 'utf8',
-    });
+  async convertSubgraphToDesign(
+    wbFilePath: string,
+    subgraphName: string,
+    designPath: string,
+  ) {
+    const wbFile = this.workbenchFileFromPath(wbFilePath);
+    wbFile.subgraphs[subgraphName].schema.workbench_design = designPath;
+
+    const compResults = wbFile.composition_result;
+    delete wbFile.composition_result;
+
+    await workspace.fs.writeFile(
+      Uri.parse(wbFilePath),
+      new TextEncoder().encode(dump(wbFile)),
+    );
+
+    wbFile.composition_result = compResults;
+
     this.workbenchFiles.set(wbFilePath, wbFile);
-    StateManager.instance.localSupergraphTreeDataProvider.refresh();
-  }
-  private loadCurrent() {
-    if (this.loadedWorkbenchFile) {
-      const compResults = WorkbenchFederationProvider.compose(
-        this.loadedWorkbenchFile,
-      );
-
-      if (compResults.errors) {
-        WorkbenchDiagnostics.instance.setCompositionErrors(
-          this.loadedWorbenchFilePath,
-          this.loadedWorkbenchFile,
-          compResults.errors,
-        );
-        WorkbenchDiagnostics.instance.clearOperationDiagnostics(
-          this.loadedWorbenchFilePath,
-        );
-      } else if (
-        compResults.supergraphSdl &&
-        this.loadedWorkbenchFile.supergraphSdl != compResults.supergraphSdl
-      ) {
-        this.loadedWorkbenchFile.supergraphSdl = compResults.supergraphSdl;
-      }
-
-      if (compResults.schema)
-        StateManager.instance.workspaceState_schema =
-          compResults.schema?.toGraphQLJSSchema();
-      StateManager.instance.workspaceState_selectedWorkbenchAvailableEntities =
-        WorkbenchFederationProvider.extractDefinedEntitiesByService(
-          this.loadedWorkbenchFile,
-        );
-    }
   }
 
-  refreshLocalWorkbenchFile(wbFilePath: string) {
-    try {
-      const wbString = readFileSync(wbFilePath, { encoding: 'utf-8' });
-      let wbFile = JSON.parse(wbString) as ApolloWorkbenchFile;
+  async refreshWorkbenchFileComposition(wbFilePath: string) {
+    return await window.withProgress(
+      { location: ProgressLocation.Notification },
+      async (progress) => {
+        const wbFile = this.workbenchFileFromPath(wbFilePath);
+        const designName = getFileName(wbFilePath);
 
-      const compResults = WorkbenchFederationProvider.compose(wbFile);
-      if (compResults.errors) {
-        WorkbenchDiagnostics.instance.setCompositionErrors(
-          wbFilePath,
-          wbFile,
-          compResults.errors,
-        );
-      } else if (!wbFile.supergraphSdl && compResults.supergraphSdl) {
-        this.writeFile(
-          WorkbenchUri.supergraph(
-            wbFilePath,
-            '',
-            WorkbenchUriType.SUPERGRAPH_SCHEMA,
-          ),
-          Buffer.from(compResults.supergraphSdl),
-          { create: true, overwrite: true },
-        );
-      }
+        progress.report({
+          message: `Composing ${designName}...`,
+        });
 
-      //Need to validate operations
-      WorkbenchDiagnostics.instance.validateAllOperations(wbFilePath);
-    } catch (err: any) {
-      log(err.message);
-    }
+        try {
+          if (wbFile) {
+            const compResults = await Rover.instance.compose(wbFilePath);
+            if (compResults.data.success) {
+              WorkbenchDiagnostics.instance.clearCompositionDiagnostics(wbFilePath);
+              wbFile.composition_result = true;
+              return compResults.data.core_schema;
+            } else if (compResults.error) {
+              wbFile.composition_result = false;
+              await WorkbenchDiagnostics.instance.setCompositionErrors(
+                wbFilePath,
+                wbFile,
+                compResults.error.details.build_errors,
+              );
+            }
+          }
+        } catch (err: any) {
+          log(err.message);
+        }
+      },
+    );
   }
 
   //All workbench files in opened VS Code folder
-  refreshLocalWorkbenchFiles(shouldCompose: boolean = true) {
+  async refreshLocalWorkbenchFiles() {
     // Clear all workbench files and workbench diagnostics
     this.workbenchFiles.clear();
     WorkbenchDiagnostics.instance.clearAllDiagnostics();
 
     const workspaceRoot = StateManager.workspaceRoot;
     if (workspaceRoot) {
-      const workbenchFiles = this.getWorkbenchFilesInDirectory(workspaceRoot);
+      const workbenchFileURIs = await this.getWorkbenchFilesInDirectory(
+        workspaceRoot,
+      );
 
-      if (workbenchFiles.length > 0) {
-        workbenchFiles.forEach((workbenchFile) => {
-          const wbFilePath = workbenchFile.path;
+      if (workbenchFileURIs.length > 0) {
+        for (let i = 0; i < workbenchFileURIs.length; i++) {
+          const uri = workbenchFileURIs[i];
+          const wbFilePath = uri.path;
 
           try {
-            const wbString = readFileSync(wbFilePath, { encoding: 'utf-8' });
-            let wbFile = JSON.parse(wbString) as ApolloWorkbenchFile;
+            const yamlFile = await workspace.fs.readFile(uri);
+            const wbString = yamlFile.toString();
+            const wbFile = load(wbString) as ApolloConfig;
 
             this.workbenchFiles.set(wbFilePath, wbFile);
             WorkbenchDiagnostics.instance.createWorkbenchFileDiagnostics(
-              wbFile.graphName,
+              getFileName(wbFilePath),
               wbFilePath,
             );
 
-            this.refreshLocalWorkbenchFile(wbFilePath);
-
-            // //If there is no valid composition, we should try composing graph to:
-            // //  1. Add any composition diagnostics to Problems Panel
-            // //  2. Save valid supergraphSDL
-            // if (!wbFile.supergraphSdl) {
-            //   const compResults = WorkbenchFederationProvider.compose(wbFile);
-            //   if (compResults.errors) {
-            //     WorkbenchDiagnostics.instance.setCompositionErrors(
-            //       wbFilePath,
-            //       wbFile,
-            //       compResults.errors,
-            //     );
-            //   } else {
-            //     this.writeFile(
-            //       WorkbenchUri.supergraph(
-            //         wbFilePath,
-            //         '',
-            //         WorkbenchUriType.SUPERGRAPH_SCHEMA,
-            //       ),
-            //       Buffer.from(compResults.supergraphSdl),
-            //       { create: true, overwrite: true },
-            //     );
-            //   }
-            // }
-
-            // //Need to validate operations
-            // WorkbenchDiagnostics.instance.validateAllOperations(wbFilePath);
+            await this.refreshWorkbenchFileComposition(wbFilePath);
           } catch (err) {
             window.showErrorMessage(
               `Workbench file was not in the correct format. File located at ${wbFilePath}`,
             );
           }
-        });
+        }
+        // workbenchFileURIs.forEach(async (workbenchURI) => {
+        //   const wbFilePath = workbenchURI.path;
+
+        //   try {
+        //     const yamlFile =  await workspace.fs.readFile(workbenchURI);
+        //     const wbString = yamlFile.toString();
+        //     const wbFile = load(wbString) as ApolloConfig;
+
+        //     this.workbenchFiles.set(wbFilePath, wbFile);
+        //     WorkbenchDiagnostics.instance.createWorkbenchFileDiagnostics(
+        //       getFileName(wbFilePath),
+        //       wbFilePath,
+        //     );
+
+        //     await this.refreshLocalWorkbenchFile(wbFilePath);
+        //   } catch (err) {
+        //     window.showErrorMessage(
+        //       `Workbench file was not in the correct format. File located at ${wbFilePath}`,
+        //     );
+        //   }
+        // });
       }
     }
   }
@@ -370,24 +408,27 @@ export class FileProvider implements FileSystemProvider {
   }
 
   //Workbench File Implementations
-  createWorkbenchFileLocally(wbFile: ApolloWorkbenchFile) {
+  async createWorkbenchFileLocally(designName: string, wbFile: ApolloConfig) {
     if (StateManager.workspaceRoot) {
-      const path = resolve(
+      delete wbFile.composition_result;
+
+      const wbFilePath = resolve(
         StateManager.workspaceRoot,
-        `${wbFile.graphName}.apollo-workbench`,
+        `${designName}.yaml`,
       );
-      writeFileSync(normalize(path), JSON.stringify(wbFile), {
-        encoding: 'utf8',
-      });
+      await workspace.fs.writeFile(
+        Uri.parse(wbFilePath),
+        new TextEncoder().encode(dump(wbFile)),
+      );
       StateManager.instance.localSupergraphTreeDataProvider.refresh();
     }
   }
 
   workbenchFileByGraphName(name: string) {
     let wbFilePath = '';
-    let wbFile: ApolloWorkbenchFile = new ApolloWorkbenchFile(name);
+    let wbFile: ApolloConfig = new ApolloConfig();
     this.workbenchFiles.forEach((value, key) => {
-      if (value.graphName == name) {
+      if (getFileName(key) == name) {
         wbFilePath = key;
         wbFile = value;
       }
@@ -461,7 +502,7 @@ export class FileProvider implements FileSystemProvider {
   onDidChangeEmitter = new EventEmitter<FileChangeEvent[]>();
   onDidChangeFile = this.onDidChangeEmitter.event;
 
-  private getWorkbenchFilesInDirectory(dirPath: string) {
+  private async getWorkbenchFilesInDirectory(dirPath: string) {
     if (!dirPath || dirPath == '.') return [];
 
     const workbenchFiles = new Array<Uri>();
@@ -475,9 +516,14 @@ export class FileProvider implements FileSystemProvider {
         const directoryPath = path.resolve(directory, dirent.name);
         if (dirent.isDirectory() && dirent.name != 'node_modules') {
           directories.push(directoryPath);
-        } else if (dirent.name.includes('.apollo-workbench')) {
-          const uri = WorkbenchUri.parse(directoryPath);
-          workbenchFiles.push(uri);
+        } else if (dirent.name.includes('.yaml')) {
+          const yamlFile = await workspace.fs.readFile(
+            Uri.parse(directoryPath),
+          );
+          const yaml = load(new TextDecoder().decode(yamlFile)) as ApolloConfig;
+          if (yaml?.federation_version) {
+            workbenchFiles.push(Uri.parse(directoryPath));
+          }
         }
       }
 

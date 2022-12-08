@@ -1,23 +1,29 @@
-import { FileProvider } from '../workbench/file-system/fileProvider';
+import {
+  FileProvider,
+  schemaFileUri,
+  tempSchemaFilePath,
+} from '../workbench/file-system/fileProvider';
 import {
   window,
   env,
   Uri,
   workspace,
-  commands,
   TextDocument,
+  commands,
   Position,
   SnippetString,
   Range,
+  ProgressLocation,
+  FileType,
 } from 'vscode';
 import { StateManager } from '../workbench/stateManager';
 import {
   SubgraphTreeItem,
-  OperationTreeItem,
+  // OperationTreeItem,
   SubgraphSummaryTreeItem,
-  SupergraphSchemaTreeItem,
   SupergraphApiSchemaTreeItem,
   FederationVersionItem,
+  SupergraphTreeItem,
 } from '../workbench/tree-data-providers/superGraphTreeDataProvider';
 import {
   WorkbenchUri,
@@ -35,35 +41,87 @@ import {
   GetGraphSchemas_service_implementingServices_FederatedImplementingServices,
 } from '../graphql/types/GetGraphSchemas';
 import { join, resolve } from 'path';
-import { writeFileSync, readFileSync } from 'fs';
+import { writeFileSync, readFileSync, existsSync } from 'fs';
 import { printSchema, visit, print } from 'graphql';
 import { log } from '../utils/logger';
 import { WorkbenchFederationProvider } from '../workbench/federationProvider';
 import gql from 'graphql-tag';
+import { ApolloConfig } from '../workbench/file-system/ApolloConfig';
+import { Rover } from '../workbench/rover';
+import { getFileName } from '../utils/path';
 
 export async function editSubgraph(item: SubgraphTreeItem) {
-  const uri = WorkbenchUri.supergraph(
-    item.wbFilePath,
-    item.subgraphName,
-    WorkbenchUriType.SCHEMAS,
-  );
+  const wbFilePath = item.wbFilePath;
+  const subgraphName = item.subgraphName;
+
   try {
-    FileProvider.instance.load(item.wbFilePath);
-    await window.showTextDocument(uri);
+    await FileProvider.instance.load(wbFilePath, false);
+    const wbFile = FileProvider.instance.workbenchFileFromPath(wbFilePath);
+    const subgraphSchemaConfig = wbFile.subgraphs[subgraphName]?.schema;
+    if (subgraphSchemaConfig?.file) {
+      await window.showTextDocument(
+        schemaFileUri(subgraphSchemaConfig.file, wbFilePath),
+      );
+    } else if (subgraphSchemaConfig.workbench_design) {
+      await window.showTextDocument(
+        schemaFileUri(subgraphSchemaConfig.workbench_design, wbFilePath),
+      );
+    } else {
+      const tempLocation = tempSchemaFilePath(wbFilePath, subgraphName);
+      if (existsSync(tempLocation.fsPath))
+        await window.showTextDocument(tempLocation);
+
+      await window.withProgress(
+        { location: ProgressLocation.Notification },
+        async (progress) => {
+          progress.report({
+            message: `Getting remote schema updates and writing to temp folder...`,
+          });
+
+          await FileProvider.instance.writeTempSchemaFile(
+            wbFilePath,
+            subgraphName,
+          );
+
+          window
+            .showInformationMessage(
+              `You are opening a schema file  that lives in a remote source and any edits you make won't be reflected in your design. Would you like to change this schema to a local design file?`,
+              'Convert to local design',
+            )
+            .then(async (value) => {
+              if (
+                StateManager.workspaceRoot &&
+                value == 'Convert to local design'
+              ) {
+                //We need to create the file in the relative workspace
+                const schemaFilePath = resolve(
+                  StateManager.workspaceRoot,
+                  `${subgraphName}.graphql`,
+                );
+                await workspace.fs.copy(
+                  tempLocation,
+                  Uri.parse(schemaFilePath),
+                  { overwrite: true },
+                );
+                await FileProvider.instance.convertSubgraphToDesign(
+                  wbFilePath,
+                  subgraphName,
+                  schemaFilePath,
+                );
+
+                if (window.activeTextEditor?.document.uri == tempLocation) {
+                  commands.executeCommand('workbench.action.closeActiveEditor');
+                }
+              }
+            });
+        },
+      );
+    }
   } catch (err: any) {
     log(err);
   }
 }
-export async function editSupergraphOperation(item: OperationTreeItem) {
-  await window.showTextDocument(
-    WorkbenchUri.supergraph(
-      item.filePath,
-      item.operationName,
-      WorkbenchUriType.QUERIES,
-    ),
-  );
-  FileProvider.instance.load(item.filePath);
-}
+
 export async function viewSubgraphSettings(item: SubgraphTreeItem) {
   await window.showTextDocument(
     WorkbenchUri.supergraph(
@@ -73,111 +131,21 @@ export async function viewSubgraphSettings(item: SubgraphTreeItem) {
     ),
   );
 }
-export async function addOperation(item: OperationTreeItem) {
-  const wbFilePath = item.filePath;
-  const wbFile = FileProvider.instance.workbenchFileFromPath(wbFilePath);
-  if (wbFile) {
-    const operationName =
-      (await window.showInputBox({
-        placeHolder: 'Enter a name for the operation',
-      })) ?? '';
-    if (!operationName) {
-      const message = `Create schema cancelled - No name entered.`;
-      log(message);
-      window.setStatusBarMessage(message, 3000);
-    } else {
-      const operation = `query ${operationName} {\n\t\n}`;
-      const operationUri = WorkbenchUri.supergraph(
-        item.filePath,
-        operationName,
-        WorkbenchUriType.QUERIES,
-      );
-      wbFile.operations[operationName] = { operation };
-      await FileProvider.instance.writeFile(
-        operationUri,
-        Buffer.from(operation, 'utf8'),
-        { create: true, overwrite: true },
-      );
 
-      const newOpDoc = await workspace.openTextDocument(operationUri);
-      await window.showTextDocument(newOpDoc);
-    }
+export async function viewSupergraphSchema(item: SupergraphTreeItem) {
+  const supergraphSDL =
+    await FileProvider.instance.refreshWorkbenchFileComposition(item.filePath);
+  if (supergraphSDL) {
+    const doc = await workspace.openTextDocument({
+      content: supergraphSDL,
+      language: 'graphql',
+    });
+
+    await window.showTextDocument(doc);
+  } else {
+    window.showErrorMessage("You have composition errors that need to be resolved");
+    commands.executeCommand("workbench.panel.markers.view.focus");
   }
-}
-export async function setOperationDesignMock(item: OperationTreeItem) {
-  env.openExternal(
-    Uri.parse(
-      'https://en.wikipedia.org/wiki/Visual_Studio_Code#/media/File:Visual_Studio_Code_Insiders_1.36_icon.svg',
-    ),
-  );
-  // const panel = window.createWebviewPanel(
-  //   "apolloWorkbenchDesign",
-  //   'UI Design',
-  //   ViewColumn.One,
-  //   {
-  //     // Enable javascript in the webview
-  //     enableScripts: true,
-  //     // And restrict the webview to only loading content from our extension's `media` directory.
-  //     // localResourceRoots: [vscode.Uri.joinPath(extensionUri, 'media')]
-  //   },
-  // );
-
-  // panel.webview.html =
-  // const wbFilePath = item.filePath;
-  // const wbFile = FileProvider.instance.workbenchFileFromPath(wbFilePath);
-  // if (wbFile) {
-  //   const remoteURL =
-  //     (await window.showInputBox({
-  //       placeHolder: 'Enter a name for the operation',
-  //     })) ?? '';
-  //   if (!remoteURL) {
-  //     const message = `Create schema cancelled - No name entered.`;
-  //     log(message);
-  //     window.setStatusBarMessage(message, 3000);
-  //   } else {
-  //     wbFile.operations[remoteURL] = { operation: `query ${remoteURL} {\n\t\n}` };
-  //     FileProvider.instance.saveWorkbenchFile(wbFile, item.filePath);
-  //   }
-  // }
-}
-export async function deleteOperation(item: OperationTreeItem) {
-  const opUri = WorkbenchUri.supergraph(
-    item.filePath,
-    item.operationName,
-    WorkbenchUriType.QUERIES,
-  );
-  await FileProvider.instance.delete(opUri, { recursive: true });
-}
-export async function viewQueryPlan(item: OperationTreeItem) {
-  await window.showTextDocument(
-    WorkbenchUri.supergraph(
-      item.filePath,
-      item.operationName,
-      WorkbenchUriType.QUERY_PLANS,
-    ),
-  );
-}
-export async function viewSupergraphSchema(item: SupergraphSchemaTreeItem) {
-  FileProvider.instance.load(item.filePath);
-  await window.showTextDocument(
-    WorkbenchUri.supergraph(
-      item.filePath,
-      item.wbFile.graphName,
-      WorkbenchUriType.SUPERGRAPH_SCHEMA,
-    ),
-  );
-}
-export async function viewSupergraphApiSchema(
-  item: SupergraphApiSchemaTreeItem,
-) {
-  FileProvider.instance.load(item.filePath);
-  await window.showTextDocument(
-    WorkbenchUri.supergraph(
-      item.filePath,
-      item.wbFile.graphName,
-      WorkbenchUriType.SUPERGRAPH_API_SCHEMA,
-    ),
-  );
 }
 export function refreshSupergraphs() {
   StateManager.instance.localSupergraphTreeDataProvider.refresh();
@@ -227,8 +195,9 @@ export async function newDesign() {
       log(msg);
       window.showErrorMessage(msg);
     } else {
-      FileProvider.instance.createWorkbenchFileLocally(
-        new ApolloWorkbenchFile(workbenchName),
+      await FileProvider.instance.createWorkbenchFileLocally(
+        workbenchName,
+        new ApolloConfig(),
       );
     }
   }
@@ -317,7 +286,7 @@ async function createWorkbench(graphId: string, selectedVariant: string) {
       WorkbenchFederationProvider.compose(workbenchFile);
     if (supergraphSdl) workbenchFile.supergraphSdl = supergraphSdl;
 
-    FileProvider.instance.createWorkbenchFileLocally(workbenchFile);
+    // FileProvider.instance.createWorkbenchFileLocally(workbenchFile);
   } else {
     window.showInformationMessage(
       'You must provide a name to create a new workbench file',
@@ -325,109 +294,13 @@ async function createWorkbench(graphId: string, selectedVariant: string) {
   }
 }
 
-export async function updateSubgraphSchemaFromURL(item: SubgraphTreeItem) {
-  if (StateManager.settings_tlsRejectUnauthorized)
-    process.env.NODE_TLS_REJECT_UNAUTHORIZED = '';
-  else process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
-
-  const subgraphName = item.subgraphName;
-  const wbFile = FileProvider.instance.workbenchFileFromPath(item.wbFilePath);
-  if (wbFile) {
-    if (wbFile?.schemas[subgraphName] && !wbFile?.schemas[subgraphName].url) {
-      const routingURL =
-        (await window.showInputBox({
-          placeHolder: 'Enter a the url for the schema/service',
-        })) ?? '';
-      if (!routingURL) {
-        const message = `Set service URL cancelled for ${item.subgraphName} - No URL entered.`;
-        log(message);
-        window.setStatusBarMessage(message, 3000);
-      } else {
-        wbFile.schemas[item.subgraphName].url = routingURL;
-      }
-    }
-
-    if (wbFile?.schemas[subgraphName].url) {
-      const sdl = await WorkbenchFederationProvider.getRemoteTypeDefs(
-        subgraphName,
-        wbFile,
-      );
-      if (sdl) {
-        const subgraphUri = WorkbenchUri.supergraph(
-          item.wbFilePath,
-          subgraphName,
-          WorkbenchUriType.SCHEMAS,
-        );
-        FileProvider.instance.writeFile(subgraphUri, Buffer.from(sdl), {
-          create: true,
-          overwrite: true,
-        });
-
-        //TODO: Is it still necessary to replace the text or does this refresh the doc while open?
-        const editor = await window.showTextDocument(subgraphUri);
-        // if (editor) {
-        //   const document = editor.document;
-        //   await editor.edit((editor) => {
-        //     editor.replace(new Range(0, 0, document.lineCount, 0), sdl);
-        //   });
-        //   await document.save();
-        // }
-      }
-    } else {
-      //No URL entered for schema
-      window.showErrorMessage(
-        'You must set a url for the service if you want to update the schema from it.',
-      );
-    }
-  }
-}
-
-export async function exportSupergraphSchema(item: SupergraphSchemaTreeItem) {
-  if (item.wbFile.supergraphSdl && StateManager.workspaceRoot) {
+export async function exportSupergraphSchema(item: SupergraphTreeItem) {
+  if (StateManager.workspaceRoot) {
     const exportPath = resolve(
       StateManager.workspaceRoot,
-      `${item.wbFile.graphName}-supergraph-schema.graphql`,
+      `${getFileName(item.filePath)}-supergraph-schema.graphql`,
     );
-    const exportUri = Uri.parse(exportPath);
-    writeFileSync(exportPath, item.wbFile.supergraphSdl, { encoding: 'utf-8' });
-    window.showInformationMessage(
-      `Supergraph Schema was exported to ${exportPath}`,
-    );
-  }
-}
-
-export async function exportSupergraphApiSchema(
-  item: SupergraphApiSchemaTreeItem,
-) {
-  const supergraphSchema = item.wbFile.supergraphSdl;
-  if (supergraphSchema && StateManager.workspaceRoot) {
-    const exportPath = resolve(
-      StateManager.workspaceRoot,
-      `${item.wbFile.graphName}-api-schema.graphql`,
-    );
-    const finalSchema =
-      WorkbenchFederationProvider.superSchemaToApiSchema(supergraphSchema);
-    writeFileSync(exportPath, printSchema(finalSchema), { encoding: 'utf-8' });
-    window.showInformationMessage(
-      `Graph Core Schema was exported to ${exportPath}`,
-    );
-  }
-}
-
-export async function exportSubgraphSchema(item: SubgraphTreeItem) {
-  const exportPath = StateManager.workspaceRoot
-    ? resolve(StateManager.workspaceRoot, `${item.subgraphName}.graphql`)
-    : null;
-  if (exportPath) {
-    const schema =
-      FileProvider.instance.workbenchFileFromPath(item.wbFilePath)?.schemas[
-        item.subgraphName
-      ]?.sdl ?? '';
-    writeFileSync(exportPath, schema, { encoding: 'utf-8' });
-
-    window.showInformationMessage(
-      `${item.subgraphName} schema was exported to ${exportPath}`,
-    );
+    await Rover.instance.writeSupergraphSDL(item.filePath, exportPath);
   }
 }
 
@@ -448,7 +321,7 @@ export async function createWorkbenchFromPreloaded(
     const fileContent = readFileSync(preloadFileDir, { encoding: 'utf-8' });
     const workbenchFile = JSON.parse(fileContent) as ApolloWorkbenchFile;
 
-    FileProvider.instance.createWorkbenchFileLocally(workbenchFile);
+    // FileProvider.instance.createWorkbenchFileLocally(workbenchFile);
   }
 }
 

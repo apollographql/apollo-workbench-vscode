@@ -21,48 +21,48 @@ export function getServiceAvailableTypes(
   const enums: string[] = [];
   const scalars: string[] = [];
 
-  try {
-    const localSchema =
-      FileProvider.instance.workbenchFileFromPath(wbFilePath)?.schemas[
-        serviceName
-      ];
-    if (localSchema) {
-      const doc = parse(localSchema.sdl);
+  // try {
+  //   const localSchema =
+  //     FileProvider.instance.workbenchFileFromPath(wbFilePath)?.schemas[
+  //       serviceName
+  //     ];
+  //   if (localSchema) {
+  //     const doc = parse(localSchema.sdl);
 
-      visit(doc, {
-        ObjectTypeDefinition(objectTypeNode: ObjectTypeDefinitionNode) {
-          const typeNode = `O:${objectTypeNode.name.value}`;
-          if (!interfaces.includes(typeNode)) {
-            interfaces.push(typeNode);
-            interfaces.push(`[${typeNode}]`);
-          }
-        },
-        InterfaceTypeDefinition(interfaceNode: InterfaceTypeDefinitionNode) {
-          const typeNode = `I:${interfaceNode.name.value}`;
-          if (!objectTypes.includes(typeNode)) {
-            objectTypes.push(typeNode);
-            objectTypes.push(`[${typeNode}]`);
-          }
-        },
-        EnumTypeDefinition(enumNode: EnumTypeDefinitionNode) {
-          const typeNode = `E:${enumNode.name.value}`;
-          if (!enums.includes(typeNode)) {
-            enums.push(typeNode);
-            enums.push(`[${typeNode}]`);
-          }
-        },
-        ScalarTypeDefinition(scalarNode: ScalarTypeDefinitionNode) {
-          const typeNode = `S:${scalarNode.name.value}`;
-          if (!scalars.includes(typeNode)) {
-            scalars.push(typeNode);
-            scalars.push(`[${typeNode}]`);
-          }
-        },
-      });
-    }
-  } catch (err: any) {
-    log(err.message);
-  }
+  //     visit(doc, {
+  //       ObjectTypeDefinition(objectTypeNode: ObjectTypeDefinitionNode) {
+  //         const typeNode = `O:${objectTypeNode.name.value}`;
+  //         if (!interfaces.includes(typeNode)) {
+  //           interfaces.push(typeNode);
+  //           interfaces.push(`[${typeNode}]`);
+  //         }
+  //       },
+  //       InterfaceTypeDefinition(interfaceNode: InterfaceTypeDefinitionNode) {
+  //         const typeNode = `I:${interfaceNode.name.value}`;
+  //         if (!objectTypes.includes(typeNode)) {
+  //           objectTypes.push(typeNode);
+  //           objectTypes.push(`[${typeNode}]`);
+  //         }
+  //       },
+  //       EnumTypeDefinition(enumNode: EnumTypeDefinitionNode) {
+  //         const typeNode = `E:${enumNode.name.value}`;
+  //         if (!enums.includes(typeNode)) {
+  //           enums.push(typeNode);
+  //           enums.push(`[${typeNode}]`);
+  //         }
+  //       },
+  //       ScalarTypeDefinition(scalarNode: ScalarTypeDefinitionNode) {
+  //         const typeNode = `S:${scalarNode.name.value}`;
+  //         if (!scalars.includes(typeNode)) {
+  //           scalars.push(typeNode);
+  //           scalars.push(`[${typeNode}]`);
+  //         }
+  //       },
+  //     });
+  //   }
+  // } catch (err: any) {
+  //   log(err.message);
+  // }
 
   //Add Object/Interface/Enum/Scalars definitions
   types.push(...objectTypes);
@@ -184,7 +184,7 @@ export function extractEntityNames(schema: string): string[] {
 }
 
 export function addFederationSpecAsNeeded(schemaString: string): string {
-  let schemaModifications: {
+  const schemaModifications: {
     addEntityScalar?: undefined | boolean;
     addServiceScalar?: undefined | boolean;
     addAnyScalar?: undefined | boolean;

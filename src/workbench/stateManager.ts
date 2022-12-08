@@ -6,7 +6,7 @@ import { ApolloStudioGraphOpsTreeDataProvider } from './tree-data-providers/apol
 import { LocalSupergraphTreeDataProvider } from './tree-data-providers/superGraphTreeDataProvider';
 
 export class StateManager {
-  context?: ExtensionContext;
+  context: ExtensionContext;
 
   private static _instance: StateManager;
   static get instance(): StateManager {
@@ -29,13 +29,13 @@ export class StateManager {
   apolloStudioGraphOpsProvider: ApolloStudioGraphOpsTreeDataProvider = new ApolloStudioGraphOpsTreeDataProvider();
   localSupergraphTreeDataProvider: LocalSupergraphTreeDataProvider = new LocalSupergraphTreeDataProvider();
 
-  get extensionGlobalStoragePath(): string | undefined {
+  get extensionGlobalStoragePath(): string {
     try {
       //Running version 1.49+
-      return this.context?.globalStorageUri?.fsPath;
+      return this.context.globalStorageUri.fsPath;
     } catch (err) {
       //Running version 1.48 or lower
-      return this.context?.globalStoragePath;
+      return this.context.globalStoragePath;
     }
   }
 
