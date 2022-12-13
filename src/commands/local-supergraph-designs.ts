@@ -5,7 +5,6 @@ import {
 } from '../workbench/file-system/fileProvider';
 import {
   window,
-  env,
   Uri,
   workspace,
   TextDocument,
@@ -14,15 +13,11 @@ import {
   SnippetString,
   Range,
   ProgressLocation,
-  FileType,
 } from 'vscode';
 import { StateManager } from '../workbench/stateManager';
 import {
   SubgraphTreeItem,
-  // OperationTreeItem,
   SubgraphSummaryTreeItem,
-  SupergraphApiSchemaTreeItem,
-  FederationVersionItem,
   SupergraphTreeItem,
 } from '../workbench/tree-data-providers/superGraphTreeDataProvider';
 import {
@@ -36,19 +31,17 @@ import {
 } from '../workbench/tree-data-providers/apolloStudioGraphsTreeDataProvider';
 import { ApolloWorkbenchFile } from '../workbench/file-system/fileTypes';
 import { getGraphSchemasByVariant } from '../graphql/graphClient';
-import {
-  GetGraphSchemas_service_implementingServices_NonFederatedImplementingService,
-  GetGraphSchemas_service_implementingServices_FederatedImplementingServices,
-} from '../graphql/types/GetGraphSchemas';
+import { GetGraphSchemas_service_implementingServices_FederatedImplementingServices } from '../graphql/types/GetGraphSchemas';
 import { join, resolve } from 'path';
-import { writeFileSync, readFileSync, existsSync } from 'fs';
-import { printSchema, visit, print } from 'graphql';
+import { readFileSync, existsSync } from 'fs';
+import { visit, print } from 'graphql';
 import { log } from '../utils/logger';
-import { WorkbenchFederationProvider } from '../workbench/federationProvider';
 import gql from 'graphql-tag';
 import { ApolloConfig } from '../workbench/file-system/ApolloConfig';
 import { Rover } from '../workbench/rover';
 import { getFileName } from '../utils/path';
+import { TextEncoder } from 'util';
+import { dump } from 'js-yaml';
 
 export async function editSubgraph(item: SubgraphTreeItem) {
   const wbFilePath = item.wbFilePath;
@@ -78,42 +71,39 @@ export async function editSubgraph(item: SubgraphTreeItem) {
             message: `Getting remote schema updates and writing to temp folder...`,
           });
 
-          await FileProvider.instance.writeTempSchemaFile(
+          const tempUri = await FileProvider.instance.writeTempSchemaFile(
             wbFilePath,
             subgraphName,
           );
+          if (tempUri)
+            window
+              .showInformationMessage(
+                `You are opening a schema file  that lives in a remote source and any edits you make won't be reflected in your design. Would you like to change this schema to a local design file?`,
+                'Convert to local design',
+              )
+              .then(async (value) => {
+                if (
+                  StateManager.workspaceRoot &&
+                  value == 'Convert to local design'
+                ) {
+                  //We need to create the file in the relative workspace
+                  const schemaFilePath = resolve(
+                    StateManager.workspaceRoot,
+                    `${subgraphName}.graphql`,
+                  );
+                  const schemaFileUri = Uri.parse(schemaFilePath);
+                  await workspace.fs.copy(tempLocation, schemaFileUri, {
+                    overwrite: true,
+                  });
+                  await FileProvider.instance.convertSubgraphToDesign(
+                    wbFilePath,
+                    subgraphName,
+                    schemaFilePath,
+                  );
 
-          window
-            .showInformationMessage(
-              `You are opening a schema file  that lives in a remote source and any edits you make won't be reflected in your design. Would you like to change this schema to a local design file?`,
-              'Convert to local design',
-            )
-            .then(async (value) => {
-              if (
-                StateManager.workspaceRoot &&
-                value == 'Convert to local design'
-              ) {
-                //We need to create the file in the relative workspace
-                const schemaFilePath = resolve(
-                  StateManager.workspaceRoot,
-                  `${subgraphName}.graphql`,
-                );
-                await workspace.fs.copy(
-                  tempLocation,
-                  Uri.parse(schemaFilePath),
-                  { overwrite: true },
-                );
-                await FileProvider.instance.convertSubgraphToDesign(
-                  wbFilePath,
-                  subgraphName,
-                  schemaFilePath,
-                );
-
-                if (window.activeTextEditor?.document.uri == tempLocation) {
-                  commands.executeCommand('workbench.action.closeActiveEditor');
+                  commands.executeCommand('vscode.open', schemaFileUri);
                 }
-              }
-            });
+              });
         },
       );
     }
@@ -123,13 +113,7 @@ export async function editSubgraph(item: SubgraphTreeItem) {
 }
 
 export async function viewSubgraphSettings(item: SubgraphTreeItem) {
-  await window.showTextDocument(
-    WorkbenchUri.supergraph(
-      item.wbFilePath,
-      item.subgraphName,
-      WorkbenchUriType.SCHEMAS_SETTINGS,
-    ),
-  );
+  await window.showTextDocument(Uri.parse(item.wbFilePath));
 }
 
 export async function viewSupergraphSchema(item: SupergraphTreeItem) {
@@ -143,44 +127,50 @@ export async function viewSupergraphSchema(item: SupergraphTreeItem) {
 
     await window.showTextDocument(doc);
   } else {
-    window.showErrorMessage("You have composition errors that need to be resolved");
-    commands.executeCommand("workbench.panel.markers.view.focus");
+    window.showErrorMessage(
+      'You have composition errors that need to be resolved',
+    );
+    commands.executeCommand('workbench.panel.markers.view.focus');
   }
 }
 export function refreshSupergraphs() {
   StateManager.instance.localSupergraphTreeDataProvider.refresh();
 }
 export async function addSubgraph(item: SubgraphSummaryTreeItem) {
-  const serviceName =
+  const subgraphName =
     (await window.showInputBox({
       placeHolder: 'Enter a unique name for the subgraph',
     })) ?? '';
-  if (!serviceName) {
+  if (!subgraphName) {
     const message = `Create schema cancelled - No name entered.`;
     log(message);
     window.setStatusBarMessage(message, 3000);
   } else {
-    FileProvider.instance.writeFile(
-      WorkbenchUri.supergraph(
-        item.filePath,
-        serviceName,
-        WorkbenchUriType.SCHEMAS,
-      ),
-      Buffer.from(
-        'extend schema \n\t@link(url: "https://specs.apollo.dev/federation/v2.0", import: ["@key"])\n\n',
-      ),
-    );
+    const root = StateManager.workspaceRoot;
+    if (root) {
+      const newSchemaFilePath = resolve(root, `${subgraphName}.graphql`);
+      await workspace.fs.writeFile(
+        Uri.parse(newSchemaFilePath),
+        Buffer.from(
+          'extend schema \n\t@link(url: "https://specs.apollo.dev/federation/v2.0", import: ["@key"])\n\ntype Query { \n\tdesignRoot: String\n}',
+        ),
+      );
+      const wbFile = FileProvider.instance.workbenchFileFromPath(item.filePath);
+      wbFile.subgraphs[subgraphName] = {
+        name: subgraphName,
+        schema: {
+          file: newSchemaFilePath,
+        },
+      };
+      await FileProvider.instance.writeWorkbenchConfig(item.filePath, wbFile);
+    }
   }
 }
 export async function deleteSubgraph(item: SubgraphTreeItem) {
-  await FileProvider.instance.delete(
-    WorkbenchUri.supergraph(
-      item.wbFilePath,
-      item.subgraphName,
-      WorkbenchUriType.SCHEMAS,
-    ),
-    { recursive: true },
-  );
+  const subgraphName = item.subgraphName;
+  const wbFile = FileProvider.instance.workbenchFileFromPath(item.wbFilePath);
+  delete wbFile.subgraphs[subgraphName];
+  await FileProvider.instance.writeWorkbenchConfig(item.wbFilePath, wbFile);
 }
 export async function newDesign() {
   if (!StateManager.workspaceRoot) {
@@ -252,41 +242,33 @@ async function createWorkbench(graphId: string, selectedVariant: string) {
     value: defaultGraphName,
   });
   if (graphName) {
-    const workbenchFile: ApolloWorkbenchFile = new ApolloWorkbenchFile(
-      graphName,
-    );
-    workbenchFile.graphName = graphName;
+    const workbenchFile: ApolloConfig = new ApolloConfig();
 
     const results = await getGraphSchemasByVariant(
       StateManager.instance.globalState_userApiKey,
       graphId,
       selectedVariant,
     );
-    const monolithicService = results.service
-      ?.implementingServices as GetGraphSchemas_service_implementingServices_NonFederatedImplementingService;
-    if (monolithicService?.graphID) {
-      workbenchFile.schemas['monolith'] = {
-        sdl: results.service?.schema?.document,
-        autoUpdateSchemaFromUrl: false,
-      };
-    } else {
-      const implementingServices = results.service
-        ?.implementingServices as GetGraphSchemas_service_implementingServices_FederatedImplementingServices;
-      implementingServices?.services?.map(
-        (service) =>
-          (workbenchFile.schemas[service.name] = {
-            sdl: service.activePartialSchema.sdl,
-            url: service.url ?? '',
-            autoUpdateSchemaFromUrl: false,
-          }),
-      );
-    }
+    //Create YAML from config
 
-    const { supergraphSdl } =
-      WorkbenchFederationProvider.compose(workbenchFile);
-    if (supergraphSdl) workbenchFile.supergraphSdl = supergraphSdl;
+    const implementingServices = results.service
+      ?.implementingServices as GetGraphSchemas_service_implementingServices_FederatedImplementingServices;
+    implementingServices?.services?.map(
+      (service) =>
+        (workbenchFile.subgraphs[service.name] = {
+          name: service.name,
+          routing_url: service.url ?? '',
+          schema: {
+            graphref: `${graphId}@${selectedVariant}`,
+            subgraph: service.name,
+          },
+        }),
+    );
 
-    // FileProvider.instance.createWorkbenchFileLocally(workbenchFile);
+    await FileProvider.instance.createWorkbenchFileLocally(
+      graphName,
+      workbenchFile,
+    );
   } else {
     window.showInformationMessage(
       'You must provide a name to create a new workbench file',

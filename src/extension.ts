@@ -178,16 +178,6 @@ export async function activate(context: ExtensionContext) {
     ApolloStudioOperationsProvider.scheme,
     new ApolloStudioOperationsProvider(),
   );
-  workspace.onDidCloseTextDocument((e) => {
-    const uri = e.uri;
-    if (uri.scheme == 'workbench') {
-      if (uri.path.includes('queries')) {
-        WorkbenchDiagnostics.instance.validateAllOperations(
-          FileProvider.instance.loadedWorbenchFilePath,
-        );
-      }
-    }
-  });
   workspace.onDidDeleteFiles((e) => {
     let deletedWorkbenchFile = false;
     e.files.forEach((f) => {
@@ -201,18 +191,25 @@ export async function activate(context: ExtensionContext) {
   workspace.onDidSaveTextDocument((doc) => {
     const docPath = doc.uri.fsPath;
 
-    FileProvider.instance.getWorkbenchFiles().forEach((wbFile, wbFilePath) => {
-      Object.keys(wbFile.subgraphs).forEach(async (subgraphName) => {
-        const { file, workbench_design } =
-          wbFile.subgraphs[subgraphName].schema;
-        if (
-          schemaFileUri(file, wbFilePath).fsPath == docPath ||
-          schemaFileUri(workbench_design, wbFilePath).fsPath == docPath
-        )
-          await FileProvider.instance.refreshWorkbenchFileComposition(
-            wbFilePath,
-          );
+    FileProvider.instance
+      .getWorkbenchFiles()
+      .forEach(async (wbFile, wbFilePath) => {
+        if (docPath == wbFilePath)
+          StateManager.instance.localSupergraphTreeDataProvider.refresh();
+        else
+          Object.keys(wbFile.subgraphs).forEach(async (subgraphName) => {
+            const { file, workbench_design } =
+              wbFile.subgraphs[subgraphName].schema;
+
+            if (
+              (file && schemaFileUri(file, wbFilePath).fsPath == docPath) ||
+              (workbench_design &&
+                schemaFileUri(workbench_design, wbFilePath).fsPath == docPath)
+            )
+              await FileProvider.instance.refreshWorkbenchFileComposition(
+                wbFilePath,
+              );
+          });
       });
-    });
   });
 }

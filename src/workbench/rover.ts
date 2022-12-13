@@ -1,7 +1,9 @@
-
 import { exec, ExecException } from 'child_process';
+import { resolve } from 'path';
+import { Uri } from 'vscode';
 import { Subgraph } from './file-system/ApolloConfig';
 import { CompositionResults } from './file-system/CompositionResults';
+import { StateManager } from './stateManager';
 
 export class Rover {
   private static _instance: Rover;
@@ -14,11 +16,11 @@ export class Rover {
   async compose(pathToConfig: string) {
     const result = await new Promise<string>((resolve, reject) => {
       exec(
-        `rover supergraph compose --config=${pathToConfig} --output=json`,
+        `rover supergraph compose --config="${pathToConfig}" --output=json --skip-update`,
         {},
-        (_error: ExecException | null, stdout: string, _stderr: string) =>{
+        (_error: ExecException | null, stdout: string, _stderr: string) => {
           resolve(stdout);
-        }
+        },
       );
     });
 
@@ -30,21 +32,24 @@ export class Rover {
       exec(
         `rover supergraph compose --config=${pathToConfig} > ${pathToSaveTo}`,
         {},
-        (_error: ExecException | null, stdout: string, _stderr: string) =>{
+        (_error: ExecException | null, stdout: string, _stderr: string) => {
           resolve(stdout);
-        }
+        },
       );
     });
   }
 
-  async subgraphFetch(subgraph: Subgraph){
+  async subgraphFetch(subgraph: Subgraph) {
     let sdl = '';
     if (subgraph.schema.graphref) {
-      //sdl = rover subgraph fetch graphref
-      sdl = await this.subgraphGraphOSFetch(subgraph.schema.graphref, subgraph.name);
+      sdl = await this.subgraphGraphOSFetch(
+        subgraph.schema.graphref,
+        subgraph.name,
+      );
     } else {
-      //sdl = rover subgraph introspect ?? rover graph introspect
-      sdl = await this.subgraphIntrospect(subgraph.schema.subgraph_url);
+      sdl = await this.subgraphIntrospect(
+        subgraph.schema.subgraph_url ?? subgraph.routing_url ?? '',
+      );
     }
 
     return sdl;
@@ -53,11 +58,13 @@ export class Rover {
   async subgraphGraphOSFetch(graphRef: string, subgraph: string) {
     const result = await new Promise<string>((resolve, reject) => {
       exec(
-        `rover subgraph fetch ${graphRef} --name=${subgraph}`,
+        StateManager.settings_roverConfigProfile
+          ? `rover subgraph fetch ${graphRef} --name=${subgraph} --profile=${StateManager.settings_roverConfigProfile}`
+          : `rover subgraph fetch ${graphRef} --name=${subgraph}`,
         {},
-        (_error: ExecException | null, stdout: string, _stderr: string) =>{
+        (_error: ExecException | null, stdout: string, _stderr: string) => {
           resolve(stdout);
-        }
+        },
       );
     });
 
@@ -68,28 +75,45 @@ export class Rover {
       exec(
         `rover subgraph introspect ${url}`,
         {},
-        (error: ExecException | null, stdout: string, _stderr: string) =>{
-          if(error) reject(false);
+        (error: ExecException | null, stdout: string, _stderr: string) => {
+          if (error) reject(false);
           else resolve(stdout);
-        }
+        },
       );
     });
 
-    if(!sdl) {
+    if (!sdl) {
       sdl = await new Promise<string | boolean>((resolve, reject) => {
         exec(
           `rover graph introspect ${url}`,
           {},
-          (error: ExecException | null, stdout: string, _stderr: string) =>{
-            if(error) reject(false);
+          (error: ExecException | null, stdout: string, _stderr: string) => {
+            if (error) reject(false);
             else resolve(stdout);
-          }
+          },
         );
       });
     }
 
-    if(!sdl) return "";
+    if (!sdl) return '';
 
-    return sdl as string ?? "";
+    return (sdl as string) ?? '';
+  }
+
+  async getProfiles(): Promise<string[]> {
+    const results = await new Promise<string>((resolve, reject) => {
+      exec(
+        `rover config list --output=json`,
+        {},
+        (error: ExecException | null, stdout: string, _stderr: string) => {
+          if (error) reject(false);
+          else resolve(stdout);
+        },
+      );
+    });
+    const data = JSON.parse(results).data;
+    if(data.success){
+      return data.profiles;
+    } else return [];
   }
 }

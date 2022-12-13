@@ -3,24 +3,19 @@ import {
   Diagnostic,
   DiagnosticCollection,
   DiagnosticSeverity,
-  Position,
   languages,
   Range,
   Uri,
 } from 'vscode';
-import { collectExecutableDefinitionDiagnositics } from '../utils/operation-diagnostics/diagnostics';
-import { GraphQLDocument } from '../utils/operation-diagnostics/document';
 import { ApolloConfig } from './file-system/ApolloConfig';
 import {
   RoverCompositionError,
 } from './file-system/CompositionResults';
 import { schemaFileUri, tempSchemaFilePath } from './file-system/fileProvider';
-import { WorkbenchUri, WorkbenchUriType } from './file-system/WorkbenchUri';
 import { StateManager } from './stateManager';
 import { getFileName } from '../utils/path';
 
 interface WorkbenchDiagnosticCollections {
-  operationDiagnostics: DiagnosticCollection;
   compositionDiagnostics: DiagnosticCollection;
 }
 
@@ -36,7 +31,6 @@ export class WorkbenchDiagnostics {
     if (this.diagnosticCollections.has(wbFilePath)) {
       const collection = this.getWorkbenchDiagnostics(wbFilePath);
       collection?.compositionDiagnostics.clear();
-      collection?.operationDiagnostics.clear();
     } else {
       const compositionDiagnostics = languages.createDiagnosticCollection(
         `${graphName}-composition`,
@@ -49,7 +43,6 @@ export class WorkbenchDiagnostics {
       StateManager.instance.context?.subscriptions.push(operationDiagnostics);
 
       this.diagnosticCollections.set(wbFilePath, {
-        operationDiagnostics,
         compositionDiagnostics,
       });
     }
@@ -92,91 +85,13 @@ export class WorkbenchDiagnostics {
     }
   }
 
-  validateAllOperations(wbFilePath: string) {
-    // const wbFileUri = Uri.parse(wbFilePath);
-    // const workbenchFile = FileProvider.instance.workbenchFileFromPath(
-    //   wbFileUri.path,
-    // );
-    // if (workbenchFile) {
-    //   if (Object.keys(workbenchFile.operations).length == 0) {
-    //     this.getOperationDiagnostics(wbFilePath).clear();
-    //   } else {
-    //     Object.keys(workbenchFile.operations).forEach((opName) => {
-    //       const op = workbenchFile.operations[opName];
-    //       const operation = typeof op == 'string' ? op : op.operation;
-    //       this.validateOperation(opName, operation, wbFilePath);
-    //     });
-    //   }
-    // }
-  }
-  validateOperation(opName: string, operation: string, wbFilePath: string) {
-    const schema = StateManager.instance.workspaceState_schema;
-    const operationDiagnostic = this.getOperationDiagnostics(wbFilePath);
-
-    const opDiagnostics = this.collectOperationDiagnostics(operation, schema);
-
-    const operationUri = WorkbenchUri.supergraph(
-      wbFilePath,
-      opName,
-      WorkbenchUriType.QUERIES,
-    );
-
-    if (opDiagnostics.length > 0) {
-      const diagnostics = new Array<Diagnostic>();
-      opDiagnostics.forEach((opDiag) => {
-        const start = opDiag.range.start;
-        const end = opDiag.range.end;
-        const range = new Range(
-          new Position(start.line, start.character),
-          new Position(end.line, end.character),
-        );
-        diagnostics.push(
-          new Diagnostic(range, opDiag.message, opDiag.severity),
-        );
-      });
-      operationDiagnostic.set(operationUri, diagnostics);
-    } else {
-      operationDiagnostic.set(operationUri, undefined);
-    }
-  }
-  clearOperationDiagnostics(wbFilePath: string) {
-    this.getOperationDiagnostics(wbFilePath).clear();
-  }
   clearCompositionDiagnostics(wbFilePath: string) {
     this.getCompositionDiagnostics(wbFilePath).clear();
   }
   clearAllDiagnostics() {
     this.diagnosticCollections.forEach((diagnosticCollection) => {
       diagnosticCollection.compositionDiagnostics.clear();
-      diagnosticCollection.operationDiagnostics.clear();
     });
-  }
-  private collectOperationDiagnostics(
-    operation: string,
-    schema: GraphQLSchema,
-  ) {
-    const document = new GraphQLDocument(new Source(operation));
-    const fragments = Object.create(null);
-    if (document.ast) {
-      for (const definition of document.ast.definitions) {
-        if (definition.kind === Kind.FRAGMENT_DEFINITION) {
-          fragments[definition.name.value] = definition;
-        }
-      }
-    }
-    try {
-      return collectExecutableDefinitionDiagnositics(
-        schema,
-        document,
-        fragments,
-      );
-    } catch (err) {
-      //`collectExecutableDefinitionDiagnositics` returns errors from GraphQL that can be unhelpful for out case
-      return [];
-    }
-  }
-  private getOperationDiagnostics(wbFilePath: string): DiagnosticCollection {
-    return this.getWorkbenchDiagnostics(wbFilePath)?.operationDiagnostics;
   }
   private getCompositionDiagnostics(wbFilePath: string): DiagnosticCollection {
     return this.getWorkbenchDiagnostics(wbFilePath).compositionDiagnostics;

@@ -44,7 +44,6 @@ export class StateManager {
       ? workspace.workspaceFolders[0]?.uri?.fsPath
       : undefined;
   }
-
   static get settings_startingServerPort(): number {
     return (
       workspace
@@ -126,6 +125,18 @@ export class StateManager {
       .getConfiguration('apollo-workbench')
       .get('local-designs.expandOperationsByDefault') as boolean;
   }
+  static get settings_roverConfigProfile(): string {
+    return workspace.getConfiguration('apollo-workbench').get('roverConfigProfile') as string;
+  }
+  static set settings_roverConfigProfile(profile: string) {
+    workspace.getConfiguration('apollo-workbench').update('roverConfigProfile', profile);
+  }
+  // get globalState_roverConfigProfile(): string {
+  //   return this.context?.globalState.get('roverConfigProfile') as string;
+  // }
+  // set globalState_roverConfigProfile(profile: string) {
+  //   this.context?.globalState.update('roverConfigProfile', profile);
+  // }
   get globalState_userApiKey() {
     return this.context?.globalState.get('APOLLO_KEY') as string;
   }

@@ -104,6 +104,13 @@
           "default": 4000,
           "description": "Specifies the url endpoint to be used for the Apollo Studio Graph"
         },
+        "apollo-workbench.roverConfigProfile": {
+          "type": [
+            "string"
+          ],
+          "default": "",
+          "description": "Specifies the rover config profile that should be used for GraphOS"
+        },
         "apollo-workbench.startingServerPort": {
           "type": [
             "number"

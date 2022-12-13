@@ -22,7 +22,8 @@ import { ApolloConfig } from './ApolloConfig';
 import { execSync } from 'child_process';
 import { Rover } from '../rover';
 import { getFileName } from '../../utils/path';
-
+import { homedir } from 'os';
+import { mkdir } from 'fs/promises';
 export const schemaFileUri = (filePath: string, wbFilePath: string) => {
   if (parse(filePath).dir == '.') {
     const wbFileFolder = wbFilePath.split(getFileName(wbFilePath))[0];
@@ -61,6 +62,35 @@ export class FileProvider implements FileSystemProvider {
       const subgraph =
         this.workbenchFileFromPath(wbFilePath)?.subgraphs[subgraphName];
       sdl = await Rover.instance.subgraphFetch(subgraph);
+
+      if (!sdl && subgraph.schema.graphref) {
+        window
+          .showErrorMessage(
+            'Unable to fetch schema from GraphOS. Is your API key stored under another profile with Rover when you configured it?',
+            'Configure Profile',
+          )
+          .then(async (value) => {
+            if (value == 'Configure Profile') {
+              const profiles = await Rover.instance.getProfiles();
+              const selectedProfile = await window.showQuickPick(profiles, {
+                title:
+                  'Select which rover profile should be configured for this Workbench workspace',
+              });
+              if (selectedProfile) {
+                StateManager.settings_roverConfigProfile = selectedProfile;
+                window.showInformationMessage(
+                  `${selectedProfile} was configured for this workspace. You should now be able to view GraphOS subgraph schemas as long as the profile has a valid api key for ${subgraph.schema.graphref}.`,
+                );
+              }
+            }
+          });
+        return undefined;
+      } else if (!sdl) {
+        window.showErrorMessage(
+          `Unable to fetch schema remote endpoint: ${subgraph.schema.subgraph_url ?? subgraph.routing_url ?? 'undefined'}`
+        );
+        return undefined;
+      }
     }
 
     const tempLocation = tempSchemaFilePath(wbFilePath, subgraphName);
@@ -198,8 +228,12 @@ export class FileProvider implements FileSystemProvider {
     //   let shouldSave = true;
     //   if (uri.path.includes('/subgraphs')) {
     //     //Since we are making a change to a subgraph, we should notify the ServerManager
-    //     if (!wbFile.schemas[name]) {
-    //       wbFile.schemas[name] = {
+    //     if (!wbFile.subgraphs[name]) {
+    //       wbFile.subgraphs[name] = {
+    //         name,
+    //         schema: {
+    //           file: ''
+    //         }
     //         sdl: stringContent ?? '',
     //         autoUpdateSchemaFromUrl: false,
     //       };
@@ -298,6 +332,41 @@ export class FileProvider implements FileSystemProvider {
     this.workbenchFiles.set(wbFilePath, wbFile);
   }
 
+  /**
+   * Creates a temporary copy of a local config file
+   * @param ApolloConfig file
+   * @param Path to ApolloConfig file
+   * @returns Path where temporary config file lives
+   */
+  async createTempWorkbenchFile(wbFile: ApolloConfig, wbFilePath: string) {
+    const wbTempFolder = resolve(homedir(), '.apollo-workbench');
+    const tempPath = resolve(homedir(), '.apollo-workbench', 'supergraph.yaml');
+    await workspace.fs.createDirectory(Uri.parse(wbTempFolder));
+
+    const tempUri = Uri.parse(tempPath);
+    const tempWbFile = ApolloConfig.copy(wbFile);
+    Object.keys(wbFile.subgraphs).forEach((subgraphName) => {
+      if (wbFile.subgraphs[subgraphName].schema.workbench_design) {
+        tempWbFile.subgraphs[subgraphName].schema.file =
+          wbFile.subgraphs[subgraphName].schema.workbench_design;
+
+        delete tempWbFile.subgraphs[subgraphName].schema.subgraph_url;
+      } else if (wbFile.subgraphs[subgraphName].schema.file) {
+        tempWbFile.subgraphs[subgraphName].schema.file = schemaFileUri(
+          tempWbFile.subgraphs[subgraphName].schema.file ?? '',
+          wbFilePath,
+        ).fsPath;
+      }
+    });
+
+    await workspace.fs.writeFile(
+      tempUri,
+      new TextEncoder().encode(dump(tempWbFile)),
+    );
+
+    return tempPath;
+  }
+
   async refreshWorkbenchFileComposition(wbFilePath: string) {
     return await window.withProgress(
       { location: ProgressLocation.Notification },
@@ -311,9 +380,15 @@ export class FileProvider implements FileSystemProvider {
 
         try {
           if (wbFile) {
-            const compResults = await Rover.instance.compose(wbFilePath);
+            const tempPath = await this.createTempWorkbenchFile(
+              wbFile,
+              wbFilePath,
+            );
+            const compResults = await Rover.instance.compose(tempPath);
             if (compResults.data.success) {
-              WorkbenchDiagnostics.instance.clearCompositionDiagnostics(wbFilePath);
+              WorkbenchDiagnostics.instance.clearCompositionDiagnostics(
+                wbFilePath,
+              );
               wbFile.composition_result = true;
               return compResults.data.core_schema;
             } else if (compResults.error) {
@@ -416,12 +491,18 @@ export class FileProvider implements FileSystemProvider {
         StateManager.workspaceRoot,
         `${designName}.yaml`,
       );
-      await workspace.fs.writeFile(
-        Uri.parse(wbFilePath),
-        new TextEncoder().encode(dump(wbFile)),
-      );
-      StateManager.instance.localSupergraphTreeDataProvider.refresh();
+      await this.writeWorkbenchConfig(wbFilePath, wbFile);
     }
+  }
+
+  async writeWorkbenchConfig(path: string, wbFile: ApolloConfig) {
+    delete wbFile.composition_result;
+
+    await workspace.fs.writeFile(
+      Uri.parse(path),
+      new TextEncoder().encode(dump(wbFile)),
+    );
+    StateManager.instance.localSupergraphTreeDataProvider.refresh();
   }
 
   workbenchFileByGraphName(name: string) {
