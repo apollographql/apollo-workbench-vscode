@@ -161,7 +161,7 @@ export class FederationVersionItem extends TreeItem {
     public readonly wbFilePath: string,
   ) {
     super(
-      `Apollo Federation ${wbFile.federation_version ?? '2'}`,
+      `Apollo Federation v${wbFile.federation_version ?? '2'}`,
       TreeItemCollapsibleState.None,
     );
     

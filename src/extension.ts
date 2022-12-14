@@ -5,6 +5,8 @@ import {
   window,
   ExtensionContext,
   WebviewPanel,
+  ViewColumn,
+  Uri,
 } from 'vscode';
 
 import { StateManager } from './workbench/stateManager';
@@ -45,23 +47,68 @@ import {
   exportSupergraphSchema,
   createWorkbenchFromSupergraphVariant,
   addFederationDirective,
+  startRoverDevSession,
+  stopRoverDevSession,
+  mockSubgraph,
 } from './commands/local-supergraph-designs';
 import { log } from './utils/logger';
-import { WorkbenchDiagnostics } from './workbench/diagnosticsManager';
+import { Rover } from './workbench/rover';
+import path from 'path';
 
 export const outputChannel = window.createOutputChannel('Apollo Workbench');
 
 // Our event when vscode deactivates
-// export async function deactivate(context: ExtensionContext) {}
+export async function deactivate(context: ExtensionContext) {
+  await Rover.instance.stopRoverDev();
+}
+function getWebviewContent() {
+  return `
+  <!DOCTYPE html>
+  <head>
+      <style>
+          html { width: 100%; height: 100%; min-height: 100%; display: flex; }
+          body { flex: 1; display: flex; }
+          iframe { flex: 1; border: none; background: white; }
+      </style>
+  </head>
+  <body >
+    <!-- All content from the web server must be in an iframe -->
+    <iframe src="http://localhost:3000">
+  </body>
+  </html>
+    `;
+}
+
+let panel: WebviewPanel | undefined;
 
 export async function activate(context: ExtensionContext) {
   StateManager.init(context);
   context.workspaceState.update('selectedWbFile', '');
-  context.globalState.update('APOLLO_SELCTED_GRAPH_ID', '');
+  context.globalState.update('APOLLO_SELECTED_GRAPH_ID', '');
 
   context.subscriptions.push(
-    workspace.registerFileSystemProvider('workbench', FileProvider.instance, {
-      isCaseSensitive: true,
+    commands.registerCommand('extension.sandbox', () => {
+      if (!panel) {
+        panel = window.createWebviewPanel(
+          'apolloSandbox',
+          'Apollo Sandbox',
+          ViewColumn.One,
+          {
+            enableScripts: true,
+          },
+        );
+        panel.iconPath = Uri.parse(path.join(
+          __filename,
+          '..',
+          '..',
+          'media',
+          'logo-apollo.svg',
+        )); 
+        panel.webview.html = getWebviewContent();
+        panel.onDidDispose(() => (panel = undefined));
+      }
+
+      panel.reveal(ViewColumn.One);
     }),
   );
 
@@ -128,10 +175,18 @@ export async function activate(context: ExtensionContext) {
     deleteSubgraph,
   );
   commands.registerCommand(
-    'local-supergraph-designs.viewSettings',
-    viewSubgraphSettings,
-  ); //inline
+    'local-supergraph-designs.mockSubgraph',
+    mockSubgraph,
+  );
+  commands.registerCommand(
+    'local-supergraph-designs.startMocks',
+    startRoverDevSession,
+  );
 
+  commands.registerCommand(
+    'local-supergraph-designs.stopMocks',
+    stopRoverDevSession,
+  );
   if (window.registerWebviewPanelSerializer) {
     // Make sure we register a serializer in activation event
     window.registerWebviewPanelSerializer('apolloWorkbenchDesign', {
@@ -200,15 +255,30 @@ export async function activate(context: ExtensionContext) {
           Object.keys(wbFile.subgraphs).forEach(async (subgraphName) => {
             const { file, workbench_design } =
               wbFile.subgraphs[subgraphName].schema;
+            let schemaUri: Uri | undefined;
+            if (workbench_design)
+              schemaUri = schemaFileUri(workbench_design, wbFilePath);
+            else if (file) schemaUri = schemaFileUri(file, wbFilePath);
 
-            if (
-              (file && schemaFileUri(file, wbFilePath).fsPath == docPath) ||
-              (workbench_design &&
-                schemaFileUri(workbench_design, wbFilePath).fsPath == docPath)
-            )
-              await FileProvider.instance.refreshWorkbenchFileComposition(
-                wbFilePath,
-              );
+            if (schemaUri && schemaUri.fsPath == docPath) {
+              const composedSchema =
+                await FileProvider.instance.refreshWorkbenchFileComposition(
+                  wbFilePath,
+                );
+
+              if (composedSchema)
+                await Rover.instance.restartMockedSubgraph(
+                  subgraphName,
+                  schemaUri,
+                );
+              else if (Rover.instance.primaryDevTerminal) {
+                window.showErrorMessage(
+                  `Stopping rover dev session because of invalid composition`,
+                );
+                Rover.instance.stopRoverDev();
+                commands.executeCommand('workbench.action.showErrorsWarnings');
+              }
+            }
           });
       });
   });

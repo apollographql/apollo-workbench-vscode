@@ -1,7 +1,6 @@
 export class ApolloConfig {
   federation_version?: string;
   subgraphs: { [name: string]: Subgraph } = {};
-  composition_result? = false;
 
   constructor() {
     this.federation_version = '2';

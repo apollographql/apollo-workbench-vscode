@@ -37,11 +37,152 @@ import { readFileSync, existsSync } from 'fs';
 import { visit, print } from 'graphql';
 import { log } from '../utils/logger';
 import gql from 'graphql-tag';
-import { ApolloConfig } from '../workbench/file-system/ApolloConfig';
+import { ApolloConfig, Subgraph } from '../workbench/file-system/ApolloConfig';
 import { Rover } from '../workbench/rover';
 import { getFileName } from '../utils/path';
 import { TextEncoder } from 'util';
 import { dump } from 'js-yaml';
+import { p } from '../graphql/graphql-language-service-parser';
+import { WorkbenchDiagnostics } from '../workbench/diagnosticsManager';
+
+let startingMocks = false;
+
+export async function mockSubgraph(item: SubgraphTreeItem) {
+  await FileProvider.instance.convertSubgraphToDesign(
+    item.wbFilePath,
+    item.subgraphName,
+  );
+}
+
+export async function stopRoverDevSession(item: SubgraphSummaryTreeItem) {
+  await Rover.instance.stopRoverDev();
+  window.showInformationMessage('Rover dev stopped');
+}
+
+export async function startRoverDevSession(item: SubgraphSummaryTreeItem) {
+  if (startingMocks) return;
+  startingMocks = true;
+
+  //Check for composition errors
+  let errors = 0;
+  WorkbenchDiagnostics.instance.diagnosticCollections
+    .get(item.filePath)
+    ?.compositionDiagnostics.forEach(() => errors++);
+
+  if (errors == 0) {
+    try {
+      await window.withProgress(
+        {
+          title: `Starting rover dev session`,
+          cancellable: false,
+          location: ProgressLocation.Notification,
+        },
+        async (progress) => {
+          //Calculate how many servers to mock
+          const subgraphNames = Object.keys(item.wbFile.subgraphs);
+          const subgraphsToMock: Subgraph[] = [];
+          subgraphNames.forEach((s) => {
+            if (item.wbFile.subgraphs[s].schema.workbench_design) {
+              const subgraph = item.wbFile.subgraphs[s];
+              subgraph.name = s;
+
+              subgraphsToMock.push(subgraph);
+            }
+          });
+          const increment =
+            100 / (subgraphsToMock.length + subgraphNames.length);
+
+          //Mock any subgraphs we need to
+          if (subgraphsToMock.length > 0) {
+            progress.report({
+              message: `${subgraphsToMock.length} Subgraphs to mock`,
+            });
+            for (let i = 0; i < subgraphsToMock.length; i++) {
+              const subgraph = subgraphsToMock[i];
+              const schemaPath =
+                subgraph.schema.workbench_design ?? subgraph.schema.file ?? '';
+              const url = await Rover.instance.startMockedSubgraph(
+                subgraph.name,
+                Uri.parse(schemaPath),
+              );
+
+              if (url)
+                progress.report({
+                  message: `Mocked subgraph ${subgraph.name} at ${url}`,
+                  increment,
+                });
+              else
+                progress.report({
+                  message: `Unable to mock subgraph ${subgraph.name}`,
+                  increment,
+                });
+            }
+          }
+
+          //Start rover dev sessions
+          const roverPromises: Promise<void>[] = [];
+          for (let i = 0; i < subgraphNames.length; i++) {
+            const subgraphName = subgraphNames[i];
+            const subgraph = item.wbFile.subgraphs[subgraphName];
+            const routingUrl = subgraph.schema.workbench_design
+              ? `http://localhost:${Rover.instance.portMapping[subgraphName]}`
+              : subgraph.routing_url ??
+                subgraph.schema.subgraph_url ??
+                'http://unable-to-get-url.com';
+            let schemaPath =
+              subgraph.schema.workbench_design ?? subgraph.schema.file;
+
+            const prom = new Promise<void>((resolve, reject) => {
+              setTimeout(async () => {
+                if (!schemaPath) {
+                  const tempUri =
+                    await FileProvider.instance.writeTempSchemaFile(
+                      item.filePath,
+                      subgraph.name,
+                    );
+                  schemaPath = tempUri?.fsPath;
+                }
+
+                Rover.instance.startRoverDevSession(
+                  subgraphName,
+                  routingUrl,
+                  schemaPath,
+                );
+
+                progress.report({
+                  message: `Rover dev session started for ${subgraphName}`,
+                  increment,
+                });
+
+                await new Promise((resolve) => setTimeout(resolve, 3000));
+
+                resolve();
+              });
+            });
+
+            roverPromises.push(prom);
+          }
+
+          await Promise.all(roverPromises);
+
+          progress.report({
+            message: 'Rover dev session started successfully',
+          });
+          startingMocks = false;
+          Rover.instance.primaryDevTerminal?.show();
+
+          await commands.executeCommand('extension.sandbox');
+        },
+      );
+    } catch (err) {
+      startingMocks = false;
+    }
+  } else {
+    commands.executeCommand('workbench.action.showErrorsWarnings');
+  }
+
+  startingMocks = false;
+}
 
 export async function editSubgraph(item: SubgraphTreeItem) {
   const wbFilePath = item.wbFilePath;
@@ -61,8 +202,8 @@ export async function editSubgraph(item: SubgraphTreeItem) {
       );
     } else {
       const tempLocation = tempSchemaFilePath(wbFilePath, subgraphName);
-      if (existsSync(tempLocation.fsPath))
-        await window.showTextDocument(tempLocation);
+      // if (existsSync(tempLocation.fsPath))
+      //   await window.showTextDocument(tempLocation);
 
       await window.withProgress(
         { location: ProgressLocation.Notification },
@@ -75,7 +216,8 @@ export async function editSubgraph(item: SubgraphTreeItem) {
             wbFilePath,
             subgraphName,
           );
-          if (tempUri)
+          if (tempUri) {
+            await window.showTextDocument(tempLocation);
             window
               .showInformationMessage(
                 `You are opening a schema file  that lives in a remote source and any edits you make won't be reflected in your design. Would you like to change this schema to a local design file?`,
@@ -104,6 +246,7 @@ export async function editSubgraph(item: SubgraphTreeItem) {
                   commands.executeCommand('vscode.open', schemaFileUri);
                 }
               });
+          }
         },
       );
     }
