@@ -49,11 +49,6 @@
   },
   "dependencies": {
     "@apollo/client": "^3.4.16",
-    "@apollo/composition": "npm:@apollo/composition@2.1.1",
-    "@apollo/federation": "npm:@apollo/subgraph@2.1.1",
-    "@apollo/gateway": "npm:@apollo/gateway@2.1.1",
-    "@apollo/query-graphs": "npm:@apollo/query-graphs@2.1.1",
-    "@apollo/query-planner": "npm:@apollo/query-planner@2.1.1",
     "@apollo/server": "^4.3.0",
     "@apollo/subgraph": "^2.2.2",
     "@graphql-tools/mock": "^8.7.14",
