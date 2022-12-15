@@ -23,6 +23,7 @@ import { execSync } from 'child_process';
 import { Rover } from '../rover';
 import { getFileName } from '../../utils/path';
 import { homedir } from 'os';
+import { print, parse as gqlParse } from 'graphql';
 export const schemaFileUri = (filePath: string, wbFilePath: string) => {
   if (parse(filePath).dir == '.') {
     const wbFileFolder = wbFilePath.split(getFileName(wbFilePath))[0];
@@ -39,6 +40,17 @@ export const tempSchemaFilePath = (wbFilePath: string, subgraphName: string) =>
       `${getFileName(wbFilePath)}-${subgraphName}.graphql`,
     ),
   );
+export const tempOperationFilePath = (
+  wbFilePath: string,
+  operationName: string,
+) =>
+  Uri.parse(
+    resolve(
+      StateManager.instance.extensionGlobalStoragePath,
+      'operations',
+      `${getFileName(wbFilePath)}-${operationName}.graphql`,
+    ),
+  );
 
 export class FileProvider {
   private static _instance: FileProvider;
@@ -52,6 +64,19 @@ export class FileProvider {
   loadedWorkbenchFile?: ApolloConfig;
   private workbenchFiles: Map<string, ApolloConfig> = new Map();
 
+  async writeTempOperationFile(wbFilePath: string, operationName: string) {
+    const wbFile = this.workbenchFileFromPath(wbFilePath);
+    const operation = wbFile.operations[operationName];
+    const parsedQuery = gqlParse(operation.document);
+    const uri = tempOperationFilePath(wbFilePath, operationName);
+    await workspace.fs.writeFile(
+      uri,
+      new TextEncoder().encode(print(parsedQuery)),
+    );
+
+    return uri;
+  }
+
   async writeTempSchemaFile(
     wbFilePath: string,
     subgraphName: string,
@@ -60,6 +85,7 @@ export class FileProvider {
     if (sdl == undefined) {
       const subgraph =
         this.workbenchFileFromPath(wbFilePath)?.subgraphs[subgraphName];
+      subgraph.subgraph = subgraphName;
       sdl = await Rover.instance.subgraphFetch(subgraph);
 
       if (!sdl && subgraph.schema.graphref) {
@@ -300,7 +326,6 @@ export class FileProvider {
   //Workbench File Implementations
   async createWorkbenchFileLocally(designName: string, wbFile: ApolloConfig) {
     if (StateManager.workspaceRoot) {
-
       const wbFilePath = resolve(
         StateManager.workspaceRoot,
         `${designName}.yaml`,

@@ -1,6 +1,7 @@
 export class ApolloConfig {
   federation_version?: string;
   subgraphs: { [name: string]: Subgraph } = {};
+  operations: { [name: string]: Operation } = {};
 
   constructor() {
     this.federation_version = '2';
@@ -16,7 +17,7 @@ export class ApolloConfig {
 }
 
 export type Subgraph = {
-  name: string;
+  subgraph: string;
   routing_url?: string;
   schema: Schema;
 };
@@ -29,3 +30,8 @@ type Schema = {
 
   workbench_design?: string;
 };
+
+export type Operation = {
+  document: string;
+  ui_design?: string;
+}

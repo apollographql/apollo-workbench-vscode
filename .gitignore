@@ -109,3 +109,5 @@ dist
 out
 
 .vscode-test/
+
+media/temp/*

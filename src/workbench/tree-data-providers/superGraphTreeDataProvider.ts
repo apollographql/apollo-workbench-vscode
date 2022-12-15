@@ -10,18 +10,11 @@ import {
 } from 'vscode';
 import { newDesign } from '../../commands/local-supergraph-designs';
 import { StateManager } from '../stateManager';
-import { ApolloConfig } from '../file-system/ApolloConfig';
+import { ApolloConfig, Operation } from '../file-system/ApolloConfig';
 import { getFileName } from '../../utils/path';
 
-const media = (file: string)=> path.join(
-  __filename,
-  '..',
-  '..',
-  '..',
-  '..',
-  'media',
-  file,
-);
+const media = (file: string) =>
+  path.join(__filename, '..', '..', '..', '..', 'media', file);
 
 export class LocalSupergraphTreeDataProvider
   implements TreeDataProvider<TreeItem>
@@ -68,13 +61,32 @@ export class LocalSupergraphTreeDataProvider
           const supergraphItem = element as SupergraphTreeItem;
           const federationIdentifierItem = new FederationVersionItem(
             supergraphItem.wbFile,
-            supergraphItem.filePath,
+            supergraphItem.wbFilePath,
           );
-        return Promise.resolve([federationIdentifierItem,  supergraphItem.subgraphsChild]);
+          const treeItems = [
+            federationIdentifierItem,
+            supergraphItem.subgraphsChild,
+          ];
+          if (Object.keys(supergraphItem.wbFile.operations).length > 0) {
+            treeItems.push(supergraphItem.operationsChild);
+          } else {
+            treeItems.push(
+              new AddDesignOperationTreeItem(
+                supergraphItem.wbFile,
+                supergraphItem.wbFilePath,
+              ),
+            );
+          }
+
+          return Promise.resolve(treeItems);
         }
         case 'subgraphSummaryTreeItem':
           return Promise.resolve(
             (element as SubgraphSummaryTreeItem).subgraphs,
+          );
+        case 'operationSummaryTreeItem':
+          return Promise.resolve(
+            (element as OperationSummaryTreeItem).operations,
           );
         default:
           return Promise.resolve([]);
@@ -85,18 +97,18 @@ export class LocalSupergraphTreeDataProvider
 
 export class SupergraphTreeItem extends TreeItem {
   subgraphsChild: SubgraphSummaryTreeItem;
-  // operationsChild: OperationSummaryTreeItem;
+  operationsChild: OperationSummaryTreeItem;
 
   constructor(
     public readonly wbFile: ApolloConfig,
-    public readonly filePath: string,
+    public readonly wbFilePath: string,
   ) {
     super(
-      getFileName(filePath) ?? 'unknown',
+      getFileName(wbFilePath) ?? 'unknown',
       TreeItemCollapsibleState.Expanded,
     );
-    this.subgraphsChild = new SubgraphSummaryTreeItem(wbFile, filePath);
-    // this.operationsChild = new OperationSummaryTreeItem(wbFile, filePath);
+    this.subgraphsChild = new SubgraphSummaryTreeItem(wbFile, wbFilePath);
+    this.operationsChild = new OperationSummaryTreeItem(wbFile, wbFilePath);
     this.tooltip = (this.label as string) ?? '';
 
     this.contextValue = 'supergraphTreeItem';
@@ -120,12 +132,7 @@ export class SubgraphSummaryTreeItem extends TreeItem {
     this.contextValue = 'subgraphSummaryTreeItem';
 
     Object.keys(wbFile.subgraphs).forEach((subgraphName) => {
-      this.subgraphs.push(
-        new SubgraphTreeItem(
-          subgraphName,
-          filePath,
-        ),
-      );
+      this.subgraphs.push(new SubgraphTreeItem(subgraphName, filePath));
     });
     this.iconPath = {
       light: media('subgraph.svg'),
@@ -134,8 +141,6 @@ export class SubgraphSummaryTreeItem extends TreeItem {
   }
 }
 export class SubgraphTreeItem extends TreeItem {
-  children: TreeItem[] = new Array<TreeItem>();
-
   constructor(
     public readonly subgraphName: string,
     public readonly wbFilePath: string,
@@ -151,8 +156,68 @@ export class SubgraphTreeItem extends TreeItem {
     };
     this.iconPath = {
       light: media('graphql-logo.png'),
-      dark: media('graphql-logo.png')
+      dark: media('graphql-logo.png'),
     };
+  }
+}
+export class AddDesignOperationTreeItem extends TreeItem {
+  constructor(
+    public readonly wbFile: ApolloConfig,
+    public readonly wbFilePath: string,
+  ) {
+    super(`Add operation to design`);
+    this.tooltip = `Add a GraphQL operation and UI design to your workbench design`;
+    this.contextValue = 'addDesignOperationTreeItem';
+    this.command = {
+      command: 'local-supergraph-designs.addOperation',
+      title: `Add operation to design`,
+      arguments: [this],
+    };
+  }
+}
+export class OperationSummaryTreeItem extends TreeItem {
+  operations: TreeItem[] = new Array<TreeItem>();
+
+  constructor(
+    public readonly wbFile: ApolloConfig,
+    public readonly wbFilePath: string,
+  ) {
+    super(
+      `${Object.keys(wbFile.operations ?? []).length} Operations`,
+      StateManager.settings_localDesigns_expandOperationsByDefault
+        ? TreeItemCollapsibleState.Expanded
+        : TreeItemCollapsibleState.Collapsed,
+    );
+
+    this.tooltip = `${Object.keys(wbFile.operations ?? []).length} operations`;
+    this.contextValue = 'operationSummaryTreeItem';
+
+    Object.keys(wbFile.operations ?? []).forEach((operationName) =>
+      this.operations.push(
+        new OperationTreeItem(wbFile, wbFilePath, operationName),
+      ),
+    );
+  }
+}
+export class OperationTreeItem extends TreeItem {
+  constructor(
+    public readonly wbFile: ApolloConfig,
+    public readonly wbFilePath: string,
+    public readonly operationName: string,
+  ) {
+    super(operationName, TreeItemCollapsibleState.None);
+
+    this.contextValue = 'operationTreeItem';
+    this.tooltip = this.operationName;
+    this.command = {
+      command: 'local-supergraph-designs.viewOperationDesignSideBySide',
+      title: 'Open operation in Sandbox',
+      arguments: [this],
+    };
+
+    if (this.wbFile.operations[operationName].document.includes('mutation'))
+      this.iconPath = media('m.svg');
+    else this.iconPath = media('q.svg');
   }
 }
 export class FederationVersionItem extends TreeItem {
@@ -164,7 +229,7 @@ export class FederationVersionItem extends TreeItem {
       `Apollo Federation v${wbFile.federation_version ?? '2'}`,
       TreeItemCollapsibleState.None,
     );
-    
+
     this.contextValue = 'federationVersionItem';
     this.iconPath = media('versions.svg');
   }

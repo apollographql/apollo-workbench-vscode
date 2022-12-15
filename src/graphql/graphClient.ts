@@ -10,12 +10,6 @@ import {
   CheckUserApiKey_me_User,
 } from './types/CheckUserApiKey';
 import { StateManager } from '../workbench/stateManager';
-import { CreateGraphFromWorkbench } from './types/CreateGraphFromWorkbench';
-import {
-  ApolloWorkbenchFile,
-  WorkbenchSchema,
-} from '../workbench/file-system/fileTypes';
-import { log } from '../utils/logger';
 
 const keyCheck = gql`
   query CheckUserApiKey {

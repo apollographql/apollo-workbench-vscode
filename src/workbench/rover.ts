@@ -57,7 +57,7 @@ export class Rover {
     if (subgraph.schema.graphref) {
       sdl = await this.subgraphGraphOSFetch(
         subgraph.schema.graphref,
-        subgraph.name,
+        subgraph.subgraph,
       );
     } else {
       sdl = await this.subgraphIntrospect(
@@ -90,7 +90,7 @@ export class Rover {
         `rover subgraph introspect ${url}`,
         {},
         (error: ExecException | null, stdout: string, _stderr: string) => {
-          if (error) reject(false);
+          if (error) resolve(false);
           else resolve(stdout);
         },
       );
@@ -102,7 +102,7 @@ export class Rover {
           `rover graph introspect ${url}`,
           {},
           (error: ExecException | null, stdout: string, _stderr: string) => {
-            if (error) reject(false);
+            if (error) resolve(false);
             else resolve(stdout);
           },
         );

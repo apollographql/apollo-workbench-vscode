@@ -1,4 +1,3 @@
-import { GraphQLSchema, Kind, Source } from 'graphql';
 import {
   Diagnostic,
   DiagnosticCollection,

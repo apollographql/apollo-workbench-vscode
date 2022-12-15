@@ -5,7 +5,6 @@ import {
   window,
   ExtensionContext,
   WebviewPanel,
-  ViewColumn,
   Uri,
 } from 'vscode';
 
@@ -17,6 +16,7 @@ import {
 import { federationCompletionProvider } from './workbench/federationCompletionProvider';
 import { FederationCodeActionProvider } from './workbench/federationCodeActionProvider';
 import {
+  ApolloRemoteSchemaProvider,
   ApolloStudioOperationsProvider,
   GettingStartedDocProvider,
 } from './workbench/docProviders';
@@ -50,33 +50,18 @@ import {
   startRoverDevSession,
   stopRoverDevSession,
   mockSubgraph,
+  viewOperationDesignSideBySide,
+  addOperation,
 } from './commands/local-supergraph-designs';
-import { log } from './utils/logger';
 import { Rover } from './workbench/rover';
-import path from 'path';
+import { viewOperationDesign } from './workbench/webviews/operationDesign';
+import { openSandbox } from './workbench/webviews/sandbox';
 
 export const outputChannel = window.createOutputChannel('Apollo Workbench');
 
 // Our event when vscode deactivates
 export async function deactivate(context: ExtensionContext) {
   await Rover.instance.stopRoverDev();
-}
-function getWebviewContent() {
-  return `
-  <!DOCTYPE html>
-  <head>
-      <style>
-          html { width: 100%; height: 100%; min-height: 100%; display: flex; }
-          body { flex: 1; display: flex; }
-          iframe { flex: 1; border: none; background: white; }
-      </style>
-  </head>
-  <body >
-    <!-- All content from the web server must be in an iframe -->
-    <iframe src="http://localhost:3000">
-  </body>
-  </html>
-    `;
 }
 
 let panel: WebviewPanel | undefined;
@@ -85,32 +70,6 @@ export async function activate(context: ExtensionContext) {
   StateManager.init(context);
   context.workspaceState.update('selectedWbFile', '');
   context.globalState.update('APOLLO_SELECTED_GRAPH_ID', '');
-
-  context.subscriptions.push(
-    commands.registerCommand('extension.sandbox', () => {
-      if (!panel) {
-        panel = window.createWebviewPanel(
-          'apolloSandbox',
-          'Apollo Sandbox',
-          ViewColumn.One,
-          {
-            enableScripts: true,
-          },
-        );
-        panel.iconPath = Uri.parse(path.join(
-          __filename,
-          '..',
-          '..',
-          'media',
-          'logo-apollo.svg',
-        )); 
-        panel.webview.html = getWebviewContent();
-        panel.onDidDispose(() => (panel = undefined));
-      }
-
-      panel.reveal(ViewColumn.One);
-    }),
-  );
 
   languages.registerCompletionItemProvider(
     'graphql',
@@ -151,9 +110,6 @@ export async function activate(context: ExtensionContext) {
     'local-supergraph-designs.refresh',
     refreshSupergraphs,
   );
-  //***Supergraph Commands
-  // commands.registerCommand('local-supergraph-designs.exportProject', exportProject);//right-click
-  // commands.registerCommand('local-supergraph-designs.dockerize', async (item: WorkbenchFileTreeItem) => DockerImageManager.create(item.filePath));//right-click
   //***Supergraph Schema Commands
   commands.registerCommand(
     'local-supergraph-designs.viewSupergraphSchema',
@@ -187,16 +143,30 @@ export async function activate(context: ExtensionContext) {
     'local-supergraph-designs.stopMocks',
     stopRoverDevSession,
   );
-  if (window.registerWebviewPanelSerializer) {
-    // Make sure we register a serializer in activation event
-    window.registerWebviewPanelSerializer('apolloWorkbenchDesign', {
-      async deserializeWebviewPanel(webviewPanel: WebviewPanel, state: any) {
-        log(`Got state: ${state}`);
-        // Reset the webview options so we use latest uri for `localResourceRoots`.
-        // webviewPanel.webview.options = getWebviewOptions(context.extensionUri);
-      },
-    });
-  }
+
+  context.subscriptions.push(
+    commands.registerCommand(
+      'local-supergraph-designs.viewOperationDesignSideBySide',
+      viewOperationDesignSideBySide,
+    ),
+  );
+  context.subscriptions.push(
+    commands.registerCommand('local-supergraph-designs.sandbox', openSandbox),
+  );
+  context.subscriptions.push(
+    commands.registerCommand(
+      'local-supergraph-designs.addOperation',
+      addOperation,
+    ),
+  );
+
+  context.subscriptions.push(
+    commands.registerCommand(
+      'local-supergraph-designs.viewOperationDesign',
+      viewOperationDesign,
+    ),
+  );
+
   commands.registerCommand(
     'current-workbench-schemas.addFederationDirective',
     addFederationDirective,
@@ -233,15 +203,19 @@ export async function activate(context: ExtensionContext) {
     ApolloStudioOperationsProvider.scheme,
     new ApolloStudioOperationsProvider(),
   );
+  workspace.registerTextDocumentContentProvider(
+    ApolloRemoteSchemaProvider.scheme,
+    new ApolloRemoteSchemaProvider(),
+  );
   workspace.onDidDeleteFiles((e) => {
     let deletedWorkbenchFile = false;
     e.files.forEach((f) => {
-      if (f.path.includes('.apollo-workbench')) deletedWorkbenchFile = true;
+      
+      const wbFile = FileProvider.instance.workbenchFileFromPath(f.fsPath);
+      if (wbFile) deletedWorkbenchFile = true;
     });
-
-    if (deletedWorkbenchFile) {
+    if (deletedWorkbenchFile)
       StateManager.instance.localSupergraphTreeDataProvider.refresh();
-    }
   });
   workspace.onDidSaveTextDocument((doc) => {
     const docPath = doc.uri.fsPath;
