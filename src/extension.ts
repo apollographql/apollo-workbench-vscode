@@ -4,7 +4,6 @@ import {
   languages,
   window,
   ExtensionContext,
-  WebviewPanel,
   Uri,
 } from 'vscode';
 

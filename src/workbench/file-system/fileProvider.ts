@@ -24,6 +24,7 @@ import { Rover } from '../rover';
 import { getFileName } from '../../utils/path';
 import { homedir } from 'os';
 import { print, parse as gqlParse } from 'graphql';
+import { extractEntities } from '../federationCompletionProvider';
 export const schemaFileUri = (filePath: string, wbFilePath: string) => {
   if (parse(filePath).dir == '.') {
     const wbFileFolder = wbFilePath.split(getFileName(wbFilePath))[0];
@@ -252,6 +253,15 @@ export class FileProvider {
               WorkbenchDiagnostics.instance.clearCompositionDiagnostics(
                 wbFilePath,
               );
+              //Need to get entities and add to state
+              const designEntities = extractEntities(
+                compResults.data.core_schema ?? '',
+              );
+              StateManager.instance.workspaceState_setEntities({
+                designPath: wbFilePath,
+                entities: designEntities,
+              });
+
               return compResults.data.core_schema;
             } else if (compResults.error) {
               await WorkbenchDiagnostics.instance.setCompositionErrors(
@@ -273,6 +283,7 @@ export class FileProvider {
     // Clear all workbench files and workbench diagnostics
     this.workbenchFiles.clear();
     WorkbenchDiagnostics.instance.clearAllDiagnostics();
+    StateManager.instance.workspaceState_clearEntities();
 
     const workspaceRoot = StateManager.workspaceRoot;
     if (workspaceRoot) {
@@ -353,6 +364,25 @@ export class FileProvider {
 
     return { wbFile, path: wbFilePath };
   }
+  workbenchFilePathBySchemaFilePath(schemaPath: string) {
+    let path = '';
+    let name = '';
+    this.workbenchFiles.forEach((wbFile, wbFilePath) => {
+      Object.keys(wbFile.subgraphs).forEach((subgraphName) => {
+        const subgraph = wbFile.subgraphs[subgraphName];
+        if (
+          subgraph.schema.file == schemaPath ||
+          subgraph.schema.workbench_design == schemaPath
+        ) {
+          path = wbFilePath;
+          name = subgraphName;
+        }
+      });
+    });
+
+    return { path, subgraphName: name };
+  }
+  nn;
 
   private async getWorkbenchFilesInDirectory(dirPath: string) {
     if (!dirPath || dirPath == '.') return [];

@@ -37,7 +37,9 @@ export class Rover {
       );
     });
 
-    return JSON.parse(result) as CompositionResults;
+    const compResults = JSON.parse(result) as CompositionResults;
+
+    return compResults;
   }
 
   async writeSupergraphSDL(pathToConfig: string, pathToSaveTo: string) {

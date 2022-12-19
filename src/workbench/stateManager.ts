@@ -1,6 +1,6 @@
 import { GraphQLSchema } from 'graphql';
 import { ExtensionContext, workspace } from 'vscode';
-import { FieldWithType } from './federationCompletionProvider';
+import { Entity, FieldWithType } from './federationCompletionProvider';
 import { ApolloStudioGraphsTreeDataProvider } from './tree-data-providers/apolloStudioGraphsTreeDataProvider';
 import { ApolloStudioGraphOpsTreeDataProvider } from './tree-data-providers/apolloStudioGraphOpsTreeDataProvider';
 import { LocalSupergraphTreeDataProvider } from './tree-data-providers/superGraphTreeDataProvider';
@@ -23,11 +23,12 @@ export class StateManager {
     this._instance = new StateManager(context);
   }
 
-  apolloStudioGraphsProvider: ApolloStudioGraphsTreeDataProvider = new ApolloStudioGraphsTreeDataProvider(
-    workspace.rootPath ?? '.',
-  );
-  apolloStudioGraphOpsProvider: ApolloStudioGraphOpsTreeDataProvider = new ApolloStudioGraphOpsTreeDataProvider();
-  localSupergraphTreeDataProvider: LocalSupergraphTreeDataProvider = new LocalSupergraphTreeDataProvider();
+  apolloStudioGraphsProvider: ApolloStudioGraphsTreeDataProvider =
+    new ApolloStudioGraphsTreeDataProvider(workspace.rootPath ?? '.');
+  apolloStudioGraphOpsProvider: ApolloStudioGraphOpsTreeDataProvider =
+    new ApolloStudioGraphOpsTreeDataProvider();
+  localSupergraphTreeDataProvider: LocalSupergraphTreeDataProvider =
+    new LocalSupergraphTreeDataProvider();
 
   get extensionGlobalStoragePath(): string {
     try {
@@ -53,7 +54,9 @@ export class StateManager {
   }
   static get settings_openSandbox(): boolean {
     return (
-      workspace?.getConfiguration('apollo-workbench')?.get('openSandboxOnStartMocks') ?? true
+      workspace
+        ?.getConfiguration('apollo-workbench')
+        ?.get('openSandboxOnStartMocks') ?? true
     );
   }
   static get settings_gatewayServerPort(): number {
@@ -126,10 +129,14 @@ export class StateManager {
       .get('local-designs.expandOperationsByDefault') as boolean;
   }
   static get settings_roverConfigProfile(): string {
-    return workspace.getConfiguration('apollo-workbench').get('roverConfigProfile') as string;
+    return workspace
+      .getConfiguration('apollo-workbench')
+      .get('roverConfigProfile') as string;
   }
   static set settings_roverConfigProfile(profile: string) {
-    workspace.getConfiguration('apollo-workbench').update('roverConfigProfile', profile);
+    workspace
+      .getConfiguration('apollo-workbench')
+      .update('roverConfigProfile', profile);
   }
   // get globalState_roverConfigProfile(): string {
   //   return this.context?.globalState.get('roverConfigProfile') as string;
@@ -174,6 +181,26 @@ export class StateManager {
 
   //     this.apolloStudioGraphOpsProvider.refresh();
   // }
+  get workspaceState_availableEntities() {
+    return this.context?.workspaceState.get('availableEntities') as {
+      [wbFilePath: string]: {
+        [serviceName: string]: Entity[];
+      };
+    };
+  }
+  workspaceState_clearEntities() {
+    this.context?.workspaceState.update('availableEntities', {});
+  }
+  workspaceState_setEntities(input: {
+    designPath: string;
+    entities: {
+      [serviceName: string]: Entity[];
+    };
+  }) {
+    const savedEntities = this.workspaceState_availableEntities ?? {};
+    savedEntities[input.designPath] = input.entities;
+    this.context?.workspaceState.update('availableEntities', savedEntities);
+  }
   get workspaceState_selectedWorkbenchAvailableEntities() {
     return this.context?.workspaceState.get(
       'selectedWorkbenchAvailableEntities',

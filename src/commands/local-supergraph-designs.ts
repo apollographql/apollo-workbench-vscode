@@ -311,6 +311,7 @@ export async function addSubgraph(item: SubgraphSummaryTreeItem) {
       );
       const wbFile = FileProvider.instance.workbenchFileFromPath(item.filePath);
       wbFile.subgraphs[subgraphName] = {
+        routing_url: "undefined",
         schema: {
           file: newSchemaFilePath,
         },
