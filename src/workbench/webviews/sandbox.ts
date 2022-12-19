@@ -1,29 +1,46 @@
 import path from 'path';
-import { Uri, ViewColumn, WebviewPanel, window } from 'vscode';
+import { commands, Uri, ViewColumn, WebviewPanel, window } from 'vscode';
 import { startRoverDevSession } from '../../commands/local-supergraph-designs';
+import { WorkbenchDiagnostics } from '../diagnosticsManager';
 import { ApolloConfig } from '../file-system/ApolloConfig';
 import { Rover } from '../rover';
-import { OperationSummaryTreeItem, OperationTreeItem, SubgraphSummaryTreeItem } from '../tree-data-providers/superGraphTreeDataProvider';
+import {
+  OperationSummaryTreeItem,
+  OperationTreeItem,
+  SubgraphSummaryTreeItem,
+} from '../tree-data-providers/superGraphTreeDataProvider';
 
 let panel: WebviewPanel | undefined;
 
 export async function openSandbox(item?: OperationTreeItem, document?: string) {
+  let errors = 0;
+  WorkbenchDiagnostics.instance.diagnosticCollections
+    .get(item?.wbFilePath ?? "")
+    ?.compositionDiagnostics.forEach(() => errors++);
+  if (errors > 0) {
+    commands.executeCommand('workbench.action.showErrorsWarnings');
+    window.showErrorMessage("Unable to start design due to composition errors");
+    return;
+  }
+
   if (!Rover.instance.primaryDevTerminal) {
-    if(item)
-      await startRoverDevSession(new SubgraphSummaryTreeItem(item.wbFile, item.wbFilePath));
+    if (item)
+      await startRoverDevSession(
+        new SubgraphSummaryTreeItem(item.wbFile, item.wbFilePath),
+      );
     else {
       window.showErrorMessage('Unable to start design, no design running.');
       return;
     }
   }
-  
-  if(item && !document)
+
+  if (item && !document)
     document = item.wbFile.operations[item.operationName].document;
 
-  open(document);
+  await open(document);
 }
 
-function open(document?: string) {
+async function open(document?: string) {
   if (!Rover.instance.primaryDevTerminal) {
     window.showErrorMessage('Unable to open sandbox, no design running.');
   }
@@ -45,12 +62,13 @@ function open(document?: string) {
   }
 
   const url = document
-      ? `http://localhost:3000?document=${encodeURIComponent(document)}`
-      : `http://localhost:3000`;
-  panel.webview.html = "";
+    ? `http://localhost:3000?document=${encodeURIComponent(document)}`
+    : `http://localhost:3000`;
   panel.webview.html = getWebviewContent(url);
 
-  panel.reveal(ViewColumn.One);
+  await new Promise<void>((resolve) => setTimeout(resolve, 500));
+
+  panel.reveal(ViewColumn.One, false);
 }
 
 function getWebviewContent(url: string) {

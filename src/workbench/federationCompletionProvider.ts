@@ -1,4 +1,4 @@
-import { getAutocompleteSuggestions } from '../graphql/getAutocompleteSuggestions';
+// import { getAutocompleteSuggestions } from '../graphql/getAutocompleteSuggestions';
 import {
   CancellationToken,
   CompletionItem,
@@ -8,7 +8,7 @@ import {
   TextDocument,
 } from 'vscode';
 import { Position } from 'vscode-languageserver';
-import { getServiceAvailableTypes } from '../graphql/parsers/schemaParser';
+// import { getServiceAvailableTypes } from '../graphql/parsers/schemaParser';
 import { StateManager } from './stateManager';
 import { FileProvider } from './file-system/fileProvider';
 
@@ -28,138 +28,138 @@ export const federationCompletionProvider = {
     //Only provide completion items for schemas open in workbench
     const uri = document.uri;
     const completionItems = new Array<CompletionItem>();
-    if (uri.scheme == 'workbench') {
-      if (uri.path.includes('/subgraphs')) {
-        const line = document.lineAt(position.line);
-        const lineText = line.text;
-        const serviceName = document.uri.query;
+    // if (uri.scheme == 'workbench') {
+    //   if (uri.path.includes('/subgraphs')) {
+    //     const line = document.lineAt(position.line);
+    //     const lineText = line.text;
+    //     const serviceName = document.uri.query;
 
-        if (lineText && serviceName) {
-          //If not undefined, we're inside a word/something and shouldn't return anything
-          const trimmedText = lineText.trim();
-          const character = trimmedText.charAt(trimmedText.length - 1);
-          if (character == ':') {
-            const completionTypes = getServiceAvailableTypes(
-              serviceName,
-              uri.path.split('/subgraphs')[0],
-            );
-            for (let i = 0; i < completionTypes.length; i++) {
-              let typeName = completionTypes[i];
-              let details = '';
-              const documentation = new MarkdownString();
-              let completionKind = CompletionItemKind.Value;
+    //     if (lineText && serviceName) {
+    //       //If not undefined, we're inside a word/something and shouldn't return anything
+    //       const trimmedText = lineText.trim();
+    //       const character = trimmedText.charAt(trimmedText.length - 1);
+    //       if (character == ':') {
+    //         const completionTypes = getServiceAvailableTypes(
+    //           serviceName,
+    //           uri.path.split('/subgraphs')[0],
+    //         );
+    //         for (let i = 0; i < completionTypes.length; i++) {
+    //           let typeName = completionTypes[i];
+    //           let details = '';
+    //           const documentation = new MarkdownString();
+    //           let completionKind = CompletionItemKind.Value;
 
-              if (typeName.includes(':')) {
-                const isArray = typeName.includes('[');
-                const typeSplit = typeName.split(':');
-                const typeToAdd = isArray ? '[' + typeSplit[1] : typeSplit[1];
-                const completionKindClassifier = isArray
-                  ? typeSplit[0].substring(1)
-                  : typeSplit[0];
-                if (completionKindClassifier == 'I') {
-                  details = `Interface ${typeToAdd}`;
-                  completionKind = CompletionItemKind.Interface;
-                  documentation.appendText(
-                    'To learn more about interfaces, click [here](https://www.apollographql.com/docs/apollo-server/schema/unions-interfaces/#interface-type).',
-                  );
-                } else if (completionKindClassifier == 'O') {
-                  details = `Object Types ${typeToAdd}`;
-                  completionKind = CompletionItemKind.Class;
-                  documentation.appendText(
-                    'To learn more about object types, click [here](https://www.apollographql.com/docs/apollo-server/schema/schema/#object-types).',
-                  );
-                } else if (completionKindClassifier == 'S') {
-                  details = `Scalar Types ${typeToAdd}`;
-                  completionKind = CompletionItemKind.Struct;
-                  documentation.appendText(
-                    'To learn more about object types, click [here](https://www.apollographql.com/docs/apollo-server/schema/scalars-enums/#custom-scalars).',
-                  );
-                } else if (completionKindClassifier == 'E') {
-                  details = `Enum Types ${typeToAdd}`;
-                  completionKind = CompletionItemKind.Enum;
-                  documentation.appendText(
-                    'To learn more about object types, click [here](https://www.apollographql.com/docs/apollo-server/schema/scalars-enums/#enums).',
-                  );
-                }
+    //           if (typeName.includes(':')) {
+    //             const isArray = typeName.includes('[');
+    //             const typeSplit = typeName.split(':');
+    //             const typeToAdd = isArray ? '[' + typeSplit[1] : typeSplit[1];
+    //             const completionKindClassifier = isArray
+    //               ? typeSplit[0].substring(1)
+    //               : typeSplit[0];
+    //             if (completionKindClassifier == 'I') {
+    //               details = `Interface ${typeToAdd}`;
+    //               completionKind = CompletionItemKind.Interface;
+    //               documentation.appendText(
+    //                 'To learn more about interfaces, click [here](https://www.apollographql.com/docs/apollo-server/schema/unions-interfaces/#interface-type).',
+    //               );
+    //             } else if (completionKindClassifier == 'O') {
+    //               details = `Object Types ${typeToAdd}`;
+    //               completionKind = CompletionItemKind.Class;
+    //               documentation.appendText(
+    //                 'To learn more about object types, click [here](https://www.apollographql.com/docs/apollo-server/schema/schema/#object-types).',
+    //               );
+    //             } else if (completionKindClassifier == 'S') {
+    //               details = `Scalar Types ${typeToAdd}`;
+    //               completionKind = CompletionItemKind.Struct;
+    //               documentation.appendText(
+    //                 'To learn more about object types, click [here](https://www.apollographql.com/docs/apollo-server/schema/scalars-enums/#custom-scalars).',
+    //               );
+    //             } else if (completionKindClassifier == 'E') {
+    //               details = `Enum Types ${typeToAdd}`;
+    //               completionKind = CompletionItemKind.Enum;
+    //               documentation.appendText(
+    //                 'To learn more about object types, click [here](https://www.apollographql.com/docs/apollo-server/schema/scalars-enums/#enums).',
+    //               );
+    //             }
 
-                typeName = typeToAdd;
-              } else {
-                documentation.appendText(
-                  `To learn more about GraphQL's default scalar types, click [here](https://www.apollographql.com/docs/apollo-server/schema/schema/#scalar-types).`,
-                );
-              }
+    //             typeName = typeToAdd;
+    //           } else {
+    //             documentation.appendText(
+    //               `To learn more about GraphQL's default scalar types, click [here](https://www.apollographql.com/docs/apollo-server/schema/schema/#scalar-types).`,
+    //             );
+    //           }
 
-              const completionItem = new CompletionItem(
-                typeName,
-                completionKind,
-              );
-              completionItem.insertText = typeName;
-              completionItem.detail = details;
-              completionItem.documentation = documentation;
-              completionItems.push(completionItem);
-            }
-          }
-        } else {
-          //Add federation items that can be extended
+    //           const completionItem = new CompletionItem(
+    //             typeName,
+    //             completionKind,
+    //           );
+    //           completionItem.insertText = typeName;
+    //           completionItem.detail = details;
+    //           completionItem.documentation = documentation;
+    //           completionItems.push(completionItem);
+    //         }
+    //       }
+    //     } else {
+    //       //Add federation items that can be extended
 
-          const extendableTypes =
-            StateManager.instance
-              .workspaceState_selectedWorkbenchAvailableEntities;
+    //       const extendableTypes =
+    //         StateManager.instance
+    //           .workspaceState_selectedWorkbenchAvailableEntities;
 
-          //TODO: Need to de-dedup extendable types
+    //       //TODO: Need to de-dedup extendable types
 
-          for (const sn in extendableTypes)
-            if (sn != serviceName)
-              extendableTypes[sn].map(({ type, keys }) => {
-                Object.keys(keys).forEach((key) => {
-                  if (
-                    FileProvider.instance.loadedWorkbenchFile?.federation_version != '2'
-                  )
-                    completionItems.push(
-                      new FederationEntityExtensionItem(
-                        key,
-                        type,
-                        keys[key],
-                        sn,
-                      ),
-                    );
-                  else
-                    completionItems.push(
-                      new Federation2EntityExtensionItem(
-                        key,
-                        type,
-                        keys[key],
-                        sn,
-                      ),
-                    );
-                });
-              });
+    //       for (const sn in extendableTypes)
+    //         if (sn != serviceName)
+    //           extendableTypes[sn].map(({ type, keys }) => {
+    //             Object.keys(keys).forEach((key) => {
+    //               if (
+    //                 FileProvider.instance.loadedWorkbenchFile?.federation_version != '2'
+    //               )
+    //                 completionItems.push(
+    //                   new FederationEntityExtensionItem(
+    //                     key,
+    //                     type,
+    //                     keys[key],
+    //                     sn,
+    //                   ),
+    //                 );
+    //               else
+    //                 completionItems.push(
+    //                   new Federation2EntityExtensionItem(
+    //                     key,
+    //                     type,
+    //                     keys[key],
+    //                     sn,
+    //                   ),
+    //                 );
+    //             });
+    //           });
 
-          //Add default items for creating new entity/type/interface
-          completionItems.push(new ObjectTypeCompletionItem());
-          completionItems.push(new InterfaceCompletionItem());
-          completionItems.push(new EntityObjectTypeCompletionItem());
-        }
-      } else if (uri.path.includes('/queries/')) {
-        const schema = StateManager.instance.workspaceState_schema;
-        if (schema) {
-          const query = document.getText();
+    //       //Add default items for creating new entity/type/interface
+    //       completionItems.push(new ObjectTypeCompletionItem());
+    //       completionItems.push(new InterfaceCompletionItem());
+    //       completionItems.push(new EntityObjectTypeCompletionItem());
+    //     }
+    //   } else if (uri.path.includes('/queries/')) {
+    //     const schema = StateManager.instance.workspaceState_schema;
+    //     if (schema) {
+    //       const query = document.getText();
 
-          const suggestions = getAutocompleteSuggestions(
-            schema,
-            query,
-            position as any,
-          );
-          if (suggestions.length > 0) {
-            suggestions.forEach((ci) =>
-              completionItems.push(new QueryCompletionItem(ci)),
-            );
-          }
-        } else {
-          completionItems.push(new NoValidSchema());
-        }
-      }
-    }
+    //       // const suggestions = getAutocompleteSuggestions(
+    //       //   schema,
+    //       //   query,
+    //       //   position as any,
+    //       // );
+    //       // if (suggestions.length > 0) {
+    //       //   suggestions.forEach((ci) =>
+    //       //     completionItems.push(new QueryCompletionItem(ci)),
+    //       //   );
+    //       // }
+    //     } else {
+    //       completionItems.push(new NoValidSchema());
+    //     }
+    //   }
+    // }
 
     if (completionItems.length > 0) return completionItems;
   },

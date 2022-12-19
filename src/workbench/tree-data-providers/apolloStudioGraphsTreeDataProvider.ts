@@ -41,7 +41,7 @@ export class ApolloStudioGraphsTreeDataProvider
     if (apiKey) {
       let accountId = StateManager.instance.globalState_selectedApolloAccount;
       if (!accountId) {
-        const myAccountIds = await getUserMemberships(apiKey);
+        const myAccountIds = await getUserMemberships();
         const memberships = (myAccountIds?.me as any)?.memberships;
         if (memberships?.length > 1) {
           const accountIds: string[] = new Array<string>();
@@ -63,21 +63,43 @@ export class ApolloStudioGraphsTreeDataProvider
 
         //Create objects for next for loop
         //  Return A specific account with all graphs
-        const services = await getAccountGraphs(apiKey, accountId);
+
+        //Change to single root query
+        //  2. commands/studio-graphs/switchOrg should actually just refresh this provider to re-use this query
+        // query ExampleQuery($name: String!) {
+        //   frontendUrlRoot
+        //   me {
+        //     id
+        //     ... on InternalIdentity {
+        //       accounts {
+        //         id
+        //         name
+        //         graphs {
+        //           id
+        //           title
+        //           variant(name: $name) {
+        //             name
+        //           }
+        //         }
+        //       }
+        //     }
+        //   }
+        // }
+        
+
+        const services = await getAccountGraphs(accountId);
         const accountTreeItem = new StudioAccountTreeItem(
           accountId,
-          services?.account?.name,
+          services?.organization?.name,
         );
 
-        if (services?.account?.services) {
+        if (services?.organization?.graphs) {
           const accountServiceTreeItems = new Array<StudioGraphTreeItem>();
 
-          for (let j = 0; j < services?.account?.services.length ?? 0; j++) {
+          for (let j = 0; j < services?.organization?.graphs.length ?? 0; j++) {
             //Cast graph
-            const graph = services?.account?.services[j];
-            if (graph.devGraphOwner?.id) {
-              continue;
-            }
+            const graph = services?.organization?.graphs[j];
+
             //Create objects for next for loop
             //  Return A specific Graph with all variants
             const graphTreeItem = new StudioGraphTreeItem(

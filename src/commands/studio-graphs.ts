@@ -35,31 +35,27 @@ export async function switchOrg() {
   if (!StateManager.instance.globalState_userApiKey) await enterStudioApiKey();
 
   let accountId = '';
-  const apiKey = StateManager.instance.globalState_userApiKey;
+  const myAccountIds = await getUserMemberships();
+  const memberships = (myAccountIds?.me as any)?.memberships;
+  if (memberships?.length > 1) {
+    const accountMapping: { [key: string]: string } = {};
+    memberships.map((membership) => {
+      const accountId = membership.account.id;
+      const accountName = membership.account.name;
+      accountMapping[accountName] = accountId;
+    });
 
-  if (apiKey) {
-    const myAccountIds = await getUserMemberships(apiKey);
-    const memberships = (myAccountIds?.me as any)?.memberships;
-    if (memberships?.length > 1) {
-      const accountMapping: { [key: string]: string } = {};
-      memberships.map((membership) => {
-        const accountId = membership.account.id;
-        const accountName = membership.account.name;
-        accountMapping[accountName] = accountId;
-      });
+    const selectedOrgName =
+      (await window.showQuickPick(Object.keys(accountMapping), {
+        placeHolder: 'Select an account to load graphs from',
+      })) ?? '';
+    accountId = accountMapping[selectedOrgName];
+  } else {
+    accountId = memberships[0]?.account?.id ?? '';
+  }
 
-      const selectedOrgName =
-        (await window.showQuickPick(Object.keys(accountMapping), {
-          placeHolder: 'Select an account to load graphs from',
-        })) ?? '';
-      accountId = accountMapping[selectedOrgName];
-    } else {
-      accountId = memberships[0]?.account?.id ?? '';
-    }
-
-    if (accountId) {
-      StateManager.instance.setSelectedGraph('');
-      StateManager.instance.globalState_selectedApolloAccount = accountId;
-    }
+  if (accountId) {
+    StateManager.instance.setSelectedGraph('');
+    StateManager.instance.globalState_selectedApolloAccount = accountId;
   }
 }

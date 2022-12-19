@@ -85,7 +85,6 @@ export class FileProvider {
     if (sdl == undefined) {
       const subgraph =
         this.workbenchFileFromPath(wbFilePath)?.subgraphs[subgraphName];
-      subgraph.subgraph = subgraphName;
       sdl = await Rover.instance.subgraphFetch(subgraph);
 
       if (!sdl && subgraph.schema.graphref) {

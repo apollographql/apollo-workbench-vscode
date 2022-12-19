@@ -13,6 +13,7 @@ import {
 import { schemaFileUri, tempSchemaFilePath } from './file-system/fileProvider';
 import { StateManager } from './stateManager';
 import { getFileName } from '../utils/path';
+import { ApolloRemoteSchemaProvider } from './docProviders';
 
 interface WorkbenchDiagnosticCollections {
   compositionDiagnostics: DiagnosticCollection;
@@ -73,7 +74,7 @@ export class WorkbenchDiagnostics {
         }
         //    Account for a local change to remote source that we can't edit
         else {
-          compositionDiagnostics.set(tempSchemaFilePath(wbFilePath, sn), diagnosticsGroups[sn]);
+          compositionDiagnostics.set(ApolloRemoteSchemaProvider.Uri(wbFilePath,sn), diagnosticsGroups[sn]);
         }
       } else {
         compositionDiagnostics.set(

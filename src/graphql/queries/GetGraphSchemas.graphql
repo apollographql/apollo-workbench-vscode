@@ -1,0 +1,13 @@
+query GetGraphSchemas($id: ID!, $graphVariant: String!) {
+  graph(id: $id) {
+    variant(name: $graphVariant) {
+      subgraphs {
+        name
+        url
+        activePartialSchema {
+          sdl
+        }
+      }
+    }
+  }
+}

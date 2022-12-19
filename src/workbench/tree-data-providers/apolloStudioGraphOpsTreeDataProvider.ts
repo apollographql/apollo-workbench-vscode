@@ -29,21 +29,19 @@ export class ApolloStudioGraphOpsTreeDataProvider
         operationSignature: string;
       };
     } = {};
-    const apiKey = StateManager.instance.globalState_userApiKey;
-    if (!apiKey) return [new NotLoggedInTreeItem()];
 
     const selectedGraphId = StateManager.instance.globalState_selectedGraph;
     const graphVariant = StateManager.instance.globalState_selectedGraphVariant;
     if (selectedGraphId) {
       //Create objects for next for loop
       //  Return A specific account with all graphs
-      const graphOps = await getGraphOps(apiKey, selectedGraphId, graphVariant);
+      const graphOps = await getGraphOps( selectedGraphId, graphVariant);
 
       noOperationsFoundMessage = graphVariant
         ? `No operations found for ${graphOps.service?.title}@${graphVariant}`
         : `No operations found for ${graphOps.service?.title}`;
-      if (graphOps?.service?.stats?.queryStats) {
-        graphOps?.service?.stats?.queryStats.map((queryStat) => {
+      if (graphOps?.service?.statsWindow?.queryStats) {
+        graphOps?.service?.statsWindow?.queryStats.map((queryStat) => {
           if (
             queryStat.groupBy.queryName &&
             queryStat.groupBy.queryId &&

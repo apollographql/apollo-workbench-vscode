@@ -17,7 +17,6 @@ export class ApolloConfig {
 }
 
 export type Subgraph = {
-  subgraph: string;
   routing_url?: string;
   schema: Schema;
 };

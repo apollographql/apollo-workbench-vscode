@@ -3,15 +3,15 @@ import { ApolloServer } from '@apollo/server';
 import { startStandaloneServer } from '@apollo/server/standalone';
 import { exec, ExecException } from 'child_process';
 import gql from 'graphql-tag';
-import { resolve } from 'path';
 import { TextDecoder } from 'util';
-import { Progress, Terminal, Uri, window, workspace } from 'vscode';
-import { ApolloConfig, Subgraph } from './file-system/ApolloConfig';
+import { Terminal, Uri, window, workspace } from 'vscode';
+import { Subgraph } from './file-system/ApolloConfig';
 import { CompositionResults } from './file-system/CompositionResults';
 import { StateManager } from './stateManager';
 import { addMocksToSchema } from '@graphql-tools/mock';
 import { FieldWithType } from './federationCompletionProvider';
 import { parse, StringValueNode, visit } from 'graphql';
+
 export class Rover {
   private static _instance: Rover;
   static get instance(): Rover {
@@ -54,10 +54,10 @@ export class Rover {
 
   async subgraphFetch(subgraph: Subgraph) {
     let sdl = '';
-    if (subgraph.schema.graphref) {
+    if (subgraph.schema.graphref && subgraph.schema.subgraph) {
       sdl = await this.subgraphGraphOSFetch(
         subgraph.schema.graphref,
-        subgraph.subgraph,
+        subgraph.schema.subgraph,
       );
     } else {
       sdl = await this.subgraphIntrospect(

@@ -7,30 +7,33 @@
 // GraphQL query operation: GraphOperations
 // ====================================================
 
-export interface GraphOperations_service_stats_queryStats_groupBy {
+export interface GraphOperations_service_statsWindow_queryStats_groupBy {
   __typename: "ServiceQueryStatsDimensions";
   queryName: string | null;
   queryId: string | null;
   querySignature: string | null;
 }
 
-export interface GraphOperations_service_stats_queryStats {
+export interface GraphOperations_service_statsWindow_queryStats {
   __typename: "ServiceQueryStatsRecord";
   /**
    * Dimensions of ServiceQueryStats that can be grouped by.
    */
-  groupBy: GraphOperations_service_stats_queryStats_groupBy;
+  groupBy: GraphOperations_service_statsWindow_queryStats_groupBy;
 }
 
-export interface GraphOperations_service_stats {
+export interface GraphOperations_service_statsWindow {
   __typename: "ServiceStatsWindow";
-  queryStats: GraphOperations_service_stats_queryStats[];
+  queryStats: GraphOperations_service_statsWindow_queryStats[];
 }
 
 export interface GraphOperations_service {
   __typename: "Service";
+  /**
+   * The graph's name.
+   */
   title: string;
-  stats: GraphOperations_service_stats;
+  statsWindow: GraphOperations_service_statsWindow | null;
 }
 
 export interface GraphOperations {

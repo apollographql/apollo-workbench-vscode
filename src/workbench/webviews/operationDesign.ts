@@ -76,14 +76,14 @@ export async function viewOperationDesign(item: OperationTreeItem) {
           'https://my-website.com/images/a.png or /Users/Me/Desktop/a.png',
       });
       if (uiDesign) item.wbFile.operations[item.operationName].ui_design = uiDesign;
+
+      await FileProvider.instance.writeWorkbenchConfig(
+        item.wbFilePath,
+        item.wbFile,
+      );
+
+      await viewOperationDesign(item);
     }
-
-    await FileProvider.instance.writeWorkbenchConfig(
-      item.wbFilePath,
-      item.wbFile,
-    );
-
-    await viewOperationDesign(item);
     return;
   }
 

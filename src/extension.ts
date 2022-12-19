@@ -39,7 +39,6 @@ import {
   editSubgraph,
   deleteSubgraph,
   refreshSupergraphs,
-  viewSubgraphSettings,
   addSubgraph,
   viewSupergraphSchema,
   newDesign,
@@ -63,8 +62,6 @@ export const outputChannel = window.createOutputChannel('Apollo Workbench');
 export async function deactivate(context: ExtensionContext) {
   await Rover.instance.stopRoverDev();
 }
-
-let panel: WebviewPanel | undefined;
 
 export async function activate(context: ExtensionContext) {
   StateManager.init(context);

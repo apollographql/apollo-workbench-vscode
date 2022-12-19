@@ -28,12 +28,10 @@ import {
   StudioGraphTreeItem,
   PreloadedWorkbenchFile,
 } from '../workbench/tree-data-providers/apolloStudioGraphsTreeDataProvider';
-// import { ApolloWorkbenchFile } from '../workbench/file-system/fileTypes';
 import { getGraphSchemasByVariant } from '../graphql/graphClient';
-import { GetGraphSchemas_service_implementingServices_FederatedImplementingServices } from '../graphql/types/GetGraphSchemas';
 import { join, resolve } from 'path';
-import { readFileSync, existsSync } from 'fs';
-import { visit, print, parse } from 'graphql';
+import { readFileSync } from 'fs';
+import { visit, print } from 'graphql';
 import { log } from '../utils/logger';
 import gql from 'graphql-tag';
 import { ApolloConfig, Subgraph } from '../workbench/file-system/ApolloConfig';
@@ -94,40 +92,39 @@ export async function startRoverDevSession(item: SubgraphSummaryTreeItem) {
         async (progress) => {
           //Calculate how many servers to mock
           const subgraphNames = Object.keys(item.wbFile.subgraphs);
-          const subgraphsToMock: Subgraph[] = [];
+          const subgraphsToMock: { [name: string]: Subgraph } = {};
           subgraphNames.forEach((s) => {
-            if (item.wbFile.subgraphs[s].schema.workbench_design) {
-              const subgraph = item.wbFile.subgraphs[s];
-              subgraph.subgraph = s;
-
-              subgraphsToMock.push(subgraph);
-            }
+            if (item.wbFile.subgraphs[s].schema.workbench_design)
+              subgraphsToMock[s] = item.wbFile.subgraphs[s];
           });
+          const subgraphNamesToMock = Object.keys(subgraphsToMock);
+          const numberOfSubgraphsToMock = subgraphNamesToMock.length;
           const increment =
-            100 / (subgraphsToMock.length + subgraphNames.length);
+            100 / (numberOfSubgraphsToMock + subgraphNames.length);
 
           //Mock any subgraphs we need to
-          if (subgraphsToMock.length > 0) {
+          if (numberOfSubgraphsToMock > 0) {
             progress.report({
-              message: `${subgraphsToMock.length} Subgraphs to mock`,
+              message: `${numberOfSubgraphsToMock} Subgraphs to mock`,
             });
-            for (let i = 0; i < subgraphsToMock.length; i++) {
-              const subgraph = subgraphsToMock[i];
+            for (let i = 0; i < numberOfSubgraphsToMock; i++) {
+              const subgraphName = subgraphNamesToMock[i];
+              const subgraph = subgraphsToMock[subgraphName];
               const schemaPath =
                 subgraph.schema.workbench_design ?? subgraph.schema.file ?? '';
               const url = await Rover.instance.startMockedSubgraph(
-                subgraph.subgraph,
+                subgraphName,
                 Uri.parse(schemaPath),
               );
 
               if (url)
                 progress.report({
-                  message: `Mocked subgraph ${subgraph.subgraph} at ${url}`,
+                  message: `Mocked subgraph ${subgraphName} at ${url}`,
                   increment,
                 });
               else
                 progress.report({
-                  message: `Unable to mock subgraph ${subgraph.subgraph}`,
+                  message: `Unable to mock subgraph ${subgraphName}`,
                   increment,
                 });
             }
@@ -152,7 +149,7 @@ export async function startRoverDevSession(item: SubgraphSummaryTreeItem) {
                   const tempUri =
                     await FileProvider.instance.writeTempSchemaFile(
                       item.filePath,
-                      subgraph.subgraph,
+                      subgraphName,
                     );
                   schemaPath = tempUri?.fsPath;
                 }
@@ -164,11 +161,9 @@ export async function startRoverDevSession(item: SubgraphSummaryTreeItem) {
                 );
 
                 progress.report({
-                  message: `Rover dev session started for ${subgraphName}`,
+                  message: `${subgraphName}`,
                   increment,
                 });
-
-                await new Promise((resolve) => setTimeout(resolve, 3000));
 
                 resolve();
               });
@@ -179,13 +174,14 @@ export async function startRoverDevSession(item: SubgraphSummaryTreeItem) {
 
           await Promise.all(roverPromises);
 
-          progress.report({
-            message: 'Rover dev session started successfully',
-          });
           startingMocks = false;
           Rover.instance.primaryDevTerminal?.show();
-
+          await new Promise<void>((resolve) => setTimeout(resolve, 5000));
+          progress.report({
+            message: 'Opening Sandbox',
+          });
           await commands.executeCommand('local-supergraph-designs.sandbox');
+          await new Promise<void>((resolve) => setTimeout(resolve, 500));
         },
       );
     } catch (err) {
@@ -193,6 +189,7 @@ export async function startRoverDevSession(item: SubgraphSummaryTreeItem) {
     }
   } else {
     commands.executeCommand('workbench.action.showErrorsWarnings');
+    window.showErrorMessage('Unable to start design due to composition errors');
   }
 
   startingMocks = false;
@@ -243,9 +240,13 @@ export async function editSubgraph(item: SubgraphTreeItem) {
                   `${subgraphName}.graphql`,
                 );
                 const schemaFileUri = Uri.parse(schemaFilePath);
-                await workspace.fs.copy(tempLocation, schemaFileUri, {
-                  overwrite: true,
-                });
+                await workspace.fs.copy(
+                  tempSchemaFilePath(wbFilePath, subgraphName),
+                  schemaFileUri,
+                  {
+                    overwrite: true,
+                  },
+                );
                 await FileProvider.instance.convertSubgraphToDesign(
                   wbFilePath,
                   subgraphName,
@@ -310,7 +311,6 @@ export async function addSubgraph(item: SubgraphSummaryTreeItem) {
       );
       const wbFile = FileProvider.instance.workbenchFileFromPath(item.filePath);
       wbFile.subgraphs[subgraphName] = {
-        subgraph: subgraphName,
         schema: {
           file: newSchemaFilePath,
         },
@@ -428,19 +428,12 @@ async function createWorkbench(graphId: string, selectedVariant: string) {
   if (graphName) {
     const workbenchFile: ApolloConfig = new ApolloConfig();
 
-    const results = await getGraphSchemasByVariant(
-      StateManager.instance.globalState_userApiKey,
-      graphId,
-      selectedVariant,
-    );
+    const results = await getGraphSchemasByVariant(graphId, selectedVariant);
     //Create YAML from config
 
-    const implementingServices = results.service
-      ?.implementingServices as GetGraphSchemas_service_implementingServices_FederatedImplementingServices;
-    implementingServices?.services?.map(
+    results.graph?.variant?.subgraphs?.map(
       (service) =>
         (workbenchFile.subgraphs[service.name] = {
-          subgraph: service.name,
           routing_url: service.url ?? '',
           schema: {
             graphref: `${graphId}@${selectedVariant}`,
