@@ -43,13 +43,14 @@ import {
   newDesign,
   createWorkbenchFromSupergraph,
   exportSupergraphSchema,
-  createWorkbenchFromSupergraphVariant,
   addFederationDirective,
   startRoverDevSession,
   stopRoverDevSession,
   mockSubgraph,
   viewOperationDesignSideBySide,
   addOperation,
+  checkSubgraphSchema,
+  openInGraphOS,
 } from './commands/local-supergraph-designs';
 import { Rover } from './workbench/rover';
 import { viewOperationDesign } from './workbench/webviews/operationDesign';
@@ -91,9 +92,8 @@ export async function activate(context: ExtensionContext) {
   );
 
   //Register commands to ensure a folder is open in the window to store workbench files
-  commands.executeCommand('extension.ensureFolderIsOpen');
   commands.registerCommand('extension.ensureFolderIsOpen', ensureFolderIsOpen);
-  commands.registerCommand('extension.openFolder', openFolder);
+  commands.executeCommand('extension.ensureFolderIsOpen');
   //Global Extension Commands
   commands.registerCommand('extension.enterStudioApiKey', enterStudioApiKey);
   commands.registerCommand('extension.deleteStudioApiKey', deleteStudioApiKey);
@@ -125,6 +125,10 @@ export async function activate(context: ExtensionContext) {
   commands.registerCommand(
     'local-supergraph-designs.deleteSubgraph',
     deleteSubgraph,
+  );
+  commands.registerCommand(
+    'local-supergraph-designs.checkSubgraphSchema',
+    checkSubgraphSchema,
   );
   commands.registerCommand(
     'local-supergraph-designs.mockSubgraph',
@@ -170,12 +174,12 @@ export async function activate(context: ExtensionContext) {
   //Apollo Studio Graphs Commands
   commands.registerCommand('studio-graphs.refresh', refreshStudioGraphs);
   commands.registerCommand(
-    'studio-graphs.createWorkbenchFromGraph',
-    createWorkbenchFromSupergraph,
+    'studio-graphs.openInGraphOS',
+    openInGraphOS,
   );
   commands.registerCommand(
-    'studio-graphs.createWorkbenchFromSupergraphVariant',
-    createWorkbenchFromSupergraphVariant,
+    'studio-graphs.createWorkbenchFromSupergraph',
+    createWorkbenchFromSupergraph,
   );
   commands.registerCommand(
     'studio-graphs.createWorkbenchFromPreloaded',

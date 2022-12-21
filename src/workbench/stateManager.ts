@@ -1,6 +1,6 @@
 import { GraphQLSchema } from 'graphql';
 import { ExtensionContext, workspace } from 'vscode';
-import { Entity, FieldWithType } from './federationCompletionProvider';
+import { Entity } from './federationCompletionProvider';
 import { ApolloStudioGraphsTreeDataProvider } from './tree-data-providers/apolloStudioGraphsTreeDataProvider';
 import { ApolloStudioGraphOpsTreeDataProvider } from './tree-data-providers/apolloStudioGraphOpsTreeDataProvider';
 import { LocalSupergraphTreeDataProvider } from './tree-data-providers/superGraphTreeDataProvider';
@@ -138,12 +138,6 @@ export class StateManager {
       .getConfiguration('apollo-workbench')
       .update('roverConfigProfile', profile);
   }
-  // get globalState_roverConfigProfile(): string {
-  //   return this.context?.globalState.get('roverConfigProfile') as string;
-  // }
-  // set globalState_roverConfigProfile(profile: string) {
-  //   this.context?.globalState.update('roverConfigProfile', profile);
-  // }
   get globalState_userApiKey() {
     return this.context?.globalState.get('APOLLO_KEY') as string;
   }
@@ -176,11 +170,6 @@ export class StateManager {
   get globalState_selectedGraph() {
     return this.context?.globalState.get('APOLLO_SELCTED_GRAPH_ID') as string;
   }
-  // set globalState_selectedGraph(graphId: string) {
-  //     this.context?.globalState.update("APOLLO_SELCTED_GRAPH_ID", graphId);
-
-  //     this.apolloStudioGraphOpsProvider.refresh();
-  // }
   get workspaceState_availableEntities() {
     return this.context?.workspaceState.get('availableEntities') as {
       [wbFilePath: string]: {
@@ -200,27 +189,6 @@ export class StateManager {
     const savedEntities = this.workspaceState_availableEntities ?? {};
     savedEntities[input.designPath] = input.entities;
     this.context?.workspaceState.update('availableEntities', savedEntities);
-  }
-  get workspaceState_selectedWorkbenchAvailableEntities() {
-    return this.context?.workspaceState.get(
-      'selectedWorkbenchAvailableEntities',
-    ) as {
-      [serviceName: string]: {
-        type: string;
-        keys: { [key: string]: FieldWithType[] };
-      }[];
-    };
-  }
-  set workspaceState_selectedWorkbenchAvailableEntities(entities: {
-    [serviceName: string]: {
-      type: string;
-      keys: { [key: string]: FieldWithType[] };
-    }[];
-  }) {
-    this.context?.workspaceState.update(
-      'selectedWorkbenchAvailableEntities',
-      entities,
-    );
   }
   clearWorkspaceSchema() {
     this.context?.workspaceState.update('schema', undefined);

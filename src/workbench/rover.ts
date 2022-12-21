@@ -11,6 +11,7 @@ import { StateManager } from './stateManager';
 import { addMocksToSchema } from '@graphql-tools/mock';
 import { FieldWithType } from './federationCompletionProvider';
 import { parse, StringValueNode, visit } from 'graphql';
+import { log } from '../utils/logger';
 
 export class Rover {
   private static _instance: Rover;
@@ -18,6 +19,10 @@ export class Rover {
     if (!this._instance) this._instance = new Rover();
 
     return this._instance;
+  }
+
+  logCommand(command: string) {
+    log(`Rover Execution: ${command}`);
   }
 
   primaryDevTerminal: Terminal | undefined;
@@ -42,10 +47,38 @@ export class Rover {
     return compResults;
   }
 
+  async checkSchema(input: {
+    graphRef: string;
+    subgraphName: string;
+    schemaPath: string;
+  }) {
+    const result = await new Promise<string>((resolve, reject) => {
+      const configProfile = StateManager.settings_roverConfigProfile;
+      const command = configProfile
+        ? `rover subgraph check ${input.graphRef} --schema=${input.schemaPath} --name=${input.subgraphName} --output=json --profile=${configProfile}`
+        : `rover subgraph check ${input.graphRef} --schema=${input.schemaPath} --name=${input.subgraphName} --output=json`;
+      this.logCommand(command);
+      exec(
+        command,
+        {},
+        (_error: ExecException | null, stdout: string, _stderr: string) => {
+          resolve(stdout);
+        },
+      );
+    });
+
+    const compResults = JSON.parse(result) as CompositionResults;
+    const reportUrl = ((compResults.data as any)?.target_url as string) ?? '';
+
+    return { ...compResults, reportUrl };
+  }
+
   async writeSupergraphSDL(pathToConfig: string, pathToSaveTo: string) {
+    const command = `rover supergraph compose --config=${pathToConfig} > ${pathToSaveTo}`;
+    this.logCommand(command);
     await new Promise<string>((resolve, reject) => {
       exec(
-        `rover supergraph compose --config=${pathToConfig} > ${pathToSaveTo}`,
+        command,
         {},
         (_error: ExecException | null, stdout: string, _stderr: string) => {
           resolve(stdout);
@@ -72,11 +105,13 @@ export class Rover {
 
   async subgraphGraphOSFetch(graphRef: string, subgraph: string) {
     const configProfile = StateManager.settings_roverConfigProfile;
+    const command = configProfile
+    ? `rover subgraph fetch ${graphRef} --name=${subgraph} --profile=${configProfile}`
+    : `rover subgraph fetch ${graphRef} --name=${subgraph}`;
+    this.logCommand(command);
     const result = await new Promise<string>((resolve, reject) => {
       exec(
-        configProfile
-          ? `rover subgraph fetch ${graphRef} --name=${subgraph} --profile=${configProfile}`
-          : `rover subgraph fetch ${graphRef} --name=${subgraph}`,
+        command,
         {},
         (_error: ExecException | null, stdout: string, _stderr: string) => {
           resolve(stdout);
@@ -88,8 +123,10 @@ export class Rover {
   }
   async subgraphIntrospect(url: string) {
     let sdl = await new Promise<string | boolean>((resolve, reject) => {
+      const command = `rover subgraph introspect ${url}`;
+      this.logCommand(command);
       exec(
-        `rover subgraph introspect ${url}`,
+        command,
         {},
         (error: ExecException | null, stdout: string, _stderr: string) => {
           if (error) resolve(false);
@@ -100,8 +137,10 @@ export class Rover {
 
     if (!sdl) {
       sdl = await new Promise<string | boolean>((resolve, reject) => {
+        const command = `rover graph introspect ${url}`;
+        this.logCommand(command);
         exec(
-          `rover graph introspect ${url}`,
+          command,
           {},
           (error: ExecException | null, stdout: string, _stderr: string) => {
             if (error) resolve(false);
@@ -118,8 +157,10 @@ export class Rover {
 
   async getProfiles(): Promise<string[]> {
     const results = await new Promise<string>((resolve, reject) => {
+      const command = `rover config list --output=json`;
+      this.logCommand(command);
       exec(
-        `rover config list --output=json`,
+        command,
         {},
         (error: ExecException | null, stdout: string, _stderr: string) => {
           if (error) reject(false);
@@ -146,8 +187,8 @@ export class Rover {
   }
 
   async restartMockedSubgraph(subgraphName: string, schemaUri: Uri) {
-    if(!this.primaryDevTerminal) return;
-    
+    if (!this.primaryDevTerminal) return;
+
     let port = 0;
     for (const sn in this.portMapping)
       if (sn == subgraphName) port = this.portMapping[sn];

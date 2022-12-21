@@ -1,10 +1,4 @@
 import { StateManager } from '../workbench/stateManager';
-import {
-  StudioGraphTreeItem,
-  StudioGraphVariantTreeItem,
-} from '../workbench/tree-data-providers/apolloStudioGraphsTreeDataProvider';
-import { FileProvider } from '../workbench/file-system/fileProvider';
-import { PreloadedWorkbenchFile } from '../workbench/tree-data-providers/apolloStudioGraphsTreeDataProvider';
 import { StudioOperationTreeItem } from '../workbench/tree-data-providers/apolloStudioGraphOpsTreeDataProvider';
 import { window } from 'vscode';
 import { ApolloStudioOperationsProvider } from '../workbench/docProviders';

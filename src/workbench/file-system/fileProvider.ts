@@ -1,30 +1,18 @@
 import { existsSync, readdirSync } from 'fs';
 import path, { join, parse, resolve, normalize } from 'path';
-import {
-  commands,
-  Disposable,
-  EventEmitter,
-  FileChangeEvent,
-  FileStat,
-  FileSystemProvider,
-  FileType,
-  ProgressLocation,
-  Uri,
-  window,
-  workspace,
-} from 'vscode';
+import { commands, ProgressLocation, Uri, window, workspace } from 'vscode';
 import { StateManager } from '../stateManager';
 import { WorkbenchDiagnostics } from '../diagnosticsManager';
 import { log } from '../../utils/logger';
 import { load, dump } from 'js-yaml';
 import { TextDecoder, TextEncoder } from 'util';
 import { ApolloConfig } from './ApolloConfig';
-import { execSync } from 'child_process';
 import { Rover } from '../rover';
 import { getFileName } from '../../utils/path';
 import { homedir } from 'os';
 import { print, parse as gqlParse } from 'graphql';
 import { extractEntities } from '../federationCompletionProvider';
+import { openFolder } from '../../commands/extension';
 export const schemaFileUri = (filePath: string, wbFilePath: string) => {
   if (parse(filePath).dir == '.') {
     const wbFileFolder = wbFilePath.split(getFileName(wbFilePath))[0];
@@ -61,8 +49,6 @@ export class FileProvider {
     return this._instance;
   }
 
-  loadedWorbenchFilePath = '';
-  loadedWorkbenchFile?: ApolloConfig;
   private workbenchFiles: Map<string, ApolloConfig> = new Map();
 
   async writeTempOperationFile(wbFilePath: string, operationName: string) {
@@ -134,23 +120,6 @@ export class FileProvider {
     return false;
   }
 
-  async load(wbFilePath: string, shouldCompose = true): Promise<boolean> {
-    this.loadedWorkbenchFile =
-      this.workbenchFileFromPath(wbFilePath) ?? undefined;
-
-    const workbenchFileToLoad = this.workbenchFileFromPath(wbFilePath);
-    if (workbenchFileToLoad) {
-      this.loadedWorbenchFilePath = wbFilePath;
-
-      if (shouldCompose)
-        await this.refreshWorkbenchFileComposition(this.loadedWorbenchFilePath);
-
-      return true;
-    }
-
-    return false;
-  }
-
   workbenchFileFromPath(path: string): ApolloConfig {
     let wbFile = this.workbenchFiles.get(path);
     if (!wbFile)
@@ -196,42 +165,8 @@ export class FileProvider {
     );
   }
 
-  /**
-   * Creates a temporary copy of a local config file
-   * @param ApolloConfig file
-   * @param Path to ApolloConfig file
-   * @returns Path where temporary config file lives
-   */
-  async createTempWorkbenchFile(wbFile: ApolloConfig, wbFilePath: string) {
-    const wbTempFolder = resolve(homedir(), '.apollo-workbench');
-    const tempPath = resolve(homedir(), '.apollo-workbench', 'supergraph.yaml');
-    await workspace.fs.createDirectory(Uri.parse(wbTempFolder));
-
-    const tempUri = Uri.parse(tempPath);
-    const tempWbFile = ApolloConfig.copy(wbFile);
-    Object.keys(wbFile.subgraphs).forEach((subgraphName) => {
-      if (wbFile.subgraphs[subgraphName].schema.workbench_design) {
-        tempWbFile.subgraphs[subgraphName].schema.file =
-          wbFile.subgraphs[subgraphName].schema.workbench_design;
-
-        delete tempWbFile.subgraphs[subgraphName].schema.subgraph_url;
-      } else if (wbFile.subgraphs[subgraphName].schema.file) {
-        tempWbFile.subgraphs[subgraphName].schema.file = schemaFileUri(
-          tempWbFile.subgraphs[subgraphName].schema.file ?? '',
-          wbFilePath,
-        ).fsPath;
-      }
-    });
-
-    await workspace.fs.writeFile(
-      tempUri,
-      new TextEncoder().encode(dump(tempWbFile)),
-    );
-
-    return tempPath;
-  }
-
   async refreshWorkbenchFileComposition(wbFilePath: string) {
+    log(`Refreshing composition for ${wbFilePath}`);
     return await window.withProgress(
       { location: ProgressLocation.Notification },
       async (progress) => {
@@ -317,20 +252,8 @@ export class FileProvider {
       }
     }
   }
-  clearWorkbenchFiles() {
-    this.workbenchFiles.clear();
-  }
   getWorkbenchFiles() {
     return this.workbenchFiles;
-  }
-  async promptOpenFolder() {
-    const openFolder = 'Open Folder';
-    const response = await window.showErrorMessage(
-      'You must open a folder to create Apollo Workbench files',
-      openFolder,
-    );
-    if (response == openFolder)
-      await commands.executeCommand('extension.openFolder');
   }
 
   //Workbench File Implementations
@@ -343,13 +266,49 @@ export class FileProvider {
       await this.writeWorkbenchConfig(wbFilePath, wbFile);
     }
   }
+  /**
+   * Creates a temporary copy of a local config file so we can modify schema based on workbench_design
+   * @param ApolloConfig file
+   * @param Path to ApolloConfig file
+   * @returns Path where temporary config file lives
+   */
+  async createTempWorkbenchFile(wbFile: ApolloConfig, wbFilePath: string) {
+    const wbTempFolder = resolve(homedir(), '.apollo-workbench');
+    const tempPath = resolve(homedir(), '.apollo-workbench', 'supergraph.yaml');
+    await workspace.fs.createDirectory(Uri.parse(wbTempFolder));
 
-  async writeWorkbenchConfig(path: string, wbFile: ApolloConfig) {
+    const tempWbFile = ApolloConfig.copy(wbFile);
+    Object.keys(wbFile.subgraphs).forEach((subgraphName) => {
+      if (wbFile.subgraphs[subgraphName].schema.workbench_design) {
+        tempWbFile.subgraphs[subgraphName].schema.file =
+          wbFile.subgraphs[subgraphName].schema.workbench_design;
+
+        delete tempWbFile.subgraphs[subgraphName].schema.subgraph_url;
+      } else if (wbFile.subgraphs[subgraphName].schema.file) {
+        tempWbFile.subgraphs[subgraphName].schema.file = schemaFileUri(
+          tempWbFile.subgraphs[subgraphName].schema.file ?? '',
+          wbFilePath,
+        ).fsPath;
+      }
+    });
+
+    await this.writeWorkbenchConfig(tempPath, tempWbFile, false);
+
+    return tempPath;
+  }
+
+  async writeWorkbenchConfig(
+    path: string,
+    wbFile: ApolloConfig,
+    shouldCompose = true,
+  ) {
     await workspace.fs.writeFile(
       Uri.parse(path),
       new TextEncoder().encode(dump(wbFile)),
     );
-    StateManager.instance.localSupergraphTreeDataProvider.refresh();
+
+    if (shouldCompose)
+      StateManager.instance.localSupergraphTreeDataProvider.refresh();
   }
 
   workbenchFileByGraphName(name: string) {
@@ -382,7 +341,6 @@ export class FileProvider {
 
     return { path, subgraphName: name };
   }
-  nn;
 
   private async getWorkbenchFilesInDirectory(dirPath: string) {
     if (!dirPath || dirPath == '.') return [];

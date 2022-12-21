@@ -14,6 +14,7 @@ import {
   Range,
   ProgressLocation,
   ViewColumn,
+  env,
 } from 'vscode';
 import { StateManager } from '../workbench/stateManager';
 import {
@@ -28,7 +29,10 @@ import {
   StudioGraphTreeItem,
   PreloadedWorkbenchFile,
 } from '../workbench/tree-data-providers/apolloStudioGraphsTreeDataProvider';
-import { getGraphSchemasByVariant } from '../graphql/graphClient';
+import {
+  getAccountGraphs,
+  getGraphSchemasByVariant,
+} from '../graphql/graphClient';
 import { join, resolve } from 'path';
 import { readFileSync } from 'fs';
 import { visit, print } from 'graphql';
@@ -40,6 +44,8 @@ import { getFileName } from '../utils/path';
 import { WorkbenchDiagnostics } from '../workbench/diagnosticsManager';
 import { viewOperationDesign } from '../workbench/webviews/operationDesign';
 import { ApolloRemoteSchemaProvider } from '../workbench/docProviders';
+import { result } from 'lodash';
+import { openFolder } from './extension';
 
 let startingMocks = false;
 
@@ -59,11 +65,116 @@ export async function viewOperationDesignSideBySide(item: OperationTreeItem) {
   }
 }
 
+export async function checkSubgraphSchema(item: SubgraphTreeItem) {
+  let subgraphName: string;
+  let wbFile: ApolloConfig;
+  let wbFilePath: string;
+
+  if (item) {
+    subgraphName = item.subgraphName;
+    wbFilePath = item.wbFilePath;
+    wbFile = FileProvider.instance.workbenchFileFromPath(item.wbFilePath);
+  } else {
+    const options: {
+      [key: string]: { wbFile: ApolloConfig; wbFilePath: string };
+    } = {};
+    const wbFiles = FileProvider.instance.getWorkbenchFiles();
+    wbFiles.forEach((wbFile, wbFilePath) => {
+      Object.keys(wbFile.subgraphs)
+        .sort()
+        .forEach((subgraphName) => {
+          const fileName = getFileName(wbFilePath);
+          options[`${subgraphName}___${fileName}`] = { wbFile, wbFilePath };
+        });
+    });
+    const optionSelected = await window.showQuickPick(Object.keys(options), {
+      title: 'Which subgraph schema would you like to check?',
+    });
+    if (!optionSelected) return;
+
+    subgraphName = optionSelected.split('___')[0];
+    wbFile = options[optionSelected].wbFile;
+    wbFilePath = options[optionSelected].wbFilePath;
+  }
+
+  const schema = wbFile.subgraphs[subgraphName];
+
+  const accountId = StateManager.instance.globalState_selectedApolloAccount;
+  if (accountId) {
+    log(
+      `Performing schema validation with ${accountId} against subgraph ${subgraphName} in local design ${getFileName(
+        wbFilePath,
+      )}`,
+    );
+    const services = await getAccountGraphs(accountId);
+    if (services?.organization?.graphs) {
+      log(
+        `${services.organization.graphs.length} Supergraphs found in GraphOS`,
+      );
+      const selectedGraph = await window.showQuickPick(
+        services?.organization?.graphs.map((g) => g.title),
+        {
+          title:
+            'Select which graph you would like to check the schema against',
+        },
+      );
+      if (selectedGraph) {
+        log(`Selected Supergraph ${selectedGraph}`);
+        const selected = services.organization.graphs.find(
+          (g) => g.title == selectedGraph,
+        );
+        if (selected) {
+          log(`${selected.variants.length} variants found in GraphOS`);
+          const selectedVariant =
+            selected.variants.length == 1
+              ? selected.variants[0].name
+              : await window.showQuickPick(
+                  selected.variants.map((v) => v.name),
+                  {
+                    title:
+                      'Select which variant you would like to check the schema against',
+                  },
+                );
+
+          log(`Selected variant ${selectedVariant}`);
+          const graphRef = `${selected.id}@${selectedVariant}`;
+          log(`Running schema validation on ${graphRef}`);
+          const results = await Rover.instance.checkSchema({
+            graphRef,
+            subgraphName,
+            schemaPath:
+              schema.schema.file ?? schema.schema.workbench_design ?? '',
+          });
+
+          if (results.reportUrl) {
+            log(`GraphOS Report - ${results.reportUrl}`);
+            log(`Attempting to open GraphOS schema validation report`);
+            await env.openExternal(Uri.parse(results.reportUrl));
+          } else {
+            //Other errors
+            log(`Rover Error Code: ${results.error?.code}`);
+            log(`\tMessage: ${results.error?.message}`);
+            log('\tBuild Errors: ');
+            results.error?.details.build_errors.forEach((be) =>
+              log(`\t\t- ${be.message}`),
+            );
+          }
+        }
+      }
+    }
+  }
+}
+
 export async function mockSubgraph(item: SubgraphTreeItem) {
   await FileProvider.instance.convertSubgraphToDesign(
     item.wbFilePath,
     item.subgraphName,
   );
+}
+
+export async function openInGraphOS(item:StudioGraphTreeItem){
+  const url = `https://studio.apollographql.com/graph/${item.graphId}/home`;
+  await env.openExternal(Uri.parse(url));
 }
 
 export async function stopRoverDevSession(item: SubgraphSummaryTreeItem) {
@@ -200,7 +311,6 @@ export async function editSubgraph(item: SubgraphTreeItem) {
   const subgraphName = item.subgraphName;
 
   try {
-    await FileProvider.instance.load(wbFilePath, false);
     const wbFile = FileProvider.instance.workbenchFileFromPath(wbFilePath);
     const subgraphSchemaConfig = wbFile.subgraphs[subgraphName]?.schema;
     if (subgraphSchemaConfig?.file) {
@@ -311,7 +421,7 @@ export async function addSubgraph(item: SubgraphSummaryTreeItem) {
       );
       const wbFile = FileProvider.instance.workbenchFileFromPath(item.filePath);
       wbFile.subgraphs[subgraphName] = {
-        routing_url: "undefined",
+        routing_url: 'undefined',
         schema: {
           file: newSchemaFilePath,
         },
@@ -378,29 +488,18 @@ export async function newDesign() {
   }
 }
 
-export async function createWorkbenchFromSupergraphVariant(
-  graphVariantTreeItem: StudioGraphVariantTreeItem,
-) {
-  if (!StateManager.workspaceRoot) {
-    await promptOpenFolder();
-  } else {
-    await createWorkbench(
-      graphVariantTreeItem.graphId,
-      graphVariantTreeItem.graphVariant,
-    );
-  }
-}
-
 export async function createWorkbenchFromSupergraph(
-  graphVariantTreeItem: StudioGraphTreeItem,
+  graphVariantTreeItem: StudioGraphTreeItem | StudioGraphVariantTreeItem,
   selectedVariant?: string,
 ) {
   if (!StateManager.workspaceRoot) {
     await promptOpenFolder();
   } else {
     const graphId = graphVariantTreeItem.graphId;
-    const graphVariants = graphVariantTreeItem.variants;
-    if (!selectedVariant) {
+    selectedVariant = (graphVariantTreeItem as StudioGraphVariantTreeItem)?.graphVariant ?? undefined;
+
+    if (!selectedVariant && (graphVariantTreeItem as StudioGraphTreeItem)?.variants) {
+      const graphVariants = (graphVariantTreeItem as StudioGraphTreeItem)?.variants;
       if (graphVariants.length == 0) {
         selectedVariant = 'currrent';
       } else if (graphVariants.length == 1) {
@@ -486,13 +585,13 @@ export async function createWorkbenchFromPreloaded(
 }
 
 export async function promptOpenFolder() {
-  const openFolder = 'Open Folder';
+  const action = 'Open Folder';
   const response = await window.showErrorMessage(
     'You must open a folder to create Apollo Workbench files',
-    openFolder,
+    action,
   );
-  if (response == openFolder)
-    await commands.executeCommand('extension.openFolder');
+  if (response == action)
+    await openFolder();
 }
 
 export async function addFederationDirective(

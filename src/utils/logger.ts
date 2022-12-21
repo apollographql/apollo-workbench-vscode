@@ -4,20 +4,20 @@ import { outputChannel } from "../extension";
 const { name } = require('../../package.json');
 
 export function log(str: string) {
-    console.log(`${name}: ${str}`);
+    outputChannel.appendLine(`${str}`);
 }
 
 //Redirect log to Output tab in extension
-console.log = function (str: string) {
+// console.log = function (str: string) {
 
-    if (str.includes('apollo-workbench:')) {
-        outputChannel.appendLine(str);
-    } else if (str.includes('Checking for composition updates')) {
-    } else if (str.includes('No change in service definitions since last check')) {
-    } else if (str.includes('Schema loaded and ready for execution')) {
-        outputChannel.appendLine(`${name}:${str}`);
-    } else {
-        const strings = str.split('\n');
-        strings.forEach(s => outputChannel.appendLine(`\t${s}`));
-    }
-};
+//     if (str.includes('apollo-workbench:')) {
+//         outputChannel.appendLine(str);
+//     } else if (str.includes('Checking for composition updates')) {
+//     } else if (str.includes('No change in service definitions since last check')) {
+//     } else if (str.includes('Schema loaded and ready for execution')) {
+//         outputChannel.appendLine(`${name}:${str}`);
+//     } else {
+//         const strings = str.split('\n');
+//         strings.forEach(s => outputChannel.appendLine(`\t${s}`));
+//     }
+// };

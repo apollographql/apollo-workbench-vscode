@@ -1,6 +1,7 @@
 import { StateManager } from '../workbench/stateManager';
 import { workspace, window, commands } from 'vscode';
 import { isValidKey } from '../graphql/graphClient';
+import { log } from '../utils/logger';
 
 export function deleteStudioApiKey() {
   StateManager.instance.globalState_userApiKey = '';
@@ -11,13 +12,13 @@ export async function ensureFolderIsOpen() {
     !workspace.workspaceFolders ||
     (workspace.workspaceFolders && !workspace.workspaceFolders[0])
   ) {
-    const openFolder = 'Open Folder';
+    const action = 'Open Folder';
     const response = await window.showErrorMessage(
       'You must open a folder to create Apollo Workbench files',
-      openFolder,
+      action,
     );
-    if (response == openFolder)
-      await commands.executeCommand('extension.openFolder');
+    if (response == action)
+      await openFolder();
   }
 }
 
@@ -26,10 +27,13 @@ export async function enterStudioApiKey() {
     placeHolder: 'Enter User API Key - user:gh.michael-watson:023jr324tj....',
   });
   if (apiKey && (await isValidKey(apiKey))) {
+    log('GraphOS User API key validated and stored succesfully');
     StateManager.instance.globalState_userApiKey = apiKey;
   } else if (apiKey) {
+    log('API key was invalid');
     window.showErrorMessage('Invalid API key entered');
   } else if (apiKey == '') {
+    log('No API key entered, login cancelled.');
     window.setStatusBarMessage('Login cancelled, no API key entered', 2000);
   }
 }

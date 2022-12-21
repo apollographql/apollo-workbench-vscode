@@ -2,10 +2,8 @@ import path from 'path';
 import { commands, Uri, ViewColumn, WebviewPanel, window } from 'vscode';
 import { startRoverDevSession } from '../../commands/local-supergraph-designs';
 import { WorkbenchDiagnostics } from '../diagnosticsManager';
-import { ApolloConfig } from '../file-system/ApolloConfig';
 import { Rover } from '../rover';
 import {
-  OperationSummaryTreeItem,
   OperationTreeItem,
   SubgraphSummaryTreeItem,
 } from '../tree-data-providers/superGraphTreeDataProvider';
