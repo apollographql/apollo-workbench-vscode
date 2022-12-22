@@ -15,6 +15,7 @@ import {
   ProgressLocation,
   ViewColumn,
   env,
+  Location,
 } from 'vscode';
 import { StateManager } from '../workbench/stateManager';
 import {
@@ -43,61 +44,66 @@ import { Rover } from '../workbench/rover';
 import { getFileName } from '../utils/path';
 import { WorkbenchDiagnostics } from '../workbench/diagnosticsManager';
 import { viewOperationDesign } from '../workbench/webviews/operationDesign';
-import { ApolloRemoteSchemaProvider } from '../workbench/docProviders';
-import { result } from 'lodash';
+import {
+  ApolloRemoteSchemaProvider,
+  DesignOperationsDocumentProvider,
+} from '../workbench/docProviders';
 import { openFolder } from './extension';
+import { whichDesign, whichOperation, whichSubgraph } from '../utils/uiHelpers';
 
 let startingMocks = false;
 
-export async function viewOperationDesignSideBySide(item: OperationTreeItem) {
-  const uri = await FileProvider.instance.writeTempOperationFile(
-    item.wbFilePath,
-    item.operationName,
-  );
-  if (item.wbFile.operations[item.operationName].ui_design) {
+export async function viewOperationDesignSideBySide(item?: OperationTreeItem) {
+  const wbFilePath = item ? item.wbFilePath : await whichDesign();
+  if (!wbFilePath) return;
+
+  const operationName = item
+    ? item.operationName
+    : await whichSubgraph(wbFilePath);
+  if (!operationName) return;
+
+  const uri = DesignOperationsDocumentProvider.Uri(wbFilePath, operationName);
+  // await FileProvider.instance.writeTempOperationFile(
+  //   wbFilePath,
+  //   operationName,
+  // );
+  const wbFile = FileProvider.instance.workbenchFileFromPath(wbFilePath);
+  if (wbFile.operations[operationName].ui_design) {
     viewOperationDesign(item);
 
-    await window.showTextDocument(uri, {
-      viewColumn: ViewColumn.Two,
-    });
+    // await workspace.openTextDocument(uri);
+    try {
+      const editor = await window.showTextDocument(uri, {
+        viewColumn: ViewColumn.Two,
+      });
+      console.log(editor);
+    } catch (err) {
+      console.log(err);
+    }
   } else {
-    await window.showTextDocument(uri);
+    const editor = await window.showTextDocument(uri);
+    console.log(editor);
   }
 }
 
-export async function checkSubgraphSchema(item: SubgraphTreeItem) {
-  let subgraphName: string;
-  let wbFile: ApolloConfig;
-  let wbFilePath: string;
+export async function checkSubgraphSchema(item?: SubgraphTreeItem) {
+  const wbFilePath = item ? item.wbFilePath : await whichDesign();
+  if (!wbFilePath) return;
 
-  if (item) {
-    subgraphName = item.subgraphName;
-    wbFilePath = item.wbFilePath;
-    wbFile = FileProvider.instance.workbenchFileFromPath(item.wbFilePath);
-  } else {
-    const options: {
-      [key: string]: { wbFile: ApolloConfig; wbFilePath: string };
-    } = {};
-    const wbFiles = FileProvider.instance.getWorkbenchFiles();
-    wbFiles.forEach((wbFile, wbFilePath) => {
-      Object.keys(wbFile.subgraphs)
-        .sort()
-        .forEach((subgraphName) => {
-          const fileName = getFileName(wbFilePath);
-          options[`${subgraphName}___${fileName}`] = { wbFile, wbFilePath };
-        });
-    });
-    const optionSelected = await window.showQuickPick(Object.keys(options), {
-      title: 'Which subgraph schema would you like to check?',
-    });
-    if (!optionSelected) return;
+  const subgraphName = item
+    ? item.subgraphName
+    : await whichSubgraph(wbFilePath);
+  if (!subgraphName) return;
 
-    subgraphName = optionSelected.split('___')[0];
-    wbFile = options[optionSelected].wbFile;
-    wbFilePath = options[optionSelected].wbFilePath;
-  }
-
+  const wbFile = FileProvider.instance.workbenchFileFromPath(wbFilePath);
   const schema = wbFile.subgraphs[subgraphName];
+
+  if(schema.schema.graphref && !schema.schema.workbench_design){
+    const cantCheckGraphRef = `This schema is just a reference to what is already in GraphOS`;
+    log(cantCheckGraphRef);
+    window.showWarningMessage(cantCheckGraphRef);
+    return;
+  }
 
   const accountId = StateManager.instance.globalState_selectedApolloAccount;
   if (accountId) {
@@ -106,75 +112,92 @@ export async function checkSubgraphSchema(item: SubgraphTreeItem) {
         wbFilePath,
       )}`,
     );
-    const services = await getAccountGraphs(accountId);
-    if (services?.organization?.graphs) {
-      log(
-        `${services.organization.graphs.length} Supergraphs found in GraphOS`,
-      );
-      const selectedGraph = await window.showQuickPick(
-        services?.organization?.graphs.map((g) => g.title),
-        {
-          title:
-            'Select which graph you would like to check the schema against',
-        },
-      );
-      if (selectedGraph) {
-        log(`Selected Supergraph ${selectedGraph}`);
-        const selected = services.organization.graphs.find(
-          (g) => g.title == selectedGraph,
-        );
-        if (selected) {
-          log(`${selected.variants.length} variants found in GraphOS`);
-          const selectedVariant =
-            selected.variants.length == 1
-              ? selected.variants[0].name
-              : await window.showQuickPick(
-                  selected.variants.map((v) => v.name),
-                  {
-                    title:
-                      'Select which variant you would like to check the schema against',
-                  },
-                );
 
-          log(`Selected variant ${selectedVariant}`);
-          const graphRef = `${selected.id}@${selectedVariant}`;
-          log(`Running schema validation on ${graphRef}`);
-          const results = await Rover.instance.checkSchema({
-            graphRef,
-            subgraphName,
-            schemaPath:
-              schema.schema.file ?? schema.schema.workbench_design ?? '',
+    await window.withProgress(
+      { location: ProgressLocation.Notification, cancellable: false },
+      async (progress) => {
+        progress.report({
+          message: `Getting supergraphs from GraphOS...`,
+        });
+        const services = await getAccountGraphs(accountId);
+        if (services?.organization?.graphs) {
+          const logMessage = `${services.organization.graphs.length} Supergraphs found in GraphOS`;
+          log(
+            logMessage,
+          );
+          progress.report({
+            message: logMessage,
+            increment: 50
           });
-
-          if (results.reportUrl) {
-            log(`GraphOS Report - ${results.reportUrl}`);
-            log(`Attempting to open GraphOS schema validation report`);
-            await env.openExternal(Uri.parse(results.reportUrl));
-          } else {
-            //Other errors
-            log(`Rover Error Code: ${results.error?.code}`);
-            log(`\tMessage: ${results.error?.message}`);
-            log('\tBuild Errors: ');
-            results.error?.details.build_errors.forEach((be) =>
-              log(`\t\t- ${be.message}`),
+          const selectedGraph = await window.showQuickPick(
+            services?.organization?.graphs.map((g) => g.title),
+            {
+              title:
+                'Select which graph you would like to check the schema against',
+            },
+          );
+          if (selectedGraph) {
+            log(`Selected Supergraph ${selectedGraph}`);
+            const selected = services.organization.graphs.find(
+              (g) => g.title == selectedGraph,
             );
+            if (selected) {
+              log(`${selected.variants.length} variants found in GraphOS`);
+              const selectedVariant =
+                selected.variants.length == 1
+                  ? selected.variants[0].name
+                  : await window.showQuickPick(
+                      selected.variants.map((v) => v.name),
+                      {
+                        title:
+                          'Select which variant you would like to check the schema against',
+                      },
+                    );
+
+              log(`Selected variant ${selectedVariant}`);
+              const graphRef = `${selected.id}@${selectedVariant}`;
+              log(`Running schema validation on ${graphRef}`);
+              progress.report({message: `Running schema validation on ${graphRef}`, increment: 25});
+              const results = await Rover.instance.checkSchema({
+                graphRef,
+                subgraphName,
+                schemaPath:
+                  schema.schema.file ?? schema.schema.workbench_design ?? '',
+              });
+
+              if (results.reportUrl) {
+                log(`GraphOS Report - ${results.reportUrl}`);
+                log(`Attempting to open GraphOS schema validation report`);
+                await env.openExternal(Uri.parse(results.reportUrl));
+              } else {
+                //Other errors
+                log(`Rover Error Code: ${results.error?.code}`);
+                log(`\tMessage: ${results.error?.message}`);
+                log('\tBuild Errors: ');
+                results.error?.details.build_errors.forEach((be) =>
+                  log(`\t\t- ${be.message}`),
+                );
+              }
+            }
+          } else {
+            progress.report({
+              message: "Cancelled",
+              increment: 50
+            });
           }
         }
-      }
-    }
+      },
+    );
   }
 }
 
-export async function mockSubgraph(item: SubgraphTreeItem) {
-  await FileProvider.instance.convertSubgraphToDesign(
-    item.wbFilePath,
-    item.subgraphName,
-  );
-}
+export async function mockSubgraph(item?: SubgraphTreeItem) {
+  const wbFilePath = item ? item.wbFilePath : await whichDesign();
+  if (!wbFilePath) return;
 
-export async function openInGraphOS(item:StudioGraphTreeItem){
-  const url = `https://studio.apollographql.com/graph/${item.graphId}/home`;
-  await env.openExternal(Uri.parse(url));
+  const subgraphName = item ? item.wbFilePath : await whichSubgraph(wbFilePath);
+  if (!subgraphName) return;
+  await FileProvider.instance.convertSubgraphToDesign(wbFilePath, subgraphName);
 }
 
 export async function stopRoverDevSession(item: SubgraphSummaryTreeItem) {
@@ -182,14 +205,21 @@ export async function stopRoverDevSession(item: SubgraphSummaryTreeItem) {
   window.showInformationMessage('Rover dev stopped');
 }
 
-export async function startRoverDevSession(item: SubgraphSummaryTreeItem) {
+export async function startRoverDevSession(item?: SubgraphSummaryTreeItem) {
   if (startingMocks) return;
   startingMocks = true;
 
+  const wbFilePath = item ? item.wbFilePath : await whichDesign();
+  if (!wbFilePath) {
+    startingMocks = false;
+    return;
+  }
+
+  const wbFile = FileProvider.instance.workbenchFileFromPath(wbFilePath);
   //Check for composition errors
   let errors = 0;
   WorkbenchDiagnostics.instance.diagnosticCollections
-    .get(item.filePath)
+    .get(wbFilePath)
     ?.compositionDiagnostics.forEach(() => errors++);
 
   if (errors == 0) {
@@ -202,11 +232,11 @@ export async function startRoverDevSession(item: SubgraphSummaryTreeItem) {
         },
         async (progress) => {
           //Calculate how many servers to mock
-          const subgraphNames = Object.keys(item.wbFile.subgraphs);
+          const subgraphNames = Object.keys(wbFile.subgraphs);
           const subgraphsToMock: { [name: string]: Subgraph } = {};
           subgraphNames.forEach((s) => {
-            if (item.wbFile.subgraphs[s].schema.workbench_design)
-              subgraphsToMock[s] = item.wbFile.subgraphs[s];
+            if (wbFile.subgraphs[s].schema.workbench_design)
+              subgraphsToMock[s] = wbFile.subgraphs[s];
           });
           const subgraphNamesToMock = Object.keys(subgraphsToMock);
           const numberOfSubgraphsToMock = subgraphNamesToMock.length;
@@ -245,7 +275,7 @@ export async function startRoverDevSession(item: SubgraphSummaryTreeItem) {
           const roverPromises: Promise<void>[] = [];
           for (let i = 0; i < subgraphNames.length; i++) {
             const subgraphName = subgraphNames[i];
-            const subgraph = item.wbFile.subgraphs[subgraphName];
+            const subgraph = wbFile.subgraphs[subgraphName];
             const routingUrl = subgraph.schema.workbench_design
               ? `http://localhost:${Rover.instance.portMapping[subgraphName]}`
               : subgraph.routing_url ??
@@ -259,7 +289,7 @@ export async function startRoverDevSession(item: SubgraphSummaryTreeItem) {
                 if (!schemaPath) {
                   const tempUri =
                     await FileProvider.instance.writeTempSchemaFile(
-                      item.filePath,
+                      wbFilePath,
                       subgraphName,
                     );
                   schemaPath = tempUri?.fsPath;
@@ -291,7 +321,9 @@ export async function startRoverDevSession(item: SubgraphSummaryTreeItem) {
           progress.report({
             message: 'Opening Sandbox',
           });
-          await commands.executeCommand('local-supergraph-designs.sandbox');
+          await commands.executeCommand('local-supergraph-designs.sandbox', {
+            wbFilePath,
+          });
           await new Promise<void>((resolve) => setTimeout(resolve, 500));
         },
       );
@@ -306,9 +338,14 @@ export async function startRoverDevSession(item: SubgraphSummaryTreeItem) {
   startingMocks = false;
 }
 
-export async function editSubgraph(item: SubgraphTreeItem) {
-  const wbFilePath = item.wbFilePath;
-  const subgraphName = item.subgraphName;
+export async function editSubgraph(item?: SubgraphTreeItem) {
+  const wbFilePath = item ? item.wbFilePath : await whichDesign();
+  if (!wbFilePath) return;
+
+  const subgraphName = item
+    ? item.subgraphName
+    : await whichSubgraph(wbFilePath);
+  if (!subgraphName) return;
 
   try {
     const wbFile = FileProvider.instance.workbenchFileFromPath(wbFilePath);
@@ -374,15 +411,12 @@ export async function editSubgraph(item: SubgraphTreeItem) {
   }
 }
 
-export async function viewSubgraphSettings(item: SubgraphTreeItem) {
-  await window.showTextDocument(Uri.parse(item.wbFilePath));
-}
+export async function viewSupergraphSchema(item?: SupergraphTreeItem) {
+  const wbFilePath = item ? item.wbFilePath : await whichDesign();
+  if (!wbFilePath) return;
 
-export async function viewSupergraphSchema(item: SupergraphTreeItem) {
   const supergraphSDL =
-    await FileProvider.instance.refreshWorkbenchFileComposition(
-      item.wbFilePath,
-    );
+    await FileProvider.instance.refreshWorkbenchFileComposition(wbFilePath);
   if (supergraphSDL) {
     const doc = await workspace.openTextDocument({
       content: supergraphSDL,
@@ -400,7 +434,10 @@ export async function viewSupergraphSchema(item: SupergraphTreeItem) {
 export function refreshSupergraphs() {
   StateManager.instance.localSupergraphTreeDataProvider.refresh();
 }
-export async function addSubgraph(item: SubgraphSummaryTreeItem) {
+export async function addSubgraph(item?: SubgraphSummaryTreeItem) {
+  const wbFilePath = item ? item.wbFilePath : await whichDesign();
+  if (!wbFilePath) return;
+
   const subgraphName =
     (await window.showInputBox({
       placeHolder: 'Enter a unique name for the subgraph',
@@ -419,32 +456,58 @@ export async function addSubgraph(item: SubgraphSummaryTreeItem) {
           'extend schema \n\t@link(url: "https://specs.apollo.dev/federation/v2.0", import: ["@key"])\n\ntype Query { \n\tdesignRoot: String\n}',
         ),
       );
-      const wbFile = FileProvider.instance.workbenchFileFromPath(item.filePath);
+      const wbFile = FileProvider.instance.workbenchFileFromPath(wbFilePath);
       wbFile.subgraphs[subgraphName] = {
         routing_url: 'undefined',
         schema: {
           file: newSchemaFilePath,
         },
       };
-      await FileProvider.instance.writeWorkbenchConfig(item.filePath, wbFile);
+      await FileProvider.instance.writeWorkbenchConfig(wbFilePath, wbFile);
     }
   }
 }
-export async function deleteSubgraph(item: SubgraphTreeItem) {
-  const subgraphName = item.subgraphName;
-  const wbFile = FileProvider.instance.workbenchFileFromPath(item.wbFilePath);
+export async function deleteSubgraph(item?: SubgraphTreeItem) {
+  const wbFilePath = item ? item.wbFilePath : await whichDesign();
+  if (!wbFilePath) return;
+  const subgraphName = item
+    ? item.subgraphName
+    : await whichSubgraph(wbFilePath);
+  if (!subgraphName) return;
+
+  const wbFile = FileProvider.instance.workbenchFileFromPath(wbFilePath);
   delete wbFile.subgraphs[subgraphName];
-  await FileProvider.instance.writeWorkbenchConfig(item.wbFilePath, wbFile);
+  await FileProvider.instance.writeWorkbenchConfig(wbFilePath, wbFile);
+}
+
+export async function deleteOperation(item?: OperationTreeItem) {
+  const wbFilePath = item ? item.wbFilePath : await whichDesign();
+  if (!wbFilePath) return;
+
+  const operationName = item
+    ? item.operationName
+    : await whichOperation(wbFilePath);
+  if (!operationName) return;
+
+  const wbFile = FileProvider.instance.workbenchFileFromPath(wbFilePath);
+
+  delete wbFile.operations[operationName];
+  await FileProvider.instance.writeWorkbenchConfig(wbFilePath, wbFile);
 }
 
 export async function addOperation(
-  item: OperationTreeItem | AddDesignOperationTreeItem,
+  item?: OperationTreeItem | AddDesignOperationTreeItem,
 ) {
+  const wbFilePath = item ? item.wbFilePath : await whichDesign();
+  if (!wbFilePath) return;
+
+  const wbFile = FileProvider.instance.workbenchFileFromPath(wbFilePath);
+
   const operationName = await window.showInputBox({
     title: 'Define Operation Name',
   });
   if (operationName) {
-    item.wbFile.operations[operationName] = {
+    wbFile.operations[operationName] = {
       document: `query ${operationName} {\n\tthing: String\n}`,
     };
 
@@ -457,13 +520,10 @@ export async function addOperation(
         prompt:
           'https://my-website.com/images/a.png or /Users/Me/Desktop/a.png',
       });
-      if (uiDesign) item.wbFile.operations[operationName].ui_design = uiDesign;
+      if (uiDesign) wbFile.operations[operationName].ui_design = uiDesign;
     }
 
-    await FileProvider.instance.writeWorkbenchConfig(
-      item.wbFilePath,
-      item.wbFile,
-    );
+    await FileProvider.instance.writeWorkbenchConfig(wbFilePath, wbFile);
   }
 }
 
@@ -488,7 +548,7 @@ export async function newDesign() {
   }
 }
 
-export async function createWorkbenchFromSupergraph(
+export async function newDesignFromGraphOSSupergraph(
   graphVariantTreeItem: StudioGraphTreeItem | StudioGraphVariantTreeItem,
   selectedVariant?: string,
 ) {
@@ -496,10 +556,16 @@ export async function createWorkbenchFromSupergraph(
     await promptOpenFolder();
   } else {
     const graphId = graphVariantTreeItem.graphId;
-    selectedVariant = (graphVariantTreeItem as StudioGraphVariantTreeItem)?.graphVariant ?? undefined;
+    selectedVariant =
+      (graphVariantTreeItem as StudioGraphVariantTreeItem)?.graphVariant ??
+      undefined;
 
-    if (!selectedVariant && (graphVariantTreeItem as StudioGraphTreeItem)?.variants) {
-      const graphVariants = (graphVariantTreeItem as StudioGraphTreeItem)?.variants;
+    if (
+      !selectedVariant &&
+      (graphVariantTreeItem as StudioGraphTreeItem)?.variants
+    ) {
+      const graphVariants = (graphVariantTreeItem as StudioGraphTreeItem)
+        ?.variants;
       if (graphVariants.length == 0) {
         selectedVariant = 'currrent';
       } else if (graphVariants.length == 1) {
@@ -554,33 +620,15 @@ async function createWorkbench(graphId: string, selectedVariant: string) {
 }
 
 export async function exportSupergraphSchema(item: SupergraphTreeItem) {
+  const wbFilePath = item ? item.wbFilePath : await whichDesign();
+  if (!wbFilePath) return;
+
   if (StateManager.workspaceRoot) {
     const exportPath = resolve(
       StateManager.workspaceRoot,
       `${getFileName(item.wbFilePath)}-supergraph-schema.graphql`,
     );
-    await Rover.instance.writeSupergraphSDL(item.wbFilePath, exportPath);
-  }
-}
-
-export async function createWorkbenchFromPreloaded(
-  preloadedItem: PreloadedWorkbenchFile,
-) {
-  if (!StateManager.workspaceRoot) {
-    await promptOpenFolder();
-  } else {
-    const preloadFileDir = join(
-      __dirname,
-      '..',
-      '..',
-      'media',
-      `preloaded-files`,
-      `${preloadedItem.fileName}.apollo-workbench`,
-    );
-    const fileContent = readFileSync(preloadFileDir, { encoding: 'utf-8' });
-    const workbenchFile = JSON.parse(fileContent) as ApolloConfig;
-
-    // FileProvider.instance.createWorkbenchFileLocally(workbenchFile);
+    await Rover.instance.writeSupergraphSDL(wbFilePath, exportPath);
   }
 }
 
@@ -590,8 +638,7 @@ export async function promptOpenFolder() {
     'You must open a folder to create Apollo Workbench files',
     action,
   );
-  if (response == action)
-    await openFolder();
+  if (response == action) await openFolder();
 }
 
 export async function addFederationDirective(

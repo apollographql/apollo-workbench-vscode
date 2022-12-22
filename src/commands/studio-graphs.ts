@@ -1,15 +1,21 @@
 import { StateManager } from '../workbench/stateManager';
 import { StudioOperationTreeItem } from '../workbench/tree-data-providers/apolloStudioGraphOpsTreeDataProvider';
-import { window } from 'vscode';
+import { env, Uri, window } from 'vscode';
 import { ApolloStudioOperationsProvider } from '../workbench/docProviders';
 import { getUserMemberships } from '../graphql/graphClient';
-import { enterStudioApiKey } from './extension';
+import { enterGraphOSUserApiKey } from './extension';
+import { StudioGraphTreeItem } from '../workbench/tree-data-providers/apolloStudioGraphsTreeDataProvider';
+
+export async function openInGraphOS(item: StudioGraphTreeItem) {
+  const url = `https://studio.apollographql.com/graph/${item.graphId}/home`;
+  await env.openExternal(Uri.parse(url));
+}
 
 export function refreshStudioGraphs() {
   StateManager.instance.apolloStudioGraphsProvider.refresh();
 }
 
-export async function loadOperations(
+export async function loadOperationsFromGraphOS(
   graphTreeItem: any,
   graphVariant?: string,
 ) {
@@ -26,7 +32,7 @@ export async function viewStudioOperation(operation: StudioOperationTreeItem) {
 }
 
 export async function switchOrg() {
-  if (!StateManager.instance.globalState_userApiKey) await enterStudioApiKey();
+  if (!StateManager.instance.globalState_userApiKey) await enterGraphOSUserApiKey();
 
   let accountId = '';
   const myAccountIds = await getUserMemberships();

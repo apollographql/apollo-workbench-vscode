@@ -1,23 +1,107 @@
-import { readFileSync } from 'fs';
 import { getOperationAST, parse, print } from 'graphql';
-import path from 'path';
-import { TextDecoder } from 'util';
-import { TextDocumentContentProvider, Uri, workspace } from 'vscode';
+import { resolve } from 'path';
+import { TextDecoder, TextEncoder } from 'util';
+import {
+  Disposable,
+  EventEmitter,
+  FileChangeEvent,
+  FileStat,
+  FileSystemProvider,
+  FileType,
+  TextDocumentContentProvider,
+  TreeItem,
+  Uri,
+  workspace,
+} from 'vscode';
 import { FileProvider } from './file-system/fileProvider';
 
-export class GettingStartedDocProvider implements TextDocumentContentProvider {
-  static scheme = 'getting-started';
-  provideTextDocumentContent(uri: Uri): string {
-    const gettingStartedPath = path.join(
-      __filename,
-      '..',
-      '..',
-      '..',
-      'media',
-      'getting-started',
-      uri.path,
+export class DesignOperationsDocumentProvider implements FileSystemProvider {
+  static scheme = 'workbench';
+  static Uri(wbFilePath: string, operationName: string): Uri {
+    return Uri.parse(
+      `${DesignOperationsDocumentProvider.scheme}:${resolve(operationName)}.graphql?${wbFilePath}`,
     );
-    return readFileSync(gettingStartedPath, { encoding: 'utf-8' });
+  }
+
+  onDidChangeEmitter = new EventEmitter<FileChangeEvent[]>();
+  onDidChangeFile = this.onDidChangeEmitter.event;
+
+  readFile(uri: Uri): Uint8Array | Thenable<Uint8Array> {
+    const { operationName, wbFilePath } = this.getDetails(uri);
+    const wbFile = FileProvider.instance.workbenchFileFromPath(wbFilePath);
+    const document = wbFile.operations[operationName].document;
+
+    return new TextEncoder().encode(print(parse(document)));
+  }
+  writeFile(
+    uri: Uri,
+    content: Uint8Array,
+    options: { readonly create: boolean; readonly overwrite: boolean },
+  ): void | Thenable<void> {
+    const { operationName, wbFilePath } = this.getDetails(uri);
+    const formattedDoc = print(parse(content.toString()));
+    const wbFile = FileProvider.instance.workbenchFileFromPath(wbFilePath);
+
+    if (wbFile.operations[operationName].document)
+      wbFile.operations[operationName].document = formattedDoc;
+    else wbFile.operations[operationName] = { document: formattedDoc };
+
+    return FileProvider.instance.writeWorkbenchConfig(wbFilePath, wbFile, false);
+  }
+
+  private getDetails(uri: Uri) {
+    return {
+      operationName: uri.path.split('.')[0].replaceAll('/',''),
+      wbFilePath: uri.query,
+    };
+  }
+
+  //Methods not used
+  watch(
+    uri: Uri,
+    options: {
+      readonly recursive: boolean;
+      readonly excludes: readonly string[];
+    },
+  ): Disposable {
+    return new Disposable(() => undefined);
+  }
+  stat(uri: Uri): FileStat | Thenable<FileStat> {
+    const now = Date.now();
+    return {
+      ctime: now,
+      mtime: now,
+      size: 0,
+      type: FileType.File,
+    };
+  }
+  readDirectory(
+    uri: Uri,
+  ): [string, FileType][] | Thenable<[string, FileType][]> {
+    throw new Error('Method not implemented.');
+  }
+  createDirectory(uri: Uri): void | Thenable<void> {
+    throw new Error('Method not implemented.');
+  }
+  delete(
+    uri: Uri,
+    options: { readonly recursive: boolean },
+  ): void | Thenable<void> {
+    throw new Error('Method not implemented.');
+  }
+  rename(
+    oldUri: Uri,
+    newUri: Uri,
+    options: { readonly overwrite: boolean },
+  ): void | Thenable<void> {
+    throw new Error('Method not implemented.');
+  }
+  copy?(
+    source: Uri,
+    destination: Uri,
+    options: { readonly overwrite: boolean },
+  ): void | Thenable<void> {
+    throw new Error('Method not implemented.');
   }
 }
 
@@ -30,6 +114,7 @@ export class ApolloStudioOperationsProvider
       `${ApolloStudioOperationsProvider.scheme}:${operationName}.graphql?${document}`,
     );
   }
+
   provideTextDocumentContent(uri: Uri): string {
     const operationName = uri.path.split('.graphql')[0];
     const doc = parse(uri.query);

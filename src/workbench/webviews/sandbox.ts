@@ -1,7 +1,12 @@
 import path from 'path';
 import { commands, Uri, ViewColumn, WebviewPanel, window } from 'vscode';
 import { startRoverDevSession } from '../../commands/local-supergraph-designs';
+import { log } from '../../utils/logger';
+import { getFileName } from '../../utils/path';
+import { whichDesign, whichOperation } from '../../utils/uiHelpers';
 import { WorkbenchDiagnostics } from '../diagnosticsManager';
+import { ApolloConfig } from '../file-system/ApolloConfig';
+import { FileProvider } from '../file-system/fileProvider';
 import { Rover } from '../rover';
 import {
   OperationTreeItem,
@@ -13,27 +18,29 @@ let panel: WebviewPanel | undefined;
 export async function openSandbox(item?: OperationTreeItem, document?: string) {
   let errors = 0;
   WorkbenchDiagnostics.instance.diagnosticCollections
-    .get(item?.wbFilePath ?? "")
+    .get(item?.wbFilePath ?? '')
     ?.compositionDiagnostics.forEach(() => errors++);
   if (errors > 0) {
     commands.executeCommand('workbench.action.showErrorsWarnings');
-    window.showErrorMessage("Unable to start design due to composition errors");
+    window.showErrorMessage('Unable to start design due to composition errors');
     return;
   }
+  const wbFilePath = item ? item.wbFilePath : await whichDesign();
+  if (!wbFilePath) return;
+
+  const operationName = item
+    ? item.operationName
+    : await whichOperation(wbFilePath);
+
+  const wbFile = FileProvider.instance.workbenchFileFromPath(wbFilePath);
 
   if (!Rover.instance.primaryDevTerminal) {
-    if (item)
-      await startRoverDevSession(
-        new SubgraphSummaryTreeItem(item.wbFile, item.wbFilePath),
-      );
-    else {
-      window.showErrorMessage('Unable to start design, no design running.');
-      return;
-    }
+    await startRoverDevSession(
+      new SubgraphSummaryTreeItem(wbFile.subgraphs, wbFilePath),
+    );
   }
 
-  if (item && !document)
-    document = item.wbFile.operations[item.operationName].document;
+  if (!document && operationName) document = wbFile.operations[operationName].document;
 
   await open(document);
 }

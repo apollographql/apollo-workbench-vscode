@@ -1,4 +1,4 @@
-query GetGraphSchemas($id: ID!, $graphVariant: String!) {
+query GetGraphSchemasForNewDesign($id: ID!, $graphVariant: String!) {
   graph(id: $id) {
     variant(name: $graphVariant) {
       subgraphs {

@@ -20,7 +20,7 @@ import {
 } from '../_generated_/typed-document-nodes';
 import { StateManager } from '../workbench/stateManager';
 import { getOperationName } from '@apollo/client/utilities';
-
+ 
 const getGraphOperations = gql`
   query GraphOperations($id: ID!, $from: Timestamp!, $variant: String) {
     service(id: $id) {

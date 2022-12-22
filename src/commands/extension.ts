@@ -22,7 +22,7 @@ export async function ensureFolderIsOpen() {
   }
 }
 
-export async function enterStudioApiKey() {
+export async function enterGraphOSUserApiKey() {
   const apiKey = await window.showInputBox({
     placeHolder: 'Enter User API Key - user:gh.michael-watson:023jr324tj....',
   });
@@ -36,19 +36,6 @@ export async function enterStudioApiKey() {
     log('No API key entered, login cancelled.');
     window.setStatusBarMessage('Login cancelled, no API key entered', 2000);
   }
-}
-
-export async function gettingStarted(item) {
-  window
-    .showTextDocument(item.uri)
-    .then(() => commands.executeCommand('markdown.showPreviewToSide'))
-    .then(() =>
-      commands.executeCommand('workbench.action.closeEditorsInOtherGroups'),
-    )
-    .then(
-      () => undefined,
-      (e) => console.error(e),
-    );
 }
 
 export async function openFolder() {

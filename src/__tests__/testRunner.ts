@@ -1,6 +1,6 @@
 import * as path from 'path';
 
-import { runTests } from 'vscode-test';
+import { runTests } from '@vscode/test-electron';
 
 //Function for running the tests
 //  @param `loadFolder` will load the testing folder and run the associated tests
@@ -16,13 +16,12 @@ export async function testRunner(loadFolder = false) {
       testResults = await runTests({
         extensionDevelopmentPath,
         extensionTestsPath,
-        launchArgs: [testWorkbenchFolder, '--disable-extensions'],
+        launchArgs: [testWorkbenchFolder],
       });
     else
       testResults = await runTests({
         extensionDevelopmentPath,
-        extensionTestsPath,
-        launchArgs: ['--disable-extensions'],
+        extensionTestsPath
       });
 
     return testResults;

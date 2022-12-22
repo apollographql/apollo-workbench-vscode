@@ -10,7 +10,7 @@ import {
 } from 'vscode';
 import { newDesign } from '../../commands/local-supergraph-designs';
 import { StateManager } from '../stateManager';
-import { ApolloConfig, Operation } from '../file-system/ApolloConfig';
+import { ApolloConfig, Operation, Subgraph } from '../file-system/ApolloConfig';
 import { getFileName } from '../../utils/path';
 
 const media = (file: string) =>
@@ -60,10 +60,9 @@ export class LocalSupergraphTreeDataProvider
         case 'supergraphTreeItem': {
           const supergraphItem = element as SupergraphTreeItem;
           const federationIdentifierItem = new FederationVersionItem(
-            supergraphItem.wbFile,
-            supergraphItem.wbFilePath,
+            supergraphItem.wbFile.federation_version,
           );
-          const treeItems = [
+          const treeItems: any[] = [
             federationIdentifierItem,
             supergraphItem.subgraphsChild,
           ];
@@ -71,10 +70,7 @@ export class LocalSupergraphTreeDataProvider
             treeItems.push(supergraphItem.operationsChild);
           } else {
             treeItems.push(
-              new AddDesignOperationTreeItem(
-                supergraphItem.wbFile,
-                supergraphItem.wbFilePath,
-              ),
+              new AddDesignOperationTreeItem(supergraphItem.wbFilePath),
             );
           }
 
@@ -107,8 +103,14 @@ export class SupergraphTreeItem extends TreeItem {
       getFileName(wbFilePath) ?? 'unknown',
       TreeItemCollapsibleState.Expanded,
     );
-    this.subgraphsChild = new SubgraphSummaryTreeItem(wbFile, wbFilePath);
-    this.operationsChild = new OperationSummaryTreeItem(wbFile, wbFilePath);
+    this.subgraphsChild = new SubgraphSummaryTreeItem(
+      wbFile.subgraphs,
+      wbFilePath,
+    );
+    this.operationsChild = new OperationSummaryTreeItem(
+      wbFile.operations,
+      wbFilePath,
+    );
     this.tooltip = (this.label as string) ?? '';
 
     this.contextValue = 'supergraphTreeItem';
@@ -118,21 +120,21 @@ export class SubgraphSummaryTreeItem extends TreeItem {
   subgraphs: TreeItem[] = new Array<TreeItem>();
 
   constructor(
-    public readonly wbFile: ApolloConfig,
-    public readonly filePath: string,
+    private readonly subgraphConfigs: { [subgraphName: string]: Subgraph },
+    public readonly wbFilePath: string,
   ) {
     super(
-      `${Object.keys(wbFile.subgraphs).length} subgraphs`,
+      `${Object.keys(subgraphConfigs).length} subgraphs`,
       StateManager.settings_localDesigns_expandSubgraphsByDefault
         ? TreeItemCollapsibleState.Expanded
         : TreeItemCollapsibleState.Collapsed,
     );
 
-    this.tooltip = `${Object.keys(wbFile.subgraphs).length} Subgraphs`;
+    this.tooltip = `${Object.keys(subgraphConfigs).length} Subgraphs`;
     this.contextValue = 'subgraphSummaryTreeItem';
 
-    Object.keys(wbFile.subgraphs).forEach((subgraphName) => {
-      this.subgraphs.push(new SubgraphTreeItem(subgraphName, filePath));
+    Object.keys(subgraphConfigs).forEach((subgraphName) => {
+      this.subgraphs.push(new SubgraphTreeItem(subgraphName, wbFilePath));
     });
     this.iconPath = {
       light: media('subgraph.svg'),
@@ -161,10 +163,7 @@ export class SubgraphTreeItem extends TreeItem {
   }
 }
 export class AddDesignOperationTreeItem extends TreeItem {
-  constructor(
-    public readonly wbFile: ApolloConfig,
-    public readonly wbFilePath: string,
-  ) {
+  constructor(public readonly wbFilePath: string) {
     super(`Add operation to design`);
     this.tooltip = `Add a GraphQL operation and UI design to your workbench design`;
     this.contextValue = 'addDesignOperationTreeItem';
@@ -179,31 +178,37 @@ export class OperationSummaryTreeItem extends TreeItem {
   operations: TreeItem[] = new Array<TreeItem>();
 
   constructor(
-    public readonly wbFile: ApolloConfig,
+    private readonly operationConfigs: {
+      [operationName: string]: Operation;
+    } = {},
     public readonly wbFilePath: string,
   ) {
     super(
-      `${Object.keys(wbFile.operations ?? []).length} Operations`,
+      `${Object.keys(operationConfigs ?? []).length} Operations`,
       StateManager.settings_localDesigns_expandOperationsByDefault
         ? TreeItemCollapsibleState.Expanded
         : TreeItemCollapsibleState.Collapsed,
     );
 
-    this.tooltip = `${Object.keys(wbFile.operations ?? []).length} operations`;
+    this.tooltip = `${Object.keys(operationConfigs ?? []).length} operations`;
     this.contextValue = 'operationSummaryTreeItem';
 
-    Object.keys(wbFile.operations ?? []).forEach((operationName) =>
+    Object.keys(operationConfigs ?? []).forEach((operationName) =>
       this.operations.push(
-        new OperationTreeItem(wbFile, wbFilePath, operationName),
+        new OperationTreeItem(
+          wbFilePath,
+          operationName,
+          operationConfigs[operationName],
+        ),
       ),
     );
   }
 }
 export class OperationTreeItem extends TreeItem {
   constructor(
-    public readonly wbFile: ApolloConfig,
     public readonly wbFilePath: string,
     public readonly operationName: string,
+    public readonly operationConfig: Operation,
   ) {
     super(operationName, TreeItemCollapsibleState.None);
 
@@ -215,18 +220,16 @@ export class OperationTreeItem extends TreeItem {
       arguments: [this],
     };
 
-    if (this.wbFile.operations[operationName].document.includes('mutation'))
+    if (operationConfig.document.includes('mutation'))
       this.iconPath = media('m.svg');
     else this.iconPath = media('q.svg');
   }
 }
+
 export class FederationVersionItem extends TreeItem {
-  constructor(
-    public readonly wbFile: ApolloConfig,
-    public readonly wbFilePath: string,
-  ) {
+  constructor(public readonly federation_version: string = '2') {
     super(
-      `Apollo Federation v${wbFile.federation_version ?? '2'}`,
+      `Apollo Federation v${federation_version}`,
       TreeItemCollapsibleState.None,
     );
 

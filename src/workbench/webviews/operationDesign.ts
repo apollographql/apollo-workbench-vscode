@@ -6,6 +6,7 @@ import {
   window,
   workspace,
 } from 'vscode';
+import { whichDesign, whichOperation } from '../../utils/uiHelpers';
 import { FileProvider } from '../file-system/fileProvider';
 import { StateManager } from '../stateManager';
 import { OperationTreeItem } from '../tree-data-providers/superGraphTreeDataProvider';
@@ -62,8 +63,16 @@ async function viewDesignImageFromFile(path: string, operationName?: string) {
   }
 }
 
-export async function viewOperationDesign(item: OperationTreeItem) {
-  const operation = item.wbFile.operations[item.operationName];
+export async function viewOperationDesign(item?: OperationTreeItem) {
+  const wbFilePath = item ? item.wbFilePath : await whichDesign();
+  if (!wbFilePath) return;
+  const operationName = item
+    ? item.operationName
+    : await whichOperation(wbFilePath);
+  if (!operationName) return;
+
+  const wbFile = FileProvider.instance.workbenchFileFromPath(wbFilePath);
+  const operation = wbFile.operations[operationName];
   if (!operation.ui_design) {
     const response = await window.showInformationMessage(
       `No UI design saved for operation`,
@@ -75,12 +84,9 @@ export async function viewOperationDesign(item: OperationTreeItem) {
         prompt:
           'https://my-website.com/images/a.png or /Users/Me/Desktop/a.png',
       });
-      if (uiDesign) item.wbFile.operations[item.operationName].ui_design = uiDesign;
+      if (uiDesign) wbFile.operations[operationName].ui_design = uiDesign;
 
-      await FileProvider.instance.writeWorkbenchConfig(
-        item.wbFilePath,
-        item.wbFile,
-      );
+      await FileProvider.instance.writeWorkbenchConfig(wbFilePath, wbFile);
 
       await viewOperationDesign(item);
     }

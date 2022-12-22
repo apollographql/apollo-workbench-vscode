@@ -1,5 +1,5 @@
 import * as assert from 'assert';
-import { suite, it } from 'mocha';
+import { suite, before, afterEach } from 'mocha';
 import {
   activateExtension,
   cleanupWorkbenchFiles,

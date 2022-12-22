@@ -300,14 +300,14 @@ export class FileProvider {
   async writeWorkbenchConfig(
     path: string,
     wbFile: ApolloConfig,
-    shouldCompose = true,
+    shouldRefresh = true,
   ) {
     await workspace.fs.writeFile(
       Uri.parse(path),
       new TextEncoder().encode(dump(wbFile)),
     );
 
-    if (shouldCompose)
+    if (shouldRefresh)
       StateManager.instance.localSupergraphTreeDataProvider.refresh();
   }
 

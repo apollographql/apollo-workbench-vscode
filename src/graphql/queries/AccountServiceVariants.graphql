@@ -1,4 +1,4 @@
-query AccountServiceVariants($accountId: ID!) {
+query AccountGraphVariants($accountId: ID!) {
   organization(id: $accountId) {
     name
     graphs(includeDeleted: false) {

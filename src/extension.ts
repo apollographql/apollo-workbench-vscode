@@ -17,31 +17,29 @@ import { FederationCodeActionProvider } from './workbench/federationCodeActionPr
 import {
   ApolloRemoteSchemaProvider,
   ApolloStudioOperationsProvider,
-  GettingStartedDocProvider,
+  DesignOperationsDocumentProvider,
 } from './workbench/docProviders';
-import { addToWorkbench } from './commands/studio-operations';
+import { addToDesign } from './commands/studio-operations';
 import {
   ensureFolderIsOpen,
-  openFolder,
-  enterStudioApiKey,
-  gettingStarted,
-  deleteStudioApiKey,
+  enterGraphOSUserApiKey as login,
+  deleteStudioApiKey as logout,
 } from './commands/extension';
 import {
-  refreshStudioGraphs,
-  loadOperations,
+  refreshStudioGraphs as refreshSupergraphsFromGraphOS,
+  loadOperationsFromGraphOS,
   viewStudioOperation,
   switchOrg,
+  openInGraphOS,
 } from './commands/studio-graphs';
 import {
-  createWorkbenchFromPreloaded,
   editSubgraph,
   deleteSubgraph,
   refreshSupergraphs,
   addSubgraph,
   viewSupergraphSchema,
   newDesign,
-  createWorkbenchFromSupergraph,
+  newDesignFromGraphOSSupergraph,
   exportSupergraphSchema,
   addFederationDirective,
   startRoverDevSession,
@@ -50,7 +48,7 @@ import {
   viewOperationDesignSideBySide,
   addOperation,
   checkSubgraphSchema,
-  openInGraphOS,
+  deleteOperation,
 } from './commands/local-supergraph-designs';
 import { Rover } from './workbench/rover';
 import { viewOperationDesign } from './workbench/webviews/operationDesign';
@@ -95,9 +93,8 @@ export async function activate(context: ExtensionContext) {
   commands.registerCommand('extension.ensureFolderIsOpen', ensureFolderIsOpen);
   commands.executeCommand('extension.ensureFolderIsOpen');
   //Global Extension Commands
-  commands.registerCommand('extension.enterStudioApiKey', enterStudioApiKey);
-  commands.registerCommand('extension.deleteStudioApiKey', deleteStudioApiKey);
-  commands.registerCommand('extension.gettingStarted', gettingStarted);
+  commands.registerCommand('extension.login', login);
+  commands.registerCommand('extension.logout', logout);
 
   //*Local Supergraph Designs TreeView
   //**Navigation Menu Commands
@@ -135,12 +132,12 @@ export async function activate(context: ExtensionContext) {
     mockSubgraph,
   );
   commands.registerCommand(
-    'local-supergraph-designs.startMocks',
+    'local-supergraph-designs.startRoverDevSession',
     startRoverDevSession,
   );
 
   commands.registerCommand(
-    'local-supergraph-designs.stopMocks',
+    'local-supergraph-designs.stopRoverDevSession',
     stopRoverDevSession,
   );
 
@@ -159,7 +156,12 @@ export async function activate(context: ExtensionContext) {
       addOperation,
     ),
   );
-
+  context.subscriptions.push(
+    commands.registerCommand(
+      'local-supergraph-designs.deleteOperation',
+      deleteOperation,
+    ),
+  );
   context.subscriptions.push(
     commands.registerCommand(
       'local-supergraph-designs.viewOperationDesign',
@@ -172,33 +174,28 @@ export async function activate(context: ExtensionContext) {
     addFederationDirective,
   );
   //Apollo Studio Graphs Commands
-  commands.registerCommand('studio-graphs.refresh', refreshStudioGraphs);
   commands.registerCommand(
-    'studio-graphs.openInGraphOS',
-    openInGraphOS,
+    'studio-graphs.refreshSupergraphsFromGraphOS',
+    refreshSupergraphsFromGraphOS,
+  );
+  commands.registerCommand('studio-graphs.openInGraphOS', openInGraphOS);
+  commands.registerCommand(
+    'studio-graphs.newDesignFromGraphOSSupergraph',
+    newDesignFromGraphOSSupergraph,
   );
   commands.registerCommand(
-    'studio-graphs.createWorkbenchFromSupergraph',
-    createWorkbenchFromSupergraph,
+    'studio-graphs.loadOperationsFromGraphOS',
+    loadOperationsFromGraphOS,
   );
-  commands.registerCommand(
-    'studio-graphs.createWorkbenchFromPreloaded',
-    createWorkbenchFromPreloaded,
-  );
-  commands.registerCommand('studio-graphs.loadOperations', loadOperations);
   commands.registerCommand(
     'studio-graphs.viewStudioOperation',
     viewStudioOperation,
   );
   commands.registerCommand('studio-graphs.switchOrg', switchOrg);
   //Apollo Studio Graph Operations Commands
-  commands.registerCommand('studio-operations.addToWorkbench', addToWorkbench);
+  commands.registerCommand('studio-operations.addToDesign', addToDesign);
 
   //Workspace - Register Providers and Events
-  workspace.registerTextDocumentContentProvider(
-    GettingStartedDocProvider.scheme,
-    new GettingStartedDocProvider(),
-  );
   workspace.registerTextDocumentContentProvider(
     ApolloStudioOperationsProvider.scheme,
     new ApolloStudioOperationsProvider(),
@@ -207,10 +204,17 @@ export async function activate(context: ExtensionContext) {
     ApolloRemoteSchemaProvider.scheme,
     new ApolloRemoteSchemaProvider(),
   );
+
+  workspace.registerFileSystemProvider(
+    DesignOperationsDocumentProvider.scheme,
+    new DesignOperationsDocumentProvider(),
+    {
+      isCaseSensitive: true,
+    },
+  );
   workspace.onDidDeleteFiles((e) => {
     let deletedWorkbenchFile = false;
     e.files.forEach((f) => {
-      
       const wbFile = FileProvider.instance.workbenchFileFromPath(f.fsPath);
       if (wbFile) deletedWorkbenchFile = true;
     });

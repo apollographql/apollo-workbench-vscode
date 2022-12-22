@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { suite, after, before } from 'mocha';
 
 import { activateExtension } from './helpers';
 

@@ -3,7 +3,7 @@ import { FileProvider } from '../workbench/file-system/fileProvider';
 import { window } from 'vscode';
 import { getFileName } from '../utils/path';
 
-export async function addToWorkbench(op: StudioOperationTreeItem) {
+export async function addToDesign(op: StudioOperationTreeItem) {
   const supergraphs = FileProvider.instance.getWorkbenchFiles();
   const supergraphNames: { [subgraphName: string]: string } = {};
   supergraphs.forEach((wbFile, wbFilePath) => {

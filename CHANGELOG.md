@@ -1,11 +1,19 @@
 ## Apollo Workbench VSCode 3.0
 
+- No more JSON blog in `.apollo-workbench` files - Workbench now uses the `yaml` file used by the [Apollo Router](https://www.apollographql.com/docs/router)
+- All `@apollo/...` libraries associated with Federation have been removed. Apollo Workbench now just uses `rover`.
+  - Starting a design locally now uses `rover dev` and Apollo Explorer
+    - Apollo Explorer is exposed inside extension - operation building and query plan viewing are in Explorer now.
+  - 
 - Federation 2 support
-- Support for `@link` and all Federation directives with quick actions
+  - Support for `@link` and all Federation directives with quick actions
+- Operations associated with designs support an associated image by a file pointer or `https` url
 
 A number of breaking changes were made to simplify the workbench code base. Various functionality has begun to migrate to `rover` and with a smaller codebase, workbench will be more maintainable. If there are features missing that you previously used, please open an issue to start a community conversation around it being re-introduced .
 
 ### Breaking Changes
+
+- Changed workbench design files from `.apollo-workbench` to the `yaml` file used by the [Apollo Router](https://www.apollographql.com/docs/router)
 
 - Remove Federation 1 support. Downgrade to Workbench 2.x to use Federation 1
 - Removed "export project" capabilities in favor of `rover template` features
