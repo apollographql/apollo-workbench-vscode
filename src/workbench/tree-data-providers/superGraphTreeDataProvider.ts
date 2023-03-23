@@ -66,7 +66,7 @@ export class LocalSupergraphTreeDataProvider
             federationIdentifierItem,
             supergraphItem.subgraphsChild,
           ];
-          if (Object.keys(supergraphItem.wbFile.operations).length > 0) {
+          if (supergraphItem.wbFile.operations && Object.keys(supergraphItem.wbFile.operations).length > 0) {
             treeItems.push(supergraphItem.operationsChild);
           } else {
             treeItems.push(

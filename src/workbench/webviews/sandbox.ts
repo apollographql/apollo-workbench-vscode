@@ -57,12 +57,13 @@ async function open(document?: string) {
       ViewColumn.One,
       {
         enableScripts: true,
-      },
+        retainContextWhenHidden: true,
+      }
     );
     panel.iconPath = Uri.parse(
       path.join(__filename, '..', '..', 'media', 'logo-apollo.svg'),
     );
-
+      
     panel.onDidDispose(() => (panel = undefined));
   }
 
@@ -74,6 +75,7 @@ async function open(document?: string) {
   await new Promise<void>((resolve) => setTimeout(resolve, 500));
 
   panel.reveal(ViewColumn.One, false);
+
 }
 
 function getWebviewContent(url: string) {

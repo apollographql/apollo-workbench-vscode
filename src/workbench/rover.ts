@@ -28,19 +28,52 @@ export class Rover {
   primaryDevTerminal: Terminal | undefined;
   private secondaryDevTerminals: Terminal[] = [];
 
-  async compose(pathToConfig: string) {
-    const result = await new Promise<string>((resolve, reject) => {
-      const configProfile = StateManager.settings_roverConfigProfile;
+  private async execute(command: string, json = true, addProfile = true) {
+    let cmd = json ? `${command} --output=json` : command;
+
+    if (addProfile && StateManager.settings_roverConfigProfile != '')
+      cmd += ` --profile=${StateManager.settings_roverConfigProfile}`;
+
+    log(`Rover Execution: ${cmd}`);
+
+    if (process.platform !== 'win32') {
+      //workaround, source rover binary from install location
+      //MacOS will spawn a non-interactive non-login shell using bash (even if you use zsh for defaul)
+      //  Since it is non-login, it won't read .bashrc, .bash_profile or .profile
+      //  We shouldn't have to do this, but the user could be in a situation where rover isn't in the $PATH
+      //    I'm not sure why this can happen, but it happened to me when I was messing around with NVM
+      //  TODO: Make this a osx specific setting in VSCode, then test in Windows
+      cmd = `source /$HOME/.rover/env && ${cmd}`;
+    }
+
+    return await new Promise<string | undefined>((resolve, reject) => {
       exec(
-        configProfile
-          ? `rover supergraph compose --config="${pathToConfig}" --output=json --profile=${configProfile}`
-          : `rover supergraph compose --config="${pathToConfig}" --output=json`,
+        cmd,
         {},
         (_error: ExecException | null, stdout: string, _stderr: string) => {
-          resolve(stdout);
+          if (stdout) resolve(stdout);
+          else if (_stderr) {
+            log(`\tRover Error: ${_stderr}`);
+            resolve(undefined);
+          } else if (_error) {
+            log(`\tRover Error: ${_stderr ?? _error.message}`);
+            resolve(undefined);
+          }
         },
       );
     });
+  }
+
+  async compose(pathToConfig: string) {
+    const result = await this.execute(
+      `rover supergraph compose --config="${pathToConfig}"`,
+    );
+
+    if (result == undefined)
+      return {
+        data: { success: false },
+        error: { message: 'Rover command failed' },
+      } as CompositionResults;
 
     const compResults = JSON.parse(result) as CompositionResults;
 
@@ -52,20 +85,25 @@ export class Rover {
     subgraphName: string;
     schemaPath: string;
   }) {
-    const result = await new Promise<string>((resolve, reject) => {
-      const configProfile = StateManager.settings_roverConfigProfile;
-      const command = configProfile
-        ? `rover subgraph check ${input.graphRef} --schema=${input.schemaPath} --name=${input.subgraphName} --output=json --profile=${configProfile}`
-        : `rover subgraph check ${input.graphRef} --schema=${input.schemaPath} --name=${input.subgraphName} --output=json`;
-      this.logCommand(command);
-      exec(
-        command,
-        {},
-        (_error: ExecException | null, stdout: string, _stderr: string) => {
-          resolve(stdout);
+    const result = await this.execute(
+      `rover subgraph check ${input.graphRef} --schema=${input.schemaPath} --name=${input.subgraphName}`,
+    );
+
+    if (result == undefined)
+      return {
+        reportUrl: '',
+        compResults: {
+          data: { success: false },
+          error: { message: 'Rover command failed' },
         },
-      );
-    });
+        error: {
+          code: '',
+          message: 'Rover command failed',
+          details: {
+            build_errors: [],
+          },
+        },
+      };
 
     const compResults = JSON.parse(result) as CompositionResults;
     const reportUrl = ((compResults.data as any)?.target_url as string) ?? '';
@@ -74,17 +112,9 @@ export class Rover {
   }
 
   async writeSupergraphSDL(pathToConfig: string, pathToSaveTo: string) {
-    const command = `rover supergraph compose --config=${pathToConfig} > ${pathToSaveTo}`;
-    this.logCommand(command);
-    await new Promise<string>((resolve, reject) => {
-      exec(
-        command,
-        {},
-        (_error: ExecException | null, stdout: string, _stderr: string) => {
-          resolve(stdout);
-        },
-      );
-    });
+    await this.execute(
+      `rover supergraph compose --config=${pathToConfig} > ${pathToSaveTo}`,
+    );
   }
 
   async subgraphFetch(subgraph: Subgraph) {
@@ -104,70 +134,29 @@ export class Rover {
   }
 
   async subgraphGraphOSFetch(graphRef: string, subgraph: string) {
-    const configProfile = StateManager.settings_roverConfigProfile;
-    const command = configProfile
-    ? `rover subgraph fetch ${graphRef} --name=${subgraph} --profile=${configProfile}`
-    : `rover subgraph fetch ${graphRef} --name=${subgraph}`;
-    this.logCommand(command);
-    const result = await new Promise<string>((resolve, reject) => {
-      exec(
-        command,
-        {},
-        (_error: ExecException | null, stdout: string, _stderr: string) => {
-          resolve(stdout);
-        },
-      );
-    });
+    const result = await this.execute(
+      `rover subgraph fetch ${graphRef} --name=${subgraph}`,
+      false,
+    );
 
-    return result as string;
+    return result ? result : '';
   }
   async subgraphIntrospect(url: string) {
-    let sdl = await new Promise<string | boolean>((resolve, reject) => {
-      const command = `rover subgraph introspect ${url}`;
-      this.logCommand(command);
-      exec(
-        command,
-        {},
-        (error: ExecException | null, stdout: string, _stderr: string) => {
-          if (error) resolve(false);
-          else resolve(stdout);
-        },
-      );
-    });
-
-    if (!sdl) {
-      sdl = await new Promise<string | boolean>((resolve, reject) => {
-        const command = `rover graph introspect ${url}`;
-        this.logCommand(command);
-        exec(
-          command,
-          {},
-          (error: ExecException | null, stdout: string, _stderr: string) => {
-            if (error) resolve(false);
-            else resolve(stdout);
-          },
-        );
-      });
+    let sdl = await this.execute(
+      `rover subgraph introspect ${url}`,
+      false,
+      false,
+    );
+    if (!sdl ?? sdl == '') {
+      sdl = await this.execute(`rover graph introspect ${url}`, false, false);
     }
-
-    if (!sdl) return '';
-
-    return (sdl as string) ?? '';
+    return sdl ? sdl : '';
   }
 
   async getProfiles(): Promise<string[]> {
-    const results = await new Promise<string>((resolve, reject) => {
-      const command = `rover config list --output=json`;
-      this.logCommand(command);
-      exec(
-        command,
-        {},
-        (error: ExecException | null, stdout: string, _stderr: string) => {
-          if (error) reject(false);
-          else resolve(stdout);
-        },
-      );
-    });
+    const results = await this.execute(`rover config list`, true, false);
+    if (!results) return [];
+
     const data = JSON.parse(results).data;
     if (data.success) {
       return data.profiles;

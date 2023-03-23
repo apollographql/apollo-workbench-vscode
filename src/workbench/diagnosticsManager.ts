@@ -108,9 +108,13 @@ export class WorkbenchDiagnostics {
       const error = errors[i];
       const errorMessage = error.message;
 
+      if(error.nodes && error.nodes.length > 0)
       error.nodes.forEach((errorNode) => {
-        const subgraphName = errorNode.subgraph ?? getFileName(wbFilePath);
-        //TODO - Need all of locs info from harmonizer, the offset looks like it's important
+        let subgraphName = errorNode.subgraph;
+        if(!subgraphName && errorMessage.slice(0,1) == '[') {
+          subgraphName = errorMessage.split(']')[0].split('[')[1];
+        } else if(!subgraphName) subgraphName = getFileName(wbFilePath);
+        
         const range = new Range(
           errorNode.start.line - 1,
           errorNode.start.column - 1,
@@ -127,6 +131,17 @@ export class WorkbenchDiagnostics {
           diagnosticsGroups[subgraphName] = [diagnostic];
         else diagnosticsGroups[subgraphName].push(diagnostic);
       });
+      else {
+        const diagnostic = new Diagnostic(
+          new Range(0,0,0,0),
+          errorMessage,
+          DiagnosticSeverity.Error,
+        );
+
+        if (!diagnosticsGroups[wbFilePath])
+          diagnosticsGroups[wbFilePath] = [diagnostic];
+        else diagnosticsGroups[wbFilePath].push(diagnostic);
+      }
     }
 
     return diagnosticsGroups;

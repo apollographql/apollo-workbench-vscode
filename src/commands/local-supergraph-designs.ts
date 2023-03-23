@@ -63,15 +63,10 @@ export async function viewOperationDesignSideBySide(item?: OperationTreeItem) {
   if (!operationName) return;
 
   const uri = DesignOperationsDocumentProvider.Uri(wbFilePath, operationName);
-  // await FileProvider.instance.writeTempOperationFile(
-  //   wbFilePath,
-  //   operationName,
-  // );
   const wbFile = FileProvider.instance.workbenchFileFromPath(wbFilePath);
   if (wbFile.operations[operationName].ui_design) {
     viewOperationDesign(item);
 
-    // await workspace.openTextDocument(uri);
     try {
       const editor = await window.showTextDocument(uri, {
         viewColumn: ViewColumn.Two,
@@ -195,7 +190,7 @@ export async function mockSubgraph(item?: SubgraphTreeItem) {
   const wbFilePath = item ? item.wbFilePath : await whichDesign();
   if (!wbFilePath) return;
 
-  const subgraphName = item ? item.wbFilePath : await whichSubgraph(wbFilePath);
+  const subgraphName = item ? item.subgraphName : await whichSubgraph(wbFilePath);
   if (!subgraphName) return;
   await FileProvider.instance.convertSubgraphToDesign(wbFilePath, subgraphName);
 }
@@ -216,6 +211,10 @@ export async function startRoverDevSession(item?: SubgraphSummaryTreeItem) {
   }
 
   const wbFile = FileProvider.instance.workbenchFileFromPath(wbFilePath);
+  if(Number.parseFloat(wbFile.federation_version ?? '2') < 2) {
+    window.showErrorMessage('rover dev is only supported for Apollo Federation 2');
+    return;
+  }
   //Check for composition errors
   let errors = 0;
   WorkbenchDiagnostics.instance.diagnosticCollections

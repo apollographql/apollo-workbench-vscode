@@ -16,11 +16,11 @@ import {
   AccountServiceVariantsDocument,
   AccountServiceVariantsQuery,
   GetGraphSchemasDocument,
-  GetGraphSchemasQuery
+  GetGraphSchemasQuery,
 } from '../_generated_/typed-document-nodes';
 import { StateManager } from '../workbench/stateManager';
 import { getOperationName } from '@apollo/client/utilities';
- 
+
 const getGraphOperations = gql`
   query GraphOperations($id: ID!, $from: Timestamp!, $variant: String) {
     service(id: $id) {
@@ -40,7 +40,9 @@ const getGraphOperations = gql`
 
 export async function isValidKey(apiKey: string) {
   const result = await toPromise(
-    execute(createLink(getOperationName(CheckUserApiKeyDocument) ?? "", apiKey), { query: CheckUserApiKeyDocument }),
+    execute(createLink(getOperationName(CheckUserApiKeyDocument) ?? '', apiKey), {
+      query: CheckUserApiKeyDocument,
+    }),
   );
   const data = result.data as CheckUserApiKeyQuery;
   if (data.me?.id) return true;
@@ -74,7 +76,10 @@ export async function getGraphSchemasByVariant(
   graphId: string,
   graphVariant: string,
 ) {
-  const result = await useQuery(GetGraphSchemasDocument, { id: graphId, graphVariant });
+  const result = await useQuery(GetGraphSchemasDocument, {
+    id: graphId,
+    graphVariant,
+  });
   return result.data as GetGraphSchemasQuery;
 }
 
@@ -94,7 +99,7 @@ function createLink(
 ) {
   const userId = apiKey?.split(':')[1];
   const headers = {
-    'x-api-key': StateManager.instance.globalState_userApiKey,
+    'x-api-key': apiKey,
     'studio-user-id': userId,
     'apollographql-client-name': 'Apollo Workbench',
     'apollographql-client-version': version,

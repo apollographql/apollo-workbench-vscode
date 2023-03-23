@@ -22,7 +22,7 @@ import {
 import { addToDesign } from './commands/studio-operations';
 import {
   ensureFolderIsOpen,
-  enterGraphOSUserApiKey as login,
+  enterGraphOSUserApiKey,
   deleteStudioApiKey as logout,
 } from './commands/extension';
 import {
@@ -53,6 +53,8 @@ import {
 import { Rover } from './workbench/rover';
 import { viewOperationDesign } from './workbench/webviews/operationDesign';
 import { openSandbox } from './workbench/webviews/sandbox';
+import { FederationReferenceProvider } from './workbench/federationReferenceProvider';
+import {shellPathSync} from 'shell-path';
 
 export const outputChannel = window.createOutputChannel('Apollo Workbench');
 
@@ -61,7 +63,7 @@ export async function deactivate(context: ExtensionContext) {
   await Rover.instance.stopRoverDev();
 }
 
-export async function activate(context: ExtensionContext) {
+export async function activate(context: ExtensionContext) {	
   StateManager.init(context);
   context.workspaceState.update('selectedWbFile', '');
   context.globalState.update('APOLLO_SELECTED_GRAPH_ID', '');
@@ -93,7 +95,7 @@ export async function activate(context: ExtensionContext) {
   commands.registerCommand('extension.ensureFolderIsOpen', ensureFolderIsOpen);
   commands.executeCommand('extension.ensureFolderIsOpen');
   //Global Extension Commands
-  commands.registerCommand('extension.login', login);
+  commands.registerCommand('extension.login', enterGraphOSUserApiKey);
   commands.registerCommand('extension.logout', logout);
 
   //*Local Supergraph Designs TreeView
@@ -203,6 +205,10 @@ export async function activate(context: ExtensionContext) {
   workspace.registerTextDocumentContentProvider(
     ApolloRemoteSchemaProvider.scheme,
     new ApolloRemoteSchemaProvider(),
+  );
+  languages.registerReferenceProvider(
+    { language: 'graphql' },
+    new FederationReferenceProvider(),
   );
 
   workspace.registerFileSystemProvider(

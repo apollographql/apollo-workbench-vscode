@@ -144,7 +144,7 @@ export class ApolloStudioGraphsTreeDataProvider
         .showInformationMessage('No user api key was found.', 'Login')
         .then((response) => {
           if (response === 'Login')
-            commands.executeCommand('extension.enterStudioApiKey');
+            commands.executeCommand('extension.login');
         });
     }
 
@@ -157,7 +157,7 @@ export class NotLoggedInTreeItem extends TreeItem {
     super(message, TreeItemCollapsibleState.None);
     this.command = {
       title: 'Login to Apollo',
-      command: 'extension.enterStudioApiKey',
+      command: 'extension.login',
     };
   }
 }

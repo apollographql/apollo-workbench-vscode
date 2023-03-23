@@ -199,11 +199,24 @@ export class FileProvider {
 
               return compResults.data.core_schema;
             } else if (compResults.error) {
-              await WorkbenchDiagnostics.instance.setCompositionErrors(
-                wbFilePath,
-                wbFile,
-                compResults.error.details.build_errors,
-              );
+              if (compResults.error.message == 'Failed to execute command') {
+                log(`Something went wrong with rover`);
+                window.showErrorMessage(
+                  `Unable to compose ${getFileName(
+                    wbFilePath,
+                  )}. Failed to execute command with rover, do you have rover installed?`,
+                );
+              } else //if (compResults.error.details) {
+                await WorkbenchDiagnostics.instance.setCompositionErrors(
+                  wbFilePath,
+                  wbFile,
+                  compResults.error?.details?.build_errors ?? [
+                    { ...compResults.error, nodes: [] },
+                  ],
+                );
+              // } else {
+              //   window.showErrorMessage(compResults.error.message);
+              // }
             }
           }
         } catch (err: any) {
