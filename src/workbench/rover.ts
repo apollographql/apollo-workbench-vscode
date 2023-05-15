@@ -211,7 +211,7 @@ export class Rover {
             },
           }),
       );
-      const schema = buildSubgraphSchema({ typeDefs });
+      const schema = buildSubgraphSchema({ typeDefs, resolvers });
       const server = new ApolloServer({
         schema: addMocksToSchema({ schema, preserveResolvers: true }),
       });
@@ -353,6 +353,62 @@ export class Rover {
             });
           }
         },
+        InterfaceTypeDefinition(node) {
+          const keyDirective = node.directives?.find(
+            (d) => d.name.value == 'key',
+          );
+          if (keyDirective) {
+            const keyBlock = (
+              keyDirective.arguments?.find((a) => a.name.value == 'fields')
+                ?.value as StringValueNode
+            )?.value;
+            const parsedFields: string[] = [];
+            let startIndex = -1;
+            let notComposite = true;
+            for (let i = 0; i < keyBlock.length; i++) {
+              let lastParsedField = '';
+              const char = keyBlock[i];
+              switch (char) {
+                case ' ':
+                  if (startIndex != -1 && notComposite) {
+                    lastParsedField = keyBlock.substring(startIndex, i);
+                    parsedFields.push(lastParsedField);
+                  }
+
+                  startIndex = -1;
+                  break;
+                case '{':
+                  notComposite = false;
+                  break;
+                case '}':
+                  notComposite = true;
+                  break;
+                default:
+                  if (startIndex == 0 && i == keyBlock.length - 1)
+                    parsedFields.push(keyBlock);
+                  else if (i == keyBlock.length - 1)
+                    parsedFields.push(keyBlock.substring(startIndex));
+                  else if (startIndex == -1) startIndex = i;
+                  break;
+              }
+            }
+            entities[node.name.value] = [];
+
+            parsedFields.forEach((parsedField) => {
+              const finalKey = keyBlock.trim();
+              const field = node.fields?.find(
+                (f) => f.name.value == parsedField,
+              );
+              let fieldType = '';
+              if (field) fieldType = Rover.getFieldTypeString(field);
+
+              entities[node.name.value].push({
+                field: parsedField,
+                type: fieldType,
+              });
+            });
+          }
+        }
       });
     } catch (err: any) {
       console.log(err);

@@ -54,8 +54,8 @@
   },
   "dependencies": {
     "@apollo/client": "^3.4.16",
-    "@apollo/server": "^4.3.0",
-    "@apollo/subgraph": "^2.2.2",
+    "@apollo/server": "^4.7.1",
+    "@apollo/subgraph": "^2.4.3",
     "@graphql-tools/mock": "^8.7.14",
     "archiver": "^5.2.0",
     "chokidar": "^3.4.3",

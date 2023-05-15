@@ -93,7 +93,7 @@ export async function checkSubgraphSchema(item?: SubgraphTreeItem) {
   const wbFile = FileProvider.instance.workbenchFileFromPath(wbFilePath);
   const schema = wbFile.subgraphs[subgraphName];
 
-  if(schema.schema.graphref && !schema.schema.workbench_design){
+  if (schema.schema.graphref && !schema.schema.workbench_design) {
     const cantCheckGraphRef = `This schema is just a reference to what is already in GraphOS`;
     log(cantCheckGraphRef);
     window.showWarningMessage(cantCheckGraphRef);
@@ -117,12 +117,10 @@ export async function checkSubgraphSchema(item?: SubgraphTreeItem) {
         const services = await getAccountGraphs(accountId);
         if (services?.organization?.graphs) {
           const logMessage = `${services.organization.graphs.length} Supergraphs found in GraphOS`;
-          log(
-            logMessage,
-          );
+          log(logMessage);
           progress.report({
             message: logMessage,
-            increment: 50
+            increment: 50,
           });
           const selectedGraph = await window.showQuickPick(
             services?.organization?.graphs.map((g) => g.title),
@@ -152,7 +150,10 @@ export async function checkSubgraphSchema(item?: SubgraphTreeItem) {
               log(`Selected variant ${selectedVariant}`);
               const graphRef = `${selected.id}@${selectedVariant}`;
               log(`Running schema validation on ${graphRef}`);
-              progress.report({message: `Running schema validation on ${graphRef}`, increment: 25});
+              progress.report({
+                message: `Running schema validation on ${graphRef}`,
+                increment: 25,
+              });
               const results = await Rover.instance.checkSchema({
                 graphRef,
                 subgraphName,
@@ -176,8 +177,8 @@ export async function checkSubgraphSchema(item?: SubgraphTreeItem) {
             }
           } else {
             progress.report({
-              message: "Cancelled",
-              increment: 50
+              message: 'Cancelled',
+              increment: 50,
             });
           }
         }
@@ -190,7 +191,9 @@ export async function mockSubgraph(item?: SubgraphTreeItem) {
   const wbFilePath = item ? item.wbFilePath : await whichDesign();
   if (!wbFilePath) return;
 
-  const subgraphName = item ? item.subgraphName : await whichSubgraph(wbFilePath);
+  const subgraphName = item
+    ? item.subgraphName
+    : await whichSubgraph(wbFilePath);
   if (!subgraphName) return;
   await FileProvider.instance.convertSubgraphToDesign(wbFilePath, subgraphName);
 }
@@ -211,8 +214,10 @@ export async function startRoverDevSession(item?: SubgraphSummaryTreeItem) {
   }
 
   const wbFile = FileProvider.instance.workbenchFileFromPath(wbFilePath);
-  if(Number.parseFloat(wbFile.federation_version ?? '2') < 2) {
-    window.showErrorMessage('rover dev is only supported for Apollo Federation 2');
+  if (Number.parseFloat(wbFile.federation_version ?? '2') < 2) {
+    window.showErrorMessage(
+      'rover dev is only supported for Apollo Federation 2',
+    );
     return;
   }
   //Check for composition errors
@@ -309,10 +314,13 @@ export async function startRoverDevSession(item?: SubgraphSummaryTreeItem) {
               });
             });
 
-            roverPromises.push(prom);
-          }
+            await prom;
 
-          await Promise.all(roverPromises);
+            if (i == 0)
+              await new Promise<void>((resolve) => setTimeout(resolve, 5000));
+            else
+              await new Promise<void>((resolve) => setTimeout(resolve, 1000));
+          }
 
           startingMocks = false;
           Rover.instance.primaryDevTerminal?.show();
