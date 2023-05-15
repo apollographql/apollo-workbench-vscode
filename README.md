@@ -1,8 +1,8 @@
 # Apollo Workbench for VS Code
 
-Workbench is a tool built by the Apollo Solutions Team to help design schemas using Apollo Federation and work with the composed results. This need was driven by working countless number of migrations from an existing GraphQL infrastructure (monolith or schema stitched) to an [Apollo Federated architecture](https://www.apollographql.com/docs/federation/).
+Workbench is a VS Code extension to help design schemas using [Apollo Federation](https://www.apollographql.com/docs/federation) and work with the composed results. This extension exposes the functionality of [`rover`](https://www.apollographql.com/docs/rover/) for GraphOS in a friendly VS Code way. 
 
-Head over to the [docs](https://www.apollographql.com/docs/federation/v2/workbench/overview/) to learn how you can use this tool.
+***DISCLAIMER***: This project is project is maintained by Michael Watson because they use it in schema design discussions regularly. There are many other people that use this tool, but it has been blocked from supporting any new Federation features for some time now. This was due to Federation v1 and v2 eventually requiring different versions of `graphql` making it impossible to have the `npm` packages installed to make Workbench work. Many pieces have been moving in the background to where now Workbench uses `rover` for almost all of it's functionality and the federation specific `npm` packages have been removed (`@apollo/subgraph` is still present to mock schemas locally). If you are interested in helping contribute to this project, feel free to reach out in our [Discord server](https://discord.gg/graphos).
 
 ## Required Installations
 
@@ -71,6 +71,14 @@ If you don't already have a schema in GraphOS or just want to play around, click
 
 ![](images/local-new.png)
 
+### Changing the federation version for a design
+
+Since each design is just the `yaml` configuration required for `rover supergraph compose`, you can change the version in the file directly:
+
+```
+federation_version: '=2.3.5'
+```
+
 ### Editing a subgraph schema
 
 Depending on what you have in your `yaml` configuration, `rover` could be fetching the schema from a remote source or a local schema file (see `rover` [docs](https://www.apollographql.com/docs/rover/commands/supergraphs#composing-a-supergraph-schema) for details on sources). All remote data sources are initially read-only until you switch them to a local design:
@@ -130,6 +138,10 @@ You can add operations to any design by pressing the "**+**" button on the opera
 ![](images/add-operations.png)
 
 You can associate an image with your design now. Local files and urls are both supported. This enables you to pull up a query and what it's design looks like side by side.
+
+### Adding an operation from GraphOS into the design
+
+You can load operations from GraphOS by clicking on any graph in the "GRAPHOS SUPERGRAPHS" section of the extension. Then you can select the "**+**" button for that operation in "GRAPHOS OPERATIONS" and select which design to add it to. 
 
 ### Opening a design in Apollo Explorer
 
