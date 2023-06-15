@@ -1,9 +1,10 @@
 import { buildSubgraphSchema } from '@apollo/subgraph';
 import { ApolloServer } from '@apollo/server';
 import { startStandaloneServer } from '@apollo/server/standalone';
-import { exec, ExecException } from 'child_process';
+import { ExecException, execSync, exec, spawn } from 'child_process';
+import util, { TextDecoder } from 'util';
+const execPromise = util.promisify(exec);
 import gql from 'graphql-tag';
-import { TextDecoder } from 'util';
 import { Terminal, Uri, window, workspace } from 'vscode';
 import { Subgraph } from './file-system/ApolloConfig';
 import { CompositionResults } from './file-system/CompositionResults';
@@ -12,6 +13,7 @@ import { addMocksToSchema } from '@graphql-tools/mock';
 import { FieldWithType } from './federationCompletionProvider';
 import { parse, StringValueNode, visit } from 'graphql';
 import { log } from '../utils/logger';
+import { stdout } from 'process';
 
 export class Rover {
   private static _instance: Rover;
@@ -47,20 +49,30 @@ export class Rover {
     }
 
     return await new Promise<string | undefined>((resolve, reject) => {
-      exec(
-        cmd,
-        {},
-        (_error: ExecException | null, stdout: string, _stderr: string) => {
-          if (stdout) resolve(stdout);
-          else if (_stderr) {
-            log(`\tRover Error: ${_stderr}`);
-            resolve(undefined);
-          } else if (_error) {
-            log(`\tRover Error: ${_stderr ?? _error.message}`);
-            resolve(undefined);
-          }
-        },
-      );
+      try {
+        let output = '';
+        let error = '';
+        const child = spawn(cmd,{shell: true});
+        child.stdout.on('data', (data) => {
+          output += data;
+        });
+        child.stderr.on('data', (data) => {
+          error += data;
+        });
+        child.on('error', (err) => {
+          if (error != '') log(error);
+
+          resolve(output);
+        });
+        child.on('close', () => {
+          if (error != '') log(error);
+
+          resolve(output);
+        });
+      } catch (e) {
+        log(JSON.stringify(e));
+        resolve(undefined);
+      }
     });
   }
 
@@ -408,7 +420,7 @@ export class Rover {
               });
             });
           }
-        }
+        },
       });
     } catch (err: any) {
       console.log(err);

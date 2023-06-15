@@ -10,10 +10,11 @@ import { ApolloConfig } from './file-system/ApolloConfig';
 import {
   RoverCompositionError,
 } from './file-system/CompositionResults';
-import { schemaFileUri, tempSchemaFilePath } from './file-system/fileProvider';
+import { FileProvider, schemaFileUri, tempSchemaFilePath } from './file-system/fileProvider';
 import { StateManager } from './stateManager';
 import { getFileName } from '../utils/path';
 import { ApolloRemoteSchemaProvider } from './docProviders';
+import { existsSync, readFileSync } from 'fs';
 
 interface WorkbenchDiagnosticCollections {
   compositionDiagnostics: DiagnosticCollection;
@@ -103,6 +104,7 @@ export class WorkbenchDiagnostics {
   }
   private handleErrors(wbFilePath: string, errors: RoverCompositionError[]) {
     const diagnosticsGroups: { [key: string]: Diagnostic[] } = {};
+    const wbFile = FileProvider.instance.workbenchFileFromPath(wbFilePath);
 
     for (let i = 0; i < errors.length; i++) {
       const error = errors[i];
@@ -113,8 +115,29 @@ export class WorkbenchDiagnostics {
         let subgraphName = errorNode.subgraph;
         if(!subgraphName && errorMessage.slice(0,1) == '[') {
           subgraphName = errorMessage.split(']')[0].split('[')[1];
-        } else if(!subgraphName) subgraphName = getFileName(wbFilePath);
-        
+        } else if(!subgraphName) { Object.keys(wbFile.subgraphs).forEach(subgraph=>{
+            const schema = wbFile.subgraphs[subgraph].schema;
+            let schemaPath: Uri;
+            if(schema.workbench_design){
+              schemaPath = Uri.parse(schema.workbench_design);
+            } else if(schema.file) {
+              schemaPath = Uri.parse(schema.file);
+            } else {
+              schemaPath = ApolloRemoteSchemaProvider.Uri(
+                wbFilePath,
+                subgraphName,
+              );
+            }
+            if(existsSync(schemaPath.fsPath)){
+              const typeDefs = readFileSync(schemaPath.fsPath, {encoding: 'utf-8'});
+              if (errorNode.source  == typeDefs) 
+              subgraphName = subgraph;
+            }
+          });
+          
+          if(!subgraphName)subgraphName = getFileName(wbFilePath);
+        }
+
         const range = new Range(
           errorNode.start.line - 1,
           errorNode.start.column - 1,

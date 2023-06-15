@@ -228,19 +228,13 @@ export class StudioGraphVariantServiceTreeItem extends TreeItem {
     this.contextValue = 'studioGraphVariantServiceTreeItem';
     this.iconPath = {
       light: path.join(
-        __filename,
-        '..',
-        '..',
-        '..',
+        __dirname,
         '..',
         'media',
         'graphql-logo.png',
       ),
       dark: path.join(
-        __filename,
-        '..',
-        '..',
-        '..',
+        __dirname,
         '..',
         'media',
         'graphql-logo.png',

@@ -61,9 +61,9 @@ async function open(document?: string) {
       }
     );
     panel.iconPath = Uri.parse(
-      path.join(__filename, '..', '..', 'media', 'logo-apollo.svg'),
+      path.join(__dirname, '..', 'media', 'logo-apollo.svg'),
     );
-      
+
     panel.onDidDispose(() => (panel = undefined));
   }
 

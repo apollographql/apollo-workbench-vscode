@@ -14,7 +14,7 @@ import { ApolloConfig, Operation, Subgraph } from '../file-system/ApolloConfig';
 import { getFileName } from '../../utils/path';
 
 const media = (file: string) =>
-  path.join(__filename, '..', '..', '..', '..', 'media', file);
+  path.join(__dirname, '..', 'media', file);
 
 export class LocalSupergraphTreeDataProvider
   implements TreeDataProvider<TreeItem>

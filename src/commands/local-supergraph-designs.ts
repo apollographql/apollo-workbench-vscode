@@ -460,7 +460,7 @@ export async function addSubgraph(item?: SubgraphSummaryTreeItem) {
       await workspace.fs.writeFile(
         Uri.parse(newSchemaFilePath),
         Buffer.from(
-          'extend schema \n\t@link(url: "https://specs.apollo.dev/federation/v2.0", import: ["@key"])\n\ntype Query { \n\tdesignRoot: String\n}',
+          'extend schema \n\t@link(url: "https://specs.apollo.dev/federation/v2.3", import: ["@key"])\n\ntype Query { \n\tdesignRoot: String\n}',
         ),
       );
       const wbFile = FileProvider.instance.workbenchFileFromPath(wbFilePath);
