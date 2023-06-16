@@ -7,10 +7,12 @@ import {
   Uri,
 } from 'vscode';
 import { ApolloConfig } from './file-system/ApolloConfig';
+import { RoverCompositionError } from './file-system/CompositionResults';
 import {
-  RoverCompositionError,
-} from './file-system/CompositionResults';
-import { FileProvider, schemaFileUri, tempSchemaFilePath } from './file-system/fileProvider';
+  FileProvider,
+  schemaFileUri,
+  tempSchemaFilePath,
+} from './file-system/fileProvider';
 import { StateManager } from './stateManager';
 import { getFileName } from '../utils/path';
 import { ApolloRemoteSchemaProvider } from './docProviders';
@@ -66,8 +68,7 @@ export class WorkbenchDiagnostics {
             schemaFileUri(subgraph.schema.file, wbFilePath),
             diagnosticsGroups[sn],
           );
-        }
-        else if(subgraph.schema.workbench_design){
+        } else if (subgraph.schema.workbench_design) {
           compositionDiagnostics.set(
             schemaFileUri(subgraph.schema.workbench_design, wbFilePath),
             diagnosticsGroups[sn],
@@ -75,7 +76,10 @@ export class WorkbenchDiagnostics {
         }
         //    Account for a local change to remote source that we can't edit
         else {
-          compositionDiagnostics.set(ApolloRemoteSchemaProvider.Uri(wbFilePath,sn), diagnosticsGroups[sn]);
+          compositionDiagnostics.set(
+            ApolloRemoteSchemaProvider.Uri(wbFilePath, sn),
+            diagnosticsGroups[sn],
+          );
         }
       } else {
         compositionDiagnostics.set(
@@ -110,53 +114,60 @@ export class WorkbenchDiagnostics {
       const error = errors[i];
       const errorMessage = error.message;
 
-      if(error.nodes && error.nodes.length > 0)
-      error.nodes.forEach((errorNode) => {
-        let subgraphName = errorNode.subgraph;
-        if(!subgraphName && errorMessage.slice(0,1) == '[') {
-          subgraphName = errorMessage.split(']')[0].split('[')[1];
-        } else if(!subgraphName) { Object.keys(wbFile.subgraphs).forEach(subgraph=>{
-            const schema = wbFile.subgraphs[subgraph].schema;
-            let schemaPath: Uri;
-            if(schema.workbench_design){
-              schemaPath = Uri.parse(schema.workbench_design);
-            } else if(schema.file) {
-              schemaPath = Uri.parse(schema.file);
-            } else {
-              schemaPath = ApolloRemoteSchemaProvider.Uri(
-                wbFilePath,
-                subgraphName,
-              );
-            }
-            if(existsSync(schemaPath.fsPath)){
-              const typeDefs = readFileSync(schemaPath.fsPath, {encoding: 'utf-8'});
-              if (errorNode.source  == typeDefs) 
-              subgraphName = subgraph;
-            }
-          });
-          
-          if(!subgraphName)subgraphName = getFileName(wbFilePath);
-        }
+      if (error.nodes && error.nodes.length > 0)
+        error.nodes.forEach((errorNode) => {
+          let subgraphName = errorNode.subgraph;
+          if (!subgraphName && errorMessage.slice(0, 1) == '[') {
+            subgraphName = errorMessage.split(']')[0].split('[')[1];
+          } else if (!subgraphName) {
+            Object.keys(wbFile.subgraphs).forEach((subgraph) => {
+              const schema = wbFile.subgraphs[subgraph].schema;
+              let schemaPath: Uri;
+              if (schema.workbench_design) {
+                schemaPath = Uri.parse(schema.workbench_design);
+              } else if (schema.file) {
+                schemaPath = Uri.parse(schema.file);
+              } else {
+                schemaPath = ApolloRemoteSchemaProvider.Uri(
+                  wbFilePath,
+                  subgraphName,
+                );
+              }
+              if (existsSync(schemaPath.fsPath)) {
+                const typeDefs = readFileSync(schemaPath.fsPath, {
+                  encoding: 'utf-8',
+                });
+                if (errorNode.source == typeDefs) subgraphName = subgraph;
+              }
+            });
 
-        const range = new Range(
-          errorNode.start ? errorNode.start.line - 1 : 0,
-          errorNode.start ? errorNode.start.column - 1 : 0,
-          errorNode.end ? errorNode.end.line - 1 : 0,
-          errorNode.start && errorNode.end ? errorNode.start.column + errorNode.end.column - 1 : 0,
-        );
-        const diagnostic = new Diagnostic(
-          range,
-          errorMessage,
-          DiagnosticSeverity.Error,
-        );
+            if (!subgraphName) subgraphName = getFileName(wbFilePath);
+          }
 
-        if (!diagnosticsGroups[subgraphName])
-          diagnosticsGroups[subgraphName] = [diagnostic];
-        else diagnosticsGroups[subgraphName].push(diagnostic);
-      });
+          const range = new Range(
+            errorNode.start ? errorNode.start.line - 1 : 0,
+            errorNode.start ? errorNode.start.column - 1 : 0,
+            errorNode.end ? errorNode.end.line - 1 : 0,
+            errorNode.start && errorNode.end
+              ? errorNode.start.column + errorNode.end.column - 1
+              : 0,
+          );
+          const diagnostic = new Diagnostic(
+            range,
+            errorMessage,
+            DiagnosticSeverity.Error,
+          );
+
+          if(errorMessage.includes('If you meant the "@'))
+            diagnostic.code = `addDirective:${errorMessage.split('"')[1]}`;
+
+          if (!diagnosticsGroups[subgraphName])
+            diagnosticsGroups[subgraphName] = [diagnostic];
+          else diagnosticsGroups[subgraphName].push(diagnostic);
+        });
       else {
         const diagnostic = new Diagnostic(
-          new Range(0,0,0,0),
+          new Range(0, 0, 0, 0),
           errorMessage,
           DiagnosticSeverity.Error,
         );

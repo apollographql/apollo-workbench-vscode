@@ -692,5 +692,5 @@ export async function addFederationDirective(
     );
   }
 
-  // await document.save();
+  await document.save();
 }
