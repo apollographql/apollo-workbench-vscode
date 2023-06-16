@@ -139,10 +139,10 @@ export class WorkbenchDiagnostics {
         }
 
         const range = new Range(
-          errorNode.start.line - 1,
-          errorNode.start.column - 1,
-          errorNode.end.line - 1,
-          errorNode.start.column + errorNode.end.column - 1,
+          errorNode.start ? errorNode.start.line - 1 : 0,
+          errorNode.start ? errorNode.start.column - 1 : 0,
+          errorNode.end ? errorNode.end.line - 1 : 0,
+          errorNode.start && errorNode.end ? errorNode.start.column + errorNode.end.column - 1 : 0,
         );
         const diagnostic = new Diagnostic(
           range,
