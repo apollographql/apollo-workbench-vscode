@@ -152,25 +152,14 @@ export class WorkbenchDiagnostics {
               ? errorNode.start.column + errorNode.end.column - 1
               : 0,
           );
-          const diagnostic = new Diagnostic(
-            range,
-            errorMessage,
-            DiagnosticSeverity.Error,
-          );
-
-          if(errorMessage.includes('If you meant the "@'))
-            diagnostic.code = `addDirective:${errorMessage.split('"')[1]}`;
+          const diagnostic = this.generateDiagnostic(errorMessage,range);
 
           if (!diagnosticsGroups[subgraphName])
             diagnosticsGroups[subgraphName] = [diagnostic];
           else diagnosticsGroups[subgraphName].push(diagnostic);
         });
       else {
-        const diagnostic = new Diagnostic(
-          new Range(0, 0, 0, 0),
-          errorMessage,
-          DiagnosticSeverity.Error,
-        );
+        const diagnostic = this.generateDiagnostic(errorMessage);
 
         if (!diagnosticsGroups[wbFilePath])
           diagnosticsGroups[wbFilePath] = [diagnostic];
@@ -179,5 +168,21 @@ export class WorkbenchDiagnostics {
     }
 
     return diagnosticsGroups;
+  }
+  private generateDiagnostic(
+    message: string,
+    range: Range = new Range(0, 0, 0, 0),
+    severity: DiagnosticSeverity = DiagnosticSeverity.Error,
+  ) {
+    const diagnostic = new Diagnostic(
+      range,
+      message,
+      severity,
+    );
+
+    if (message.includes('If you meant the "@'))
+      diagnostic.code = `addDirective:${message.split('"')[1]}`;
+
+    return diagnostic;
   }
 }

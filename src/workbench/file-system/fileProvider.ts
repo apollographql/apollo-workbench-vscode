@@ -206,7 +206,8 @@ export class FileProvider {
                     wbFilePath,
                   )}. Failed to execute command with rover, do you have rover installed?`,
                 );
-              } else //if (compResults.error.details) {
+              } //if (compResults.error.details) {
+              else
                 await WorkbenchDiagnostics.instance.setCompositionErrors(
                   wbFilePath,
                   wbFile,
@@ -293,15 +294,17 @@ export class FileProvider {
     const tempWbFile = ApolloConfig.copy(wbFile);
     Object.keys(wbFile.subgraphs).forEach((subgraphName) => {
       if (wbFile.subgraphs[subgraphName].schema.workbench_design) {
-        tempWbFile.subgraphs[subgraphName].schema.file =
-          wbFile.subgraphs[subgraphName].schema.workbench_design;
+        tempWbFile.subgraphs[subgraphName].schema.file = resolve(
+          StateManager.workspaceRoot ?? '',
+          wbFile.subgraphs[subgraphName].schema.workbench_design ?? '',
+        );
 
         delete tempWbFile.subgraphs[subgraphName].schema.subgraph_url;
       } else if (wbFile.subgraphs[subgraphName].schema.file) {
-        tempWbFile.subgraphs[subgraphName].schema.file = schemaFileUri(
-          tempWbFile.subgraphs[subgraphName].schema.file ?? '',
-          wbFilePath,
-        ).fsPath;
+        tempWbFile.subgraphs[subgraphName].schema.file = resolve(
+          StateManager.workspaceRoot ?? '',
+          wbFile.subgraphs[subgraphName].schema.file ?? '',
+        );
       }
     });
 

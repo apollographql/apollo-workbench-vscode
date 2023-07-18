@@ -464,8 +464,19 @@ export async function addSubgraph(item?: SubgraphSummaryTreeItem) {
         ),
       );
       const wbFile = FileProvider.instance.workbenchFileFromPath(wbFilePath);
+      let port = 4001;
+      for(const subgraphName in wbFile.subgraphs) {
+        const subgraph = wbFile.subgraphs[subgraphName];
+        if(subgraph.routing_url && subgraph.routing_url.includes('http://localhost:')) {
+          const portString = subgraph.routing_url.split(':')[2];
+          const subgraphPort = Number.parseInt(portString);
+          if(port < subgraphPort) port = subgraphPort;
+          else if(port == subgraphPort) port++;
+        }
+      }
+
       wbFile.subgraphs[subgraphName] = {
-        routing_url: 'undefined',
+        routing_url: `http://localhost:${port}`,
         schema: {
           file: newSchemaFilePath,
         },
@@ -686,7 +697,7 @@ export async function addFederationDirective(
   } else {
     await editor?.insertSnippet(
       new SnippetString(
-        `extend schema @link(url: "https://specs.apollo.dev/federation/v2.0", import: ["${directive}"])\n\n`,
+        `extend schema @link(url: "https://specs.apollo.dev/federation/v2.3", import: ["${directive}"])\n\n`,
       ),
       new Position(0, 0),
     );
