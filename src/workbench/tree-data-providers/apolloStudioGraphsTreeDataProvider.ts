@@ -207,7 +207,7 @@ export class StudioGraphVariantTreeItem extends TreeItem {
     this.contextValue = 'studioGraphVariantTreeItem';
     this.command = {
       title: 'Load Graph Operations',
-      command: 'studio-graphs.loadOperations',
+      command: 'studio-graphs.loadOperationsFromGraphOS',
       arguments: [this, graphVariant],
     };
   }
