@@ -465,13 +465,16 @@ export async function addSubgraph(item?: SubgraphSummaryTreeItem) {
       );
       const wbFile = FileProvider.instance.workbenchFileFromPath(wbFilePath);
       let port = 4001;
-      for(const subgraphName in wbFile.subgraphs) {
+      for (const subgraphName in wbFile.subgraphs) {
         const subgraph = wbFile.subgraphs[subgraphName];
-        if(subgraph.routing_url && subgraph.routing_url.includes('http://localhost:')) {
+        if (
+          subgraph.routing_url &&
+          subgraph.routing_url.includes('http://localhost:')
+        ) {
           const portString = subgraph.routing_url.split(':')[2];
           const subgraphPort = Number.parseInt(portString);
-          if(port < subgraphPort) port = subgraphPort;
-          else if(port == subgraphPort) port++;
+          if (port < subgraphPort) port = subgraphPort;
+          else if (port == subgraphPort) port++;
         }
       }
 

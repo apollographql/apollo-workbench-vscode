@@ -16,14 +16,14 @@ import {
 import { FileProvider } from '../file-system/fileProvider';
 
 export class ApolloStudioGraphsTreeDataProvider
-  implements TreeDataProvider<TreeItem> {
+  implements TreeDataProvider<TreeItem>
+{
   constructor(private workspaceRoot: string) {}
 
-  private _onDidChangeTreeData: EventEmitter<
-    TreeItem | undefined
-  > = new EventEmitter<TreeItem | undefined>();
-  readonly onDidChangeTreeData: Event<TreeItem | undefined> = this
-    ._onDidChangeTreeData.event;
+  private _onDidChangeTreeData: EventEmitter<TreeItem | undefined> =
+    new EventEmitter<TreeItem | undefined>();
+  readonly onDidChangeTreeData: Event<TreeItem | undefined> =
+    this._onDidChangeTreeData.event;
 
   refresh(): void {
     this._onDidChangeTreeData.fire(undefined);
@@ -85,7 +85,6 @@ export class ApolloStudioGraphsTreeDataProvider
         //     }
         //   }
         // }
-        
 
         const services = await getAccountGraphs(accountId);
         const accountTreeItem = new StudioAccountTreeItem(
@@ -106,7 +105,8 @@ export class ApolloStudioGraphsTreeDataProvider
               graph.id,
               graph.title,
             );
-            const graphVariantTreeItems = new Array<StudioGraphVariantTreeItem>();
+            const graphVariantTreeItems =
+              new Array<StudioGraphVariantTreeItem>();
 
             //Loop through graph variants and add to return objects
             for (let k = 0; k < graph.variants.length; k++) {
@@ -114,10 +114,8 @@ export class ApolloStudioGraphsTreeDataProvider
               const graphVariant = graph.variants[k];
               graphTreeItem.variants.push(graphVariant.name);
 
-              const accountgraphVariantTreeItem = new StudioGraphVariantTreeItem(
-                graph.id,
-                graphVariant.name,
-              );
+              const accountgraphVariantTreeItem =
+                new StudioGraphVariantTreeItem(graph.id, graphVariant.name);
               graphVariantTreeItems.push(accountgraphVariantTreeItem);
             }
             if (graphVariantTreeItems.length == 0)
@@ -143,8 +141,7 @@ export class ApolloStudioGraphsTreeDataProvider
       window
         .showInformationMessage('No user api key was found.', 'Login')
         .then((response) => {
-          if (response === 'Login')
-            commands.executeCommand('extension.login');
+          if (response === 'Login') commands.executeCommand('extension.login');
         });
     }
 
@@ -178,7 +175,8 @@ export class StudioAccountTreeItem extends TreeItem {
 }
 
 export class StudioGraphTreeItem extends TreeItem {
-  children: StudioGraphVariantTreeItem[] = new Array<StudioGraphVariantTreeItem>();
+  children: StudioGraphVariantTreeItem[] =
+    new Array<StudioGraphVariantTreeItem>();
   variants: string[] = [];
 
   constructor(
@@ -189,7 +187,7 @@ export class StudioGraphTreeItem extends TreeItem {
     this.contextValue = 'studioGraphTreeItem';
     this.command = {
       title: 'Load Graph Operations',
-      command: 'studio-graphs.loadOperations',
+      command: 'studio-graphs.loadOperationsFromGraphOS',
       arguments: [this],
     };
   }
@@ -198,7 +196,8 @@ export class StudioGraphTreeItem extends TreeItem {
   }
 }
 export class StudioGraphVariantTreeItem extends TreeItem {
-  children: StudioGraphVariantServiceTreeItem[] = new Array<StudioGraphVariantServiceTreeItem>();
+  children: StudioGraphVariantServiceTreeItem[] =
+    new Array<StudioGraphVariantServiceTreeItem>();
 
   constructor(
     public readonly graphId: string,
@@ -227,18 +226,8 @@ export class StudioGraphVariantServiceTreeItem extends TreeItem {
     super(name, TreeItemCollapsibleState.None);
     this.contextValue = 'studioGraphVariantServiceTreeItem';
     this.iconPath = {
-      light: path.join(
-        __dirname,
-        '..',
-        'media',
-        'graphql-logo.png',
-      ),
-      dark: path.join(
-        __dirname,
-        '..',
-        'media',
-        'graphql-logo.png',
-      ),
+      light: path.join(__dirname, '..', 'media', 'graphql-logo.png'),
+      dark: path.join(__dirname, '..', 'media', 'graphql-logo.png'),
     };
   }
 }

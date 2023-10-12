@@ -1,10 +1,14 @@
+## Apollo Workbench VSCode 3.1
+
 ## Apollo Workbench VSCode 3.0
 
-- No more JSON blog in `.apollo-workbench` files - Workbench now uses the `yaml` file used by the [Apollo Router](https://www.apollographql.com/docs/router)
+This release of Apollo Workbench
+
+- No more JSON blog in `.apollo-workbench` files - Workbench now uses the `yaml` file used by the [Apollo Router](https://www.apollographql.com/docs/rover/commands/supergraphs#yaml-configuration-file)
 - All `@apollo/...` libraries associated with Federation have been removed. Apollo Workbench now just uses `rover`.
   - Starting a design locally now uses `rover dev` and Apollo Explorer
     - Apollo Explorer is exposed inside extension - operation building and query plan viewing are in Explorer now.
-  - 
+  -
 - Federation 2 support
   - Support for `@link` and all Federation directives with quick actions
 - Operations associated with designs support an associated image by a file pointer or `https` url
@@ -13,7 +17,7 @@ A number of breaking changes were made to simplify the workbench code base. Vari
 
 ### Breaking Changes
 
-- Changed workbench design files from `.apollo-workbench` to the `yaml` file used by the [Apollo Router](https://www.apollographql.com/docs/router)
+- Changed workbench design files from `.apollo-workbench` to the `yaml` file used by the [Apollo Router](https://www.apollographql.com/docs/rover/commands/supergraphs#yaml-configuration-file) for `rover supergraph compose`.
 
 - Remove Federation 1 support. Downgrade to Workbench 2.x to use Federation 1
 - Removed "export project" capabilities in favor of `rover template` features
@@ -37,7 +41,7 @@ A number of breaking changes were made to simplify the workbench code base. Vari
   - Upgrade to latest @apollo/gateway/federation/query-plan packages
   - UI feedback when starting up multiple mocked subgraphs (tested with 25 subgraphs)
 - Local files are now synced into Workbench. This means if you delete a workbench file in VS Code, then switch back to the workbench extension, the design file will no longer exist
-  - This is how you delete a workbench file locally 
+  - This is how you delete a workbench file locally
 - Filtered output to have a better structure
 
 ### Bug Fixes
@@ -45,11 +49,11 @@ A number of breaking changes were made to simplify the workbench code base. Vari
 - Mocks don't work with schemas that define Apollo Federation Spec items (i.e. `Query._service`)
 - Wrong workbench file could be loaded due to different design subgraph schema being open while local tree refresh happens
 - Type completion for arrays printed incorrectly
-- Various 
+- Various
 
 ## Apollo Workbench VSCode 1.0 - INITIAL RELEASE
 
-----
+---
 
 ## Apollo Workbench VSCode 0.2.39
 

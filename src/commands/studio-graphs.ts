@@ -5,6 +5,7 @@ import { ApolloStudioOperationsProvider } from '../workbench/docProviders';
 import { getUserMemberships } from '../graphql/graphClient';
 import { enterGraphOSUserApiKey } from './extension';
 import { StudioGraphTreeItem } from '../workbench/tree-data-providers/apolloStudioGraphsTreeDataProvider';
+import { log } from 'console';
 
 export async function openInGraphOS(item: StudioGraphTreeItem) {
   const url = `https://studio.apollographql.com/graph/${item.graphId}/home`;
@@ -32,7 +33,8 @@ export async function viewStudioOperation(operation: StudioOperationTreeItem) {
 }
 
 export async function switchOrg() {
-  if (!StateManager.instance.globalState_userApiKey) await enterGraphOSUserApiKey();
+  if (!StateManager.instance.globalState_userApiKey)
+    await enterGraphOSUserApiKey();
 
   let accountId = '';
   const myAccountIds = await getUserMemberships();
@@ -50,12 +52,17 @@ export async function switchOrg() {
         placeHolder: 'Select an account to load graphs from',
       })) ?? '';
     accountId = accountMapping[selectedOrgName];
-  } else {
+  } else if (memberships && memberships.length == 1) {
     accountId = memberships[0]?.account?.id ?? '';
   }
 
   if (accountId) {
     StateManager.instance.setSelectedGraph('');
     StateManager.instance.globalState_selectedApolloAccount = accountId;
+  } else {
+    log('Unable to get orgs');
+    window.showErrorMessage(
+      `Unable to get orgs. Did you delete your API key? Try logging out and then logging back in.`,
+    );
   }
 }
