@@ -40,7 +40,8 @@ export async function openSandbox(item?: OperationTreeItem, document?: string) {
     );
   }
 
-  if (!document && operationName) document = wbFile.operations[operationName].document;
+  if (!document && operationName)
+    document = wbFile.operations[operationName].document;
 
   await open(document);
 }
@@ -58,7 +59,7 @@ async function open(document?: string) {
       {
         enableScripts: true,
         retainContextWhenHidden: true,
-      }
+      },
     );
     panel.iconPath = Uri.parse(
       path.join(__dirname, '..', 'media', 'logo-apollo.svg'),
@@ -68,14 +69,13 @@ async function open(document?: string) {
   }
 
   const url = document
-    ? `http://localhost:3000?document=${encodeURIComponent(document)}`
-    : `http://localhost:3000`;
+    ? `http://localhost:4000?document=${encodeURIComponent(document)}`
+    : `http://localhost:4000`;
   panel.webview.html = getWebviewContent(url);
 
   await new Promise<void>((resolve) => setTimeout(resolve, 500));
 
   panel.reveal(ViewColumn.One, false);
-
 }
 
 function getWebviewContent(url: string) {

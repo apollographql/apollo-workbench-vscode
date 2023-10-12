@@ -52,7 +52,7 @@ export class Rover {
       try {
         let output = '';
         let error = '';
-        const child = spawn(cmd,{shell: true});
+        const child = spawn(cmd, { shell: true });
         child.stdout.on('data', (data) => {
           output += data;
         });
@@ -232,11 +232,11 @@ export class Rover {
       this.subgraphState[port] = server;
       this.portMapping[subgraphName] = port;
 
-      const { url } = await startStandaloneServer(server, {
+      startStandaloneServer(server, {
         listen: { port },
       });
 
-      return url;
+      return undefined;
     } catch (err) {
       this.subgraphState[port].stop();
       delete this.subgraphState[port];
@@ -278,28 +278,12 @@ export class Rover {
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
 
-  startRoverDevSession(
-    subgraphName: string,
-    routingUrl: string,
-    schemaPath?: string,
-  ) {
-    let terminal: Terminal;
-    const terminalName = `${subgraphName} - rover dev`;
-    if (!this.primaryDevTerminal) {
-      this.primaryDevTerminal = window.createTerminal(terminalName);
-      terminal = this.primaryDevTerminal;
-    } else {
-      terminal = window.createTerminal(terminalName);
-      this.secondaryDevTerminals.push(terminal);
-    }
-
-    if (schemaPath) {
-      terminal.sendText(
-        `rover dev --name=${subgraphName} --url=${routingUrl} --schema="${schemaPath}"`,
-      );
-    } else {
-      terminal.sendText(`rover dev --name=${subgraphName} --url=${routingUrl}`);
-    }
+  startRoverDev(pathToConfig: string) {
+    const command = `rover dev --supergraph-config=${pathToConfig}`;
+    const terminalName = `rover dev`;
+    this.primaryDevTerminal = window.createTerminal(terminalName);
+    this.primaryDevTerminal.show();
+    this.primaryDevTerminal.sendText(command);
   }
 
   static extractDefinedEntities(schema: string) {

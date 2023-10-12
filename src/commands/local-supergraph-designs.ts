@@ -257,73 +257,21 @@ export async function startRoverDevSession(item?: SubgraphSummaryTreeItem) {
               const subgraph = subgraphsToMock[subgraphName];
               const schemaPath =
                 subgraph.schema.workbench_design ?? subgraph.schema.file ?? '';
-              const url = await Rover.instance.startMockedSubgraph(
+              await Rover.instance.startMockedSubgraph(
                 subgraphName,
                 Uri.parse(schemaPath),
               );
 
-              if (url)
-                progress.report({
-                  message: `Mocked subgraph ${subgraphName} at ${url}`,
-                  increment,
-                });
-              else
-                progress.report({
-                  message: `Unable to mock subgraph ${subgraphName}`,
-                  increment,
-                });
+              progress.report({
+                message: `Mocked subgraph ${subgraphName}`,
+                increment,
+              });
             }
           }
 
           //Start rover dev sessions
-          const roverPromises: Promise<void>[] = [];
-          for (let i = 0; i < subgraphNames.length; i++) {
-            const subgraphName = subgraphNames[i];
-            const subgraph = wbFile.subgraphs[subgraphName];
-            const routingUrl = subgraph.schema.workbench_design
-              ? `http://localhost:${Rover.instance.portMapping[subgraphName]}`
-              : subgraph.routing_url ??
-                subgraph.schema.subgraph_url ??
-                'http://unable-to-get-url.com';
-            let schemaPath =
-              subgraph.schema.workbench_design ?? subgraph.schema.file;
+          Rover.instance.startRoverDev(wbFilePath);
 
-            const prom = new Promise<void>((resolve, reject) => {
-              setTimeout(async () => {
-                if (!schemaPath) {
-                  const tempUri =
-                    await FileProvider.instance.writeTempSchemaFile(
-                      wbFilePath,
-                      subgraphName,
-                    );
-                  schemaPath = tempUri?.fsPath;
-                }
-
-                Rover.instance.startRoverDevSession(
-                  subgraphName,
-                  routingUrl,
-                  schemaPath,
-                );
-
-                progress.report({
-                  message: `${subgraphName}`,
-                  increment,
-                });
-
-                resolve();
-              });
-            });
-
-            await prom;
-
-            if (i == 0)
-              await new Promise<void>((resolve) => setTimeout(resolve, 5000));
-            else
-              await new Promise<void>((resolve) => setTimeout(resolve, 1000));
-          }
-
-          startingMocks = false;
-          Rover.instance.primaryDevTerminal?.show();
           await new Promise<void>((resolve) => setTimeout(resolve, 5000));
           progress.report({
             message: 'Opening Sandbox',

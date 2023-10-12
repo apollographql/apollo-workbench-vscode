@@ -1,5 +1,8 @@
 ## Apollo Workbench VSCode 3.1
 
+- Fix `Converting circular structure to JSON --> starting at object with constructor 'B4' | property 'command' -> object with constructor 'Object' | property 'arguments' -> object with constructor 'Array' --- index 0 closes the circle` error when clicking a graph in the "GRAPHOS SUPERGRAPHS" view to load operations
+- Fix Start graph locally with `rover dev` using the config file directly
+
 ## Apollo Workbench VSCode 3.0
 
 This release of Apollo Workbench
