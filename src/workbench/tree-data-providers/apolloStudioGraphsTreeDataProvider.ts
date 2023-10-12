@@ -16,14 +16,14 @@ import {
 import { FileProvider } from '../file-system/fileProvider';
 
 export class ApolloStudioGraphsTreeDataProvider
-  implements TreeDataProvider<TreeItem> {
+  implements TreeDataProvider<TreeItem>
+{
   constructor(private workspaceRoot: string) {}
 
-  private _onDidChangeTreeData: EventEmitter<
-    TreeItem | undefined
-  > = new EventEmitter<TreeItem | undefined>();
-  readonly onDidChangeTreeData: Event<TreeItem | undefined> = this
-    ._onDidChangeTreeData.event;
+  private _onDidChangeTreeData: EventEmitter<TreeItem | undefined> =
+    new EventEmitter<TreeItem | undefined>();
+  readonly onDidChangeTreeData: Event<TreeItem | undefined> =
+    this._onDidChangeTreeData.event;
 
   refresh(): void {
     this._onDidChangeTreeData.fire(undefined);
@@ -41,7 +41,7 @@ export class ApolloStudioGraphsTreeDataProvider
     if (apiKey) {
       let accountId = StateManager.instance.globalState_selectedApolloAccount;
       if (!accountId) {
-        const myAccountIds = await getUserMemberships(apiKey);
+        const myAccountIds = await getUserMemberships();
         const memberships = (myAccountIds?.me as any)?.memberships;
         if (memberships?.length > 1) {
           const accountIds: string[] = new Array<string>();
@@ -63,28 +63,50 @@ export class ApolloStudioGraphsTreeDataProvider
 
         //Create objects for next for loop
         //  Return A specific account with all graphs
-        const services = await getAccountGraphs(apiKey, accountId);
+
+        //Change to single root query
+        //  2. commands/studio-graphs/switchOrg should actually just refresh this provider to re-use this query
+        // query ExampleQuery($name: String!) {
+        //   frontendUrlRoot
+        //   me {
+        //     id
+        //     ... on InternalIdentity {
+        //       accounts {
+        //         id
+        //         name
+        //         graphs {
+        //           id
+        //           title
+        //           variant(name: $name) {
+        //             name
+        //           }
+        //         }
+        //       }
+        //     }
+        //   }
+        // }
+
+        const services = await getAccountGraphs(accountId);
         const accountTreeItem = new StudioAccountTreeItem(
           accountId,
-          services?.account?.name,
+          services?.organization?.name,
         );
 
-        if (services?.account?.services) {
+        if (services?.organization?.graphs) {
           const accountServiceTreeItems = new Array<StudioGraphTreeItem>();
 
-          for (let j = 0; j < services?.account?.services.length ?? 0; j++) {
+          for (let j = 0; j < services?.organization?.graphs.length ?? 0; j++) {
             //Cast graph
-            const graph = services?.account?.services[j];
-            if (graph.devGraphOwner?.id) {
-              continue;
-            }
+            const graph = services?.organization?.graphs[j];
+
             //Create objects for next for loop
             //  Return A specific Graph with all variants
             const graphTreeItem = new StudioGraphTreeItem(
               graph.id,
               graph.title,
             );
-            const graphVariantTreeItems = new Array<StudioGraphVariantTreeItem>();
+            const graphVariantTreeItems =
+              new Array<StudioGraphVariantTreeItem>();
 
             //Loop through graph variants and add to return objects
             for (let k = 0; k < graph.variants.length; k++) {
@@ -92,10 +114,8 @@ export class ApolloStudioGraphsTreeDataProvider
               const graphVariant = graph.variants[k];
               graphTreeItem.variants.push(graphVariant.name);
 
-              const accountgraphVariantTreeItem = new StudioGraphVariantTreeItem(
-                graph.id,
-                graphVariant.name,
-              );
+              const accountgraphVariantTreeItem =
+                new StudioGraphVariantTreeItem(graph.id, graphVariant.name);
               graphVariantTreeItems.push(accountgraphVariantTreeItem);
             }
             if (graphVariantTreeItems.length == 0)
@@ -121,8 +141,7 @@ export class ApolloStudioGraphsTreeDataProvider
       window
         .showInformationMessage('No user api key was found.', 'Login')
         .then((response) => {
-          if (response === 'Login')
-            commands.executeCommand('extension.enterStudioApiKey');
+          if (response === 'Login') commands.executeCommand('extension.login');
         });
     }
 
@@ -135,7 +154,7 @@ export class NotLoggedInTreeItem extends TreeItem {
     super(message, TreeItemCollapsibleState.None);
     this.command = {
       title: 'Login to Apollo',
-      command: 'extension.enterStudioApiKey',
+      command: 'extension.login',
     };
   }
 }
@@ -156,7 +175,8 @@ export class StudioAccountTreeItem extends TreeItem {
 }
 
 export class StudioGraphTreeItem extends TreeItem {
-  children: StudioGraphVariantTreeItem[] = new Array<StudioGraphVariantTreeItem>();
+  children: StudioGraphVariantTreeItem[] =
+    new Array<StudioGraphVariantTreeItem>();
   variants: string[] = [];
 
   constructor(
@@ -167,7 +187,7 @@ export class StudioGraphTreeItem extends TreeItem {
     this.contextValue = 'studioGraphTreeItem';
     this.command = {
       title: 'Load Graph Operations',
-      command: 'studio-graphs.loadOperations',
+      command: 'studio-graphs.loadOperationsFromGraphOS',
       arguments: [this],
     };
   }
@@ -176,7 +196,8 @@ export class StudioGraphTreeItem extends TreeItem {
   }
 }
 export class StudioGraphVariantTreeItem extends TreeItem {
-  children: StudioGraphVariantServiceTreeItem[] = new Array<StudioGraphVariantServiceTreeItem>();
+  children: StudioGraphVariantServiceTreeItem[] =
+    new Array<StudioGraphVariantServiceTreeItem>();
 
   constructor(
     public readonly graphId: string,
@@ -186,7 +207,7 @@ export class StudioGraphVariantTreeItem extends TreeItem {
     this.contextValue = 'studioGraphVariantTreeItem';
     this.command = {
       title: 'Load Graph Operations',
-      command: 'studio-graphs.loadOperations',
+      command: 'studio-graphs.loadOperationsFromGraphOS',
       arguments: [this, graphVariant],
     };
   }
@@ -205,24 +226,8 @@ export class StudioGraphVariantServiceTreeItem extends TreeItem {
     super(name, TreeItemCollapsibleState.None);
     this.contextValue = 'studioGraphVariantServiceTreeItem';
     this.iconPath = {
-      light: path.join(
-        __filename,
-        '..',
-        '..',
-        '..',
-        '..',
-        'media',
-        'graphql-logo.png',
-      ),
-      dark: path.join(
-        __filename,
-        '..',
-        '..',
-        '..',
-        '..',
-        'media',
-        'graphql-logo.png',
-      ),
+      light: path.join(__dirname, '..', 'media', 'graphql-logo.png'),
+      dark: path.join(__dirname, '..', 'media', 'graphql-logo.png'),
     };
   }
 }

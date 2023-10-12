@@ -1,0 +1,12 @@
+query AccountGraphVariants($accountId: ID!) {
+  organization(id: $accountId) {
+    name
+    graphs(includeDeleted: false) {
+      id
+      title
+      variants {
+        name
+      }
+    }
+  }
+}

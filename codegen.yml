@@ -1,0 +1,13 @@
+schema: ./graphos-schema.graphql
+documents: [
+  ./src/graphql/queries/AccountServiceVariants.graphql,
+  ./src/graphql/queries/CheckUserApiKey.graphql,
+  ./src/graphql/queries/GetGraphSchemas.graphql,
+  ./src/graphql/queries/UserMemberships.graphql
+]
+generates:
+  ./src/_generated_/typed-document-nodes.ts:
+    plugins:
+      - typescript
+      - typescript-operations
+      - typed-document-node

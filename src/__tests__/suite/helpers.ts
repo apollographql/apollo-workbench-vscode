@@ -28,7 +28,6 @@ export function cleanupWorkbenchFiles() {
   } catch (err) {
     log(`Cleanup Error: ${err}`);
   }
-  FileProvider.instance.clearWorkbenchFiles();
 }
 
 export async function createAndLoadEmptyWorkbenchFile() {

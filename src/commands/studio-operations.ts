@@ -1,49 +1,30 @@
 import { StudioOperationTreeItem } from '../workbench/tree-data-providers/apolloStudioGraphOpsTreeDataProvider';
 import { FileProvider } from '../workbench/file-system/fileProvider';
 import { window } from 'vscode';
-import { parse } from 'graphql';
-import { print } from 'graphql';
-import {
-  WorkbenchUri,
-  WorkbenchUriType,
-} from '../workbench/file-system/WorkbenchUri';
+import { getFileName } from '../utils/path';
 
-export async function addToWorkbench(op: StudioOperationTreeItem) {
+export async function addToDesign(op: StudioOperationTreeItem) {
   const supergraphs = FileProvider.instance.getWorkbenchFiles();
-  const supergraphNames: string[] = [];
-  supergraphs.forEach((wbFile) => supergraphNames.push(wbFile.graphName));
+  const supergraphNames: { [subgraphName: string]: string } = {};
+  supergraphs.forEach((wbFile, wbFilePath) => {
+    const subgraphName = getFileName(wbFilePath);
+    supergraphNames[subgraphName] = wbFilePath;
+  });
 
   const supergraphToAddOperationTo = await window.showQuickPick(
-    supergraphNames,
+    Object.keys(supergraphNames),
     {
-      placeHolder: 'Select the Supergraph to add the operation to',
+      placeHolder: 'Select the design to add the operation to',
     },
   );
   if (supergraphToAddOperationTo) {
-    const wbFile = Array.from(supergraphs.values()).find(
-      (wb) => wb.graphName == supergraphToAddOperationTo,
-    );
+    const wbFile = supergraphs.get(supergraphToAddOperationTo);
     if (wbFile) {
-      let wbPath = '';
-      Array.from(supergraphs.keys()).forEach((path) => {
-        const wb = FileProvider.instance.workbenchFileFromPath(path);
-        if (
-          wb?.graphName == supergraphToAddOperationTo &&
-          supergraphToAddOperationTo
-        )
-          wbPath = path;
-      });
+      wbFile.operations[op.operationName] = {
+        document: op.operationSignature,
+      };
 
-      const operation = print(parse(op.operationSignature));
-      FileProvider.instance.writeFile(
-        WorkbenchUri.supergraph(
-          wbPath,
-          op.operationName,
-          WorkbenchUriType.QUERIES,
-        ),
-        Buffer.from(operation),
-        { create: true, overwrite: true },
-      );
+      await FileProvider.instance.writeWorkbenchConfig(supergraphNames[supergraphToAddOperationTo], wbFile);
     }
   }
 }

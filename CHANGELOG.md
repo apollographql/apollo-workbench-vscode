@@ -1,3 +1,32 @@
+## Apollo Workbench VSCode 3.1
+
+- Fix `Converting circular structure to JSON --> starting at object with constructor 'B4' | property 'command' -> object with constructor 'Object' | property 'arguments' -> object with constructor 'Array' --- index 0 closes the circle` error when clicking a graph in the "GRAPHOS SUPERGRAPHS" view to load operations
+- Fix Start graph locally with `rover dev` using the config file directly
+
+## Apollo Workbench VSCode 3.0
+
+This release of Apollo Workbench
+
+- No more JSON blog in `.apollo-workbench` files - Workbench now uses the `yaml` file used by the [Apollo Router](https://www.apollographql.com/docs/rover/commands/supergraphs#yaml-configuration-file)
+- All `@apollo/...` libraries associated with Federation have been removed. Apollo Workbench now just uses `rover`.
+  - Starting a design locally now uses `rover dev` and Apollo Explorer
+    - Apollo Explorer is exposed inside extension - operation building and query plan viewing are in Explorer now.
+  -
+- Federation 2 support
+  - Support for `@link` and all Federation directives with quick actions
+- Operations associated with designs support an associated image by a file pointer or `https` url
+
+A number of breaking changes were made to simplify the workbench code base. Various functionality has begun to migrate to `rover` and with a smaller codebase, workbench will be more maintainable. If there are features missing that you previously used, please open an issue to start a community conversation around it being re-introduced .
+
+### Breaking Changes
+
+- Changed workbench design files from `.apollo-workbench` to the `yaml` file used by the [Apollo Router](https://www.apollographql.com/docs/rover/commands/supergraphs#yaml-configuration-file) for `rover supergraph compose`.
+
+- Remove Federation 1 support. Downgrade to Workbench 2.x to use Federation 1
+- Removed "export project" capabilities in favor of `rover template` features
+- Removed "mocking" capabilities in favor of `rover dev` feature
+- Removed export of resolvers because `__resolveReference` isn't always required with Federation 2
+
 ## Apollo Workbench VSCode 2.0
 
 - Federation 2 Alpha support
@@ -15,7 +44,7 @@
   - Upgrade to latest @apollo/gateway/federation/query-plan packages
   - UI feedback when starting up multiple mocked subgraphs (tested with 25 subgraphs)
 - Local files are now synced into Workbench. This means if you delete a workbench file in VS Code, then switch back to the workbench extension, the design file will no longer exist
-  - This is how you delete a workbench file locally 
+  - This is how you delete a workbench file locally
 - Filtered output to have a better structure
 
 ### Bug Fixes
@@ -23,11 +52,11 @@
 - Mocks don't work with schemas that define Apollo Federation Spec items (i.e. `Query._service`)
 - Wrong workbench file could be loaded due to different design subgraph schema being open while local tree refresh happens
 - Type completion for arrays printed incorrectly
-- Various 
+- Various
 
 ## Apollo Workbench VSCode 1.0 - INITIAL RELEASE
 
-----
+---
 
 ## Apollo Workbench VSCode 0.2.39
 

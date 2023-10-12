@@ -4,103 +4,69 @@ import {
   languages,
   window,
   ExtensionContext,
-  WebviewPanel,
   Uri,
 } from 'vscode';
 
 import { StateManager } from './workbench/stateManager';
-import { ServerManager } from './workbench/serverManager';
-import { FileProvider } from './workbench/file-system/fileProvider';
+import {
+  FileProvider,
+  schemaFileUri,
+} from './workbench/file-system/fileProvider';
 import { federationCompletionProvider } from './workbench/federationCompletionProvider';
 import { FederationCodeActionProvider } from './workbench/federationCodeActionProvider';
 import {
+  ApolloRemoteSchemaProvider,
   ApolloStudioOperationsProvider,
-  GettingStartedDocProvider,
+  DesignOperationsDocumentProvider,
 } from './workbench/docProviders';
-import { addToWorkbench } from './commands/studio-operations';
+import { addToDesign } from './commands/studio-operations';
 import {
   ensureFolderIsOpen,
-  openFolder,
-  enterStudioApiKey,
-  gettingStarted,
-  deleteStudioApiKey,
+  enterGraphOSUserApiKey,
+  deleteStudioApiKey as logout,
 } from './commands/extension';
 import {
-  refreshStudioGraphs,
-  loadOperations,
+  refreshStudioGraphs as refreshSupergraphsFromGraphOS,
+  loadOperationsFromGraphOS,
   viewStudioOperation,
   switchOrg,
+  openInGraphOS,
 } from './commands/studio-graphs';
 import {
-  createWorkbenchFromPreloaded,
-  startMocksWithDialog,
-  stopMocks,
-  deleteOperation,
-  addOperation,
-  viewQueryPlan,
   editSubgraph,
   deleteSubgraph,
   refreshSupergraphs,
-  viewSubgraphSettings,
   addSubgraph,
   viewSupergraphSchema,
-  editSupergraphOperation,
   newDesign,
-  createWorkbenchFromSupergraph,
+  newDesignFromGraphOSSupergraph,
   exportSupergraphSchema,
-  exportSupergraphApiSchema,
-  viewSupergraphApiSchema,
-  updateSubgraphSchemaFromURL,
-  viewSubgraphCustomMocks,
-  exportSubgraphSchema,
-  exportSubgraphResolvers,
-  createWorkbenchFromSupergraphVariant,
-  createDesignInStudio,
-  exportDesignToProject,
-  switchFederationComposition,
+  addFederationDirective,
+  startRoverDevSession,
+  stopRoverDevSession,
+  mockSubgraph,
+  viewOperationDesignSideBySide,
+  addOperation,
+  checkSubgraphSchema,
+  deleteOperation,
 } from './commands/local-supergraph-designs';
-import { resolve } from 'path';
-import { mkdirSync, writeFileSync } from 'fs';
-import { execSync } from 'child_process';
-import { log } from './utils/logger';
-import { WorkbenchDiagnostics } from './workbench/diagnosticsManager';
-import { WorkbenchFederationProvider } from './workbench/federationProvider';
-import {
-  WorkbenchUri,
-  WorkbenchUriType,
-} from './workbench/file-system/WorkbenchUri';
+import { Rover } from './workbench/rover';
+import { viewOperationDesign } from './workbench/webviews/operationDesign';
+import { openSandbox } from './workbench/webviews/sandbox';
+import { FederationReferenceProvider } from './workbench/federationReferenceProvider';
+import {shellPathSync} from 'shell-path';
 
 export const outputChannel = window.createOutputChannel('Apollo Workbench');
 
 // Our event when vscode deactivates
 export async function deactivate(context: ExtensionContext) {
-  ServerManager.instance.stopMocks();
+  await Rover.instance.stopRoverDev();
 }
 
-export async function activate(context: ExtensionContext) {
+export async function activate(context: ExtensionContext) {	
   StateManager.init(context);
   context.workspaceState.update('selectedWbFile', '');
-  context.globalState.update('APOLLO_SELCTED_GRAPH_ID', '');
-
-  //Setting up the mocks project folder - need to isolate to mocks running
-  if (StateManager.instance.extensionGlobalStoragePath) {
-    const mocksPath = resolve(
-      StateManager.instance.extensionGlobalStoragePath,
-      `mocks`,
-    );
-    const packageJsonPath = resolve(mocksPath, `package.json`);
-    mkdirSync(mocksPath, { recursive: true });
-    writeFileSync(packageJsonPath, '{"name":"mocks", "version":"1.0"}', {
-      encoding: 'utf-8',
-    });
-    execSync(`npm i faker`, { cwd: mocksPath });
-  }
-
-  context.subscriptions.push(
-    workspace.registerFileSystemProvider('workbench', FileProvider.instance, {
-      isCaseSensitive: true,
-    }),
-  );
+  context.globalState.update('APOLLO_SELECTED_GRAPH_ID', '');
 
   languages.registerCompletionItemProvider(
     'graphql',
@@ -126,13 +92,11 @@ export async function activate(context: ExtensionContext) {
   );
 
   //Register commands to ensure a folder is open in the window to store workbench files
-  commands.executeCommand('extension.ensureFolderIsOpen');
   commands.registerCommand('extension.ensureFolderIsOpen', ensureFolderIsOpen);
-  commands.registerCommand('extension.openFolder', openFolder);
+  commands.executeCommand('extension.ensureFolderIsOpen');
   //Global Extension Commands
-  commands.registerCommand('extension.enterStudioApiKey', enterStudioApiKey);
-  commands.registerCommand('extension.deleteStudioApiKey', deleteStudioApiKey);
-  commands.registerCommand('extension.gettingStarted', gettingStarted);
+  commands.registerCommand('extension.login', enterGraphOSUserApiKey);
+  commands.registerCommand('extension.logout', logout);
 
   //*Local Supergraph Designs TreeView
   //**Navigation Menu Commands
@@ -141,32 +105,16 @@ export async function activate(context: ExtensionContext) {
     'local-supergraph-designs.refresh',
     refreshSupergraphs,
   );
-  //***Supergraph Commands
-  // commands.registerCommand('local-supergraph-designs.exportProject', exportProject);//right-click
-  // commands.registerCommand('local-supergraph-designs.dockerize', async (item: WorkbenchFileTreeItem) => DockerImageManager.create(item.filePath));//right-click
   //***Supergraph Schema Commands
   commands.registerCommand(
     'local-supergraph-designs.viewSupergraphSchema',
     viewSupergraphSchema,
   ); //on-click
   commands.registerCommand(
-    'local-supergraph-designs.viewSupergraphApiSchema',
-    viewSupergraphApiSchema,
-  ); //on-click
-  commands.registerCommand(
     'local-supergraph-designs.exportSupergraphSchema',
     exportSupergraphSchema,
   ); //right-click
-  commands.registerCommand(
-    'local-supergraph-designs.exportSupergraphApiSchema',
-    exportSupergraphApiSchema,
-  ); //right-click
   //****Subgraph Summary Commands
-  commands.registerCommand(
-    'local-supergraph-designs.startMocks',
-    startMocksWithDialog,
-  );
-  commands.registerCommand('local-supergraph-designs.stopMocks', stopMocks);
   commands.registerCommand('local-supergraph-designs.addSubgraph', addSubgraph);
   //****Subgraph Commands
   commands.registerCommand(
@@ -174,206 +122,148 @@ export async function activate(context: ExtensionContext) {
     editSubgraph,
   ); //on-click
   commands.registerCommand(
-    'local-supergraph-designs.updateSubgraphSchemaFromURL',
-    updateSubgraphSchemaFromURL,
-  ); //right-click
-  commands.registerCommand(
-    'local-supergraph-designs.exportSubgraphResolvers',
-    exportSubgraphResolvers,
-  ); //right-click
-  commands.registerCommand(
-    'local-supergraph-designs.exportSubgraphSchema',
-    exportSubgraphSchema,
-  ); //right-click
-  commands.registerCommand(
-    'local-supergraph-designs.viewSubgraphCustomMocks',
-    viewSubgraphCustomMocks,
-  ); //right-click
-  commands.registerCommand(
     'local-supergraph-designs.deleteSubgraph',
     deleteSubgraph,
   );
   commands.registerCommand(
-    'local-supergraph-designs.viewSettings',
-    viewSubgraphSettings,
-  ); //inline
-
-  commands.registerCommand(
-    'local-supergraph-designs.editOperation',
-    editSupergraphOperation,
+    'local-supergraph-designs.checkSubgraphSchema',
+    checkSubgraphSchema,
   );
   commands.registerCommand(
-    'local-supergraph-designs.addOperation',
-    addOperation,
+    'local-supergraph-designs.mockSubgraph',
+    mockSubgraph,
   );
   commands.registerCommand(
-    'local-supergraph-designs.deleteOperation',
-    deleteOperation,
-  );
-  commands.registerCommand(
-    'local-supergraph-designs.viewQueryPlan',
-    viewQueryPlan,
-  );
-  commands.registerCommand(
-    'local-supergraph-designs.createInStudio',
-    createDesignInStudio,
-  );
-  commands.registerCommand(
-    'local-supergraph-designs.exportDesignToProject',
-    exportDesignToProject,
-  );
-  commands.registerCommand(
-    'local-supergraph-designs.switchFederationComposition',
-    switchFederationComposition,
+    'local-supergraph-designs.startRoverDevSession',
+    startRoverDevSession,
   );
 
-  //TODO: Need to implemnt loading image in a custom view, will come in following release
-  // commands.registerCommand(
-  //   'local-supergraph-designs.setOperationDesignMock',
-  //   setOperationDesignMock,
-  // );
+  commands.registerCommand(
+    'local-supergraph-designs.stopRoverDevSession',
+    stopRoverDevSession,
+  );
 
-  if (window.registerWebviewPanelSerializer) {
-    // Make sure we register a serializer in activation event
-    window.registerWebviewPanelSerializer('apolloWorkbenchDesign', {
-      async deserializeWebviewPanel(webviewPanel: WebviewPanel, state: any) {
-        log(`Got state: ${state}`);
-        // Reset the webview options so we use latest uri for `localResourceRoots`.
-        // webviewPanel.webview.options = getWebviewOptions(context.extensionUri);
-      },
-    });
-  }
-  // commands.registerCommand('current-workbench-schemas.deleteSchemaDocTextRange', deleteSchemaDocTextRange);
-  // commands.registerCommand('current-workbench-schemas.makeSchemaDocTextRangeArray', makeSchemaDocTextRangeArray);
+  context.subscriptions.push(
+    commands.registerCommand(
+      'local-supergraph-designs.viewOperationDesignSideBySide',
+      viewOperationDesignSideBySide,
+    ),
+  );
+  context.subscriptions.push(
+    commands.registerCommand('local-supergraph-designs.sandbox', openSandbox),
+  );
+  context.subscriptions.push(
+    commands.registerCommand(
+      'local-supergraph-designs.addOperation',
+      addOperation,
+    ),
+  );
+  context.subscriptions.push(
+    commands.registerCommand(
+      'local-supergraph-designs.deleteOperation',
+      deleteOperation,
+    ),
+  );
+  context.subscriptions.push(
+    commands.registerCommand(
+      'local-supergraph-designs.viewOperationDesign',
+      viewOperationDesign,
+    ),
+  );
 
+  commands.registerCommand(
+    'current-workbench-schemas.addFederationDirective',
+    addFederationDirective,
+  );
   //Apollo Studio Graphs Commands
-  commands.registerCommand('studio-graphs.refresh', refreshStudioGraphs);
   commands.registerCommand(
-    'studio-graphs.createWorkbenchFromGraph',
-    createWorkbenchFromSupergraph,
+    'studio-graphs.refreshSupergraphsFromGraphOS',
+    refreshSupergraphsFromGraphOS,
+  );
+  commands.registerCommand('studio-graphs.openInGraphOS', openInGraphOS);
+  commands.registerCommand(
+    'studio-graphs.newDesignFromGraphOSSupergraph',
+    newDesignFromGraphOSSupergraph,
   );
   commands.registerCommand(
-    'studio-graphs.createWorkbenchFromSupergraphVariant',
-    createWorkbenchFromSupergraphVariant,
+    'studio-graphs.loadOperationsFromGraphOS',
+    loadOperationsFromGraphOS,
   );
-  commands.registerCommand(
-    'studio-graphs.createWorkbenchFromPreloaded',
-    createWorkbenchFromPreloaded,
-  );
-  commands.registerCommand('studio-graphs.loadOperations', loadOperations);
   commands.registerCommand(
     'studio-graphs.viewStudioOperation',
     viewStudioOperation,
   );
   commands.registerCommand('studio-graphs.switchOrg', switchOrg);
   //Apollo Studio Graph Operations Commands
-  commands.registerCommand('studio-operations.addToWorkbench', addToWorkbench);
+  commands.registerCommand('studio-operations.addToDesign', addToDesign);
 
   //Workspace - Register Providers and Events
-  workspace.registerTextDocumentContentProvider(
-    GettingStartedDocProvider.scheme,
-    new GettingStartedDocProvider(),
-  );
   workspace.registerTextDocumentContentProvider(
     ApolloStudioOperationsProvider.scheme,
     new ApolloStudioOperationsProvider(),
   );
-  //This ensures the visible text editor loads the correct design for composition errors
-  window.onDidChangeActiveTextEditor((e) => {
-    if (e) {
-      const uri = e.document.uri;
-      const path = uri.path;
-      if (uri.scheme == 'workbench') {
-        if (uri.path.includes('subgraphs')) {
-          const wbFilePath = path.split('/subgraphs')[0];
-          if (wbFilePath != FileProvider.instance.loadedWorbenchFilePath)
-            FileProvider.instance.load(wbFilePath);
-        }
-      }
-    } else {
-      FileProvider.instance.refreshLocalWorkbenchFiles(false);
-    }
-  });
-  workspace.onDidCloseTextDocument((e) => {
-    const uri = e.uri;
-    if (uri.scheme == 'workbench') {
-      if (uri.path.includes('queries')) {
-        WorkbenchDiagnostics.instance.validateAllOperations(
-          FileProvider.instance.loadedWorbenchFilePath,
-        );
-      }
-    }
-  });
+  workspace.registerTextDocumentContentProvider(
+    ApolloRemoteSchemaProvider.scheme,
+    new ApolloRemoteSchemaProvider(),
+  );
+  languages.registerReferenceProvider(
+    { language: 'graphql' },
+    new FederationReferenceProvider(),
+  );
+
+  workspace.registerFileSystemProvider(
+    DesignOperationsDocumentProvider.scheme,
+    new DesignOperationsDocumentProvider(),
+    {
+      isCaseSensitive: true,
+    },
+  );
   workspace.onDidDeleteFiles((e) => {
     let deletedWorkbenchFile = false;
     e.files.forEach((f) => {
-      if (f.path.includes('.apollo-workbench')) deletedWorkbenchFile = true;
+      const wbFile = FileProvider.instance.workbenchFileFromPath(f.fsPath);
+      if (wbFile) deletedWorkbenchFile = true;
     });
-
-    if (deletedWorkbenchFile) {
+    if (deletedWorkbenchFile)
       StateManager.instance.localSupergraphTreeDataProvider.refresh();
-    }
   });
-  workspace.onDidChangeTextDocument((e) => {
-    if (e.contentChanges.length == 0) return;
+  workspace.onDidSaveTextDocument((doc) => {
+    const docPath = doc.uri.fsPath;
 
-    const uri = e.document.uri;
-    if (uri.scheme == 'workbench') {
-      const documentText = e.document.getText();
-      if (uri.path.includes('queries')) {
-        WorkbenchDiagnostics.instance.validateOperation(
-          uri.query,
-          documentText,
-          FileProvider.instance.loadedWorbenchFilePath,
-        );
-      } else if (uri.path.includes('subgraphs')) {
-        const subgraphName = uri.query;
-        if (
-          FileProvider.instance.loadedWorkbenchFile &&
-          FileProvider.instance.loadedWorkbenchFile.schemas[subgraphName] &&
-          FileProvider.instance.loadedWorkbenchFile.schemas[subgraphName].sdl !=
-            documentText
-        ) {
-          const editedWorkbenchFile = {
-            ...FileProvider.instance.loadedWorkbenchFile,
-          };
-          editedWorkbenchFile.schemas[subgraphName].sdl = documentText;
-          const tryNewComposition =
-            WorkbenchFederationProvider.compose(editedWorkbenchFile);
-          if (tryNewComposition.errors)
-            WorkbenchDiagnostics.instance.setCompositionErrors(
-              FileProvider.instance.loadedWorbenchFilePath,
-              FileProvider.instance.loadedWorkbenchFile,
-              tryNewComposition.errors,
-            );
-          else {
-            WorkbenchDiagnostics.instance.clearCompositionDiagnostics(
-              FileProvider.instance.loadedWorbenchFilePath,
-            );
-          }
-        }
-      }
-    }
-  });
-  workspace.onDidSaveTextDocument(async (document) => {
-    const uri = document.uri;
-    if (uri.path.includes('mocks')) {
-      const querySplit = uri.query.split(':');
-      const { wbFile, path } = FileProvider.instance.workbenchFileByGraphName(
-        querySplit[0],
-      );
-      const serviceName = querySplit[1];
-      const newMocksText = document.getText();
-      if (newMocksText != wbFile.schemas[serviceName].customMocks) {
-        const mocksUri = Uri.parse(`workbench:${path}/mocks?${serviceName}`);
-        FileProvider.instance.writeFile(
-          mocksUri,
-          Buffer.from(newMocksText, 'utf8'),
-          { create: true, overwrite: true },
-        );
-        log(`Detected changes to subgraph ${serviceName} mocks.`);
-        await ServerManager.instance.restartSubgraph(path, serviceName);
-      }
-    }
+    FileProvider.instance
+      .getWorkbenchFiles()
+      .forEach(async (wbFile, wbFilePath) => {
+        if (docPath == wbFilePath)
+          StateManager.instance.localSupergraphTreeDataProvider.refresh();
+        else
+          Object.keys(wbFile.subgraphs).forEach(async (subgraphName) => {
+            const { file, workbench_design } =
+              wbFile.subgraphs[subgraphName].schema;
+            let schemaUri: Uri | undefined;
+            if (workbench_design)
+              schemaUri = schemaFileUri(workbench_design, wbFilePath);
+            else if (file) schemaUri = schemaFileUri(file, wbFilePath);
+
+            if (schemaUri && schemaUri.fsPath == docPath) {
+              const composedSchema =
+                await FileProvider.instance.refreshWorkbenchFileComposition(
+                  wbFilePath,
+                );
+
+              if (composedSchema)
+                await Rover.instance.restartMockedSubgraph(
+                  subgraphName,
+                  schemaUri,
+                );
+              else if (Rover.instance.primaryDevTerminal) {
+                window.showErrorMessage(
+                  `Stopping rover dev session because of invalid composition`,
+                );
+                Rover.instance.stopRoverDev();
+                commands.executeCommand('workbench.action.showErrorsWarnings');
+              }
+            }
+          });
+      });
   });
 }

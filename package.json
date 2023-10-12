@@ -7,21 +7,25 @@
     "url": "https://github.com/apollographql/apollo-workbench-vscode"
   },
   "license": "SEE LICENSE IN LICENSE",
-  "version": "2.2.1",
+  "version": "3.2.0",
   "publisher": "ApolloGraphQL",
   "engines": {
-    "vscode": "^1.34.0"
+    "vscode": "^1.74.0"
   },
   "categories": [
     "Other"
   ],
   "activationEvents": [
-    "onView:local-supergraph-designs"
+    "onStartupFinished"
   ],
-  "main": "./out/extension.js",
+  "main": "./out/main.js",
   "scripts": {
+    "graphql-codegen": "graphql-codegen",
     "codegen": "apollo client:codegen --target=typescript  src/graphql/types --outputFlat",
-    "vscode:prepublish": "npm run compile",
+    "vscode:prepublish": "npm run esbuild-base -- --minify",
+    "esbuild-base": "esbuild ./src/extension.ts --bundle --outfile=out/main.js --external:vscode --format=cjs --platform=node",
+    "esbuild": "npm run esbuild-base -- --sourcemap",
+    "esbuild-watch": "npm run esbuild-base -- --sourcemap --watch",
     "vscode:package": "vsce package",
     "compile": "tsc -p ./",
     "lint": "eslint . --ext .ts,.tsx",
@@ -31,42 +35,48 @@
     "test:ci": "node ./out/__tests__/githubCheckTests.js"
   },
   "devDependencies": {
+    "@graphql-codegen/cli": "^2.16.1",
+    "@graphql-codegen/typed-document-node": "^2.3.10",
+    "@graphql-codegen/typescript": "^2.8.5",
+    "@graphql-codegen/typescript-operations": "^2.5.10",
     "@types/glob": "^7.1.3",
     "@types/graphql": "^14.5.0",
+    "@types/js-yaml": "^4.0.5",
     "@types/lodash": "^4.14.165",
-    "@types/mocha": "^8.2.0",
-    "@types/node": "^14.14.14",
-    "@types/vscode": "^1.34.0",
+    "@types/mocha": "^10.0.1",
+    "@types/node": "^20.4.4",
+    "@types/vscode": "^1.74.0",
     "@typescript-eslint/eslint-plugin": "^3.0.2",
     "@typescript-eslint/parser": "^3.0.2",
+    "@vscode/test-electron": "^2.2.1",
+    "@vscode/vsce": "^2.19.0",
+    "esbuild": "^0.17.19",
     "eslint": "^7.1.0",
-    "mocha": "^8.2.1",
+    "mocha": "^10.2.0",
     "prettier": "^2.2.1",
-    "typescript": "^4.0.2",
-    "vsce": "^1.83.0",
-    "vscode-test": "^1.4.1"
+    "typescript": "^5.1.6"
   },
   "dependencies": {
     "@apollo/client": "^3.4.16",
-    "@apollo/composition": "npm:@apollo/composition@2.0.0-alpha.2",
-    "@apollo/federation-1": "npm:@apollo/federation@^0.33.8",
-    "@apollo/federation-2": "npm:@apollo/subgraph@2.0.0-alpha.2",
-    "@apollo/gateway-1": "npm:@apollo/gateway@^0.44.1",
-    "@apollo/gateway-2": "npm:@apollo/gateway@2.0.0-alpha.2",
-    "@apollo/query-graphs": "npm:@apollo/query-graphs@2.0.0-alpha.2",
-    "@apollo/query-planner-1": "npm:@apollo/query-planner@^0.5.1",
-    "@apollo/query-planner-2": "npm:@apollo/query-planner@2.0.0-alpha.2",
-    "apollo-server": "^3.4.0",
+    "@apollo/server": "^4.8.1",
+    "@apollo/subgraph": "^2.4.3",
+    "@graphql-tools/mock": "^8.7.14",
+    "@graphql-typed-document-node/core": "^3.2.0",
     "archiver": "^5.2.0",
     "chokidar": "^3.4.3",
     "codemirror": "^5.63.3",
     "faker": "^5.4.0",
-    "graphql": "^15.6.1",
+    "fix-path": "^4.0.0",
+    "graphql": "^16.7.1",
+    "graphql-tag": "^2.12.6",
     "graphql-tools": "^8.2.0",
+    "js-yaml": "^4.1.0",
     "lodash": "^4.17.20",
     "node-fetch": "^2.6.4",
+    "shell-path": "^3.0.0",
     "vscode-languageclient": "^7.0.0",
-    "vscode-languageserver": "^7.0.0"
+    "vscode-languageserver": "^7.0.0",
+    "vscode-uri": "^3.0.6"
   },
   "prettier": {
     "singleQuote": true,
@@ -81,8 +91,8 @@
           "type": [
             "string"
           ],
-          "default": "https://graphql.api.apollographql.com/api/graphql",
-          "description": "Specifies the url endpoint to be used for the Apollo Studio Graph"
+          "default": "https://api.apollographql.com/graphql",
+          "description": "Specifies the url endpoint to be used for the Apollo GraphOS Platform API"
         },
         "apollo-workbench.apolloOrg": {
           "type": [
@@ -102,6 +112,13 @@
           ],
           "default": 4000,
           "description": "Specifies the url endpoint to be used for the Apollo Studio Graph"
+        },
+        "apollo-workbench.roverConfigProfile": {
+          "type": [
+            "string"
+          ],
+          "default": "",
+          "description": "Specifies the rover config profile that should be used for GraphOS"
         },
         "apollo-workbench.startingServerPort": {
           "type": [
@@ -171,161 +188,134 @@
     },
     "commands": [
       {
+        "command": "local-supergraph-designs.sandbox",
+        "title": "Open Apollo Sandbox",
+        "icon": "$(notebook-execute)",
+        "category": "GraphOS"
+      },
+      {
         "command": "local-supergraph-designs.refresh",
-        "title": "Refresh local subgraph designs",
-        "icon": "$(refresh)"
+        "title": "Refresh Local Designs",
+        "icon": "$(refresh)",
+        "category": "GraphOS"
       },
       {
         "command": "local-supergraph-designs.editSubgraph",
         "title": "Edit Subgraph",
-        "icon": "$(edit)"
+        "icon": "$(edit)",
+        "category": "GraphOS"
       },
       {
         "command": "local-supergraph-designs.addSubgraph",
-        "title": "Add New Subgrraph to Design",
-        "icon": "$(add)"
+        "title": "Add Subgraph to Design",
+        "icon": "$(add)",
+        "category": "GraphOS"
       },
       {
         "command": "local-supergraph-designs.newDesign",
-        "title": "Create New Supergraph Design",
-        "icon": "$(add)"
-      },
-      {
-        "command": "local-supergraph-designs.viewSettings",
-        "title": "View Settings for Service",
-        "icon": "$(gear)"
+        "title": "New Supergraph Design",
+        "icon": "$(add)",
+        "category": "GraphOS"
       },
       {
         "command": "local-supergraph-designs.viewSupergraphSchema",
-        "title": "View Supergraph Schema"
-      },
-      {
-        "command": "local-supergraph-designs.viewSupergraphApiSchema",
-        "title": "View API Schema for Supergraph"
+        "title": "View Supergraph Schema",
+        "category": "GraphOS"
       },
       {
         "command": "local-supergraph-designs.exportSupergraphSchema",
-        "title": "Export Supergraph Schema"
-      },
-      {
-        "command": "local-supergraph-designs.exportSupergraphApiSchema",
-        "title": "Export API Schema for Supergraph"
-      },
-      {
-        "command": "local-supergraph-designs.editOperation",
-        "title": "Edit Operation"
+        "title": "Export Supergraph Schema",
+        "category": "GraphOS"
       },
       {
         "command": "local-supergraph-designs.addOperation",
-        "title": "Add Operation",
-        "icon": "$(add)"
-      },
-      {
-        "command": "local-supergraph-designs.viewQueryPlan",
-        "title": "View Query Plan",
-        "icon": "$(output)"
-      },
-      {
-        "command": "local-supergraph-designs.deleteSubgraph",
-        "title": "Delete Subgraph",
-        "icon": "$(trash)"
+        "title": "Add Operation to Design",
+        "icon": "$(add)",
+        "category": "GraphOS"
       },
       {
         "command": "local-supergraph-designs.deleteOperation",
-        "title": "Delete Operation",
-        "icon": "$(trash)"
+        "title": "Delete Operation from Design",
+        "icon": "$(trash)",
+        "category": "GraphOS"
       },
       {
-        "command": "local-supergraph-designs.startMocks",
-        "title": "Start Supergraph Mocks",
+        "command": "local-supergraph-designs.viewOperationDesign",
+        "title": "View Operation UI Design",
+        "icon": "$(go-to-file)",
+        "category": "GraphOS"
+      },
+      {
+        "command": "local-supergraph-designs.checkSubgraphSchema",
+        "title": "Check Subgraph Schema",
+        "category": "GraphOS"
+      },
+      {
+        "command": "local-supergraph-designs.mockSubgraph",
+        "title": "Mock Subgraph in Design",
+        "category": "GraphOS"
+      },
+      {
+        "command": "local-supergraph-designs.deleteSubgraph",
+        "title": "Delete Subgraph from Design",
+        "icon": "$(trash)",
+        "category": "GraphOS"
+      },
+      {
+        "command": "local-supergraph-designs.startRoverDevSession",
+        "title": "Start Supergraph Locally",
         "icon": "$(play)",
-        "category": "Apollo Workbench"
+        "category": "GraphOS"
       },
       {
-        "command": "local-supergraph-designs.stopMocks",
-        "title": "Stop Supergraph Mocks",
+        "command": "local-supergraph-designs.stopRoverDevSession",
+        "title": "Stop Supergraph Running Locally",
         "icon": "$(debug-stop)",
-        "category": "Apollo Workbench"
+        "category": "GraphOS"
       },
       {
-        "command": "local-supergraph-designs.updateSubgraphSchemaFromURL",
-        "title": "Update Subgraph Schema from URL"
-      },
-      {
-        "command": "local-supergraph-designs.viewSubgraphCustomMocks",
-        "title": "View Subgraph Custom Mocks"
-      },
-      {
-        "command": "local-supergraph-designs.exportSubgraphSchema",
-        "title": "Export Subgraph Schema"
-      },
-      {
-        "command": "local-supergraph-designs.exportSubgraphResolvers",
-        "title": "Export Subgraph Entity Resolvers"
-      },
-      {
-        "command": "local-supergraph-designs.createInStudio",
-        "title": "Create new Apollo Studio Graph from design"
-      },
-      {
-        "command": "local-supergraph-designs.exportDesignToProject",
-        "title": "Export design into a local project"
-      },
-      {
-        "command": "local-supergraph-designs.switchFederationComposition",
-        "title": "Switch between Apollo Federation 1 and 2"
-      },
-      {
-        "command": "extension.gettingStarted",
-        "title": "Getting Started"
-      },
-      {
-        "command": "extension.openFolder",
-        "title": "Open Folder",
-        "category": "Apollo Workbench"
-      },
-      {
-        "command": "extension.enterStudioApiKey",
-        "title": "Login to Apollo",
-        "category": "Apollo Workbench",
+        "command": "extension.login",
+        "title": "Login with User API Key",
+        "category": "GraphOS",
         "icon": "$(log-in)"
       },
       {
-        "command": "extension.deleteStudioApiKey",
-        "title": "Logout of Apollo",
-        "category": "Apollo Workbench",
+        "command": "extension.logout",
+        "title": "Logout",
+        "category": "GraphOS",
         "icon": "$(log-out)"
       },
       {
-        "command": "studio-graphs.createWorkbenchFromGraph",
-        "title": "Create Workbench File from Graph"
+        "command": "studio-graphs.openInGraphOS",
+        "title": "Open Supergraph in GraphOS",
+        "category": "GraphOS"
       },
       {
-        "command": "studio-graphs.createWorkbenchFromPreloaded",
-        "title": "Create Workbench File from Example"
+        "command": "studio-graphs.newDesignFromGraphOSSupergraph",
+        "title": "New Design from Supergraph in GraphOS",
+        "category": "GraphOS"
       },
       {
-        "command": "studio-graphs.createWorkbenchFromSupergraphVariant",
-        "title": "Create Workbench File from Graph"
-      },
-      {
-        "command": "studio-graphs.refresh",
-        "title": "Refresh Graphs",
-        "icon": "$(refresh)"
+        "command": "studio-graphs.refreshSupergraphsFromGraphOS",
+        "title": "Refresh Supergraphs from GraphOS",
+        "icon": "$(refresh)",
+        "category": "GraphOS"
       },
       {
         "command": "studio-graphs.switchOrg",
-        "title": "Switch Apollo Studio Org",
-        "category": "Apollo Workbench"
+        "title": "Switch GraphOS Organization",
+        "category": "GraphOS"
       },
       {
-        "command": "studio-graphs.loadOperations",
-        "title": "Load Graph Operations"
+        "command": "studio-graphs.loadOperationsFromGraphOS",
+        "title": "Load Operations from GraphOS",
+        "category": "GraphOS"
       },
       {
-        "command": "studio-operations.addToWorkbench",
-        "title": "Add Operation to Current Workbench",
-        "icon": "$(add)"
+        "command": "studio-operations.addToDesign",
+        "title": "Add Operation to a Local Design",
+        "icon": "$(add)",
+        "category": "GraphOS"
       }
     ],
     "viewsContainers": {
@@ -345,11 +335,11 @@
         },
         {
           "id": "studio-graphs",
-          "name": "Apollo Studio Graphs"
+          "name": "GraphOS Supergraphs"
         },
         {
           "id": "studio-operations",
-          "name": "Apollo Studio Graph Operations"
+          "name": "GraphOS Operations"
         }
       ]
     },
@@ -366,34 +356,19 @@
           "group": "navigation@1"
         },
         {
-          "command": "studio-graphs.refresh",
+          "command": "studio-graphs.refreshSupergraphsFromGraphOS",
           "when": "view == studio-graphs",
           "group": "navigation@2"
         }
       ],
       "view/item/context": [
         {
-          "command": "local-supergraph-designs.createInStudio",
-          "when": "view == local-supergraph-designs && viewItem == supergraphTreeItem",
-          "group": "1"
-        },
-        {
-          "command": "local-supergraph-designs.exportDesignToProject",
-          "when": "view == local-supergraph-designs && viewItem == supergraphTreeItem",
-          "group": "2"
-        },
-        {
-          "command": "local-supergraph-designs.viewSettings",
-          "when": "view == local-supergraph-designs && viewItem == subgraphTreeItem",
-          "group": "inline"
-        },
-        {
-          "command": "local-supergraph-designs.startMocks",
+          "command": "local-supergraph-designs.startRoverDevSession",
           "when": "view == local-supergraph-designs && viewItem == subgraphSummaryTreeItem",
           "group": "inline@1"
         },
         {
-          "command": "local-supergraph-designs.stopMocks",
+          "command": "local-supergraph-designs.stopRoverDevSession",
           "when": "view == local-supergraph-designs && viewItem == subgraphSummaryTreeItem",
           "group": "inline@2"
         },
@@ -408,34 +383,29 @@
           "group": "inline"
         },
         {
-          "command": "local-supergraph-designs.viewQueryPlan",
+          "command": "local-supergraph-designs.sandbox",
           "when": "view == local-supergraph-designs && viewItem == operationTreeItem",
           "group": "inline"
         },
         {
-          "command": "local-supergraph-designs.updateSubgraphSchemaFromURL",
-          "when": "view == local-supergraph-designs && viewItem == subgraphTreeItem",
-          "group": "1@1"
+          "command": "local-supergraph-designs.viewOperationDesign",
+          "when": "view == local-supergraph-designs && viewItem == operationTreeItem",
+          "group": "inline"
         },
         {
-          "command": "local-supergraph-designs.viewSubgraphCustomMocks",
+          "command": "local-supergraph-designs.checkSubgraphSchema",
           "when": "view == local-supergraph-designs && viewItem == subgraphTreeItem",
-          "group": "1@2"
+          "group": "9@1"
         },
         {
-          "command": "local-supergraph-designs.exportSubgraphSchema",
+          "command": "local-supergraph-designs.mockSubgraph",
           "when": "view == local-supergraph-designs && viewItem == subgraphTreeItem",
-          "group": "2@1"
-        },
-        {
-          "command": "local-supergraph-designs.exportSubgraphResolvers",
-          "when": "view == local-supergraph-designs && viewItem == subgraphTreeItem",
-          "group": "2@2"
+          "group": "9@2"
         },
         {
           "command": "local-supergraph-designs.deleteSubgraph",
           "when": "view == local-supergraph-designs && viewItem == subgraphTreeItem",
-          "group": "9@1"
+          "group": "9@3"
         },
         {
           "command": "local-supergraph-designs.deleteOperation",
@@ -443,34 +413,36 @@
           "group": "10@1"
         },
         {
+          "command": "local-supergraph-designs.viewSupergraphSchema",
+          "when": "view == local-supergraph-designs && viewItem == supergraphTreeItem",
+          "group": "1@1"
+        },
+        {
           "command": "local-supergraph-designs.exportSupergraphSchema",
-          "when": "view == local-supergraph-designs && viewItem == supergraphSchemaTreeItem",
+          "when": "view == local-supergraph-designs && viewItem == supergraphTreeItem",
+          "group": "1@2"
+        },
+        {
+          "command": "studio-graphs.openInGraphOS",
+          "when": "view == studio-graphs && viewItem == studioGraphTreeItem",
           "group": "1"
         },
         {
-          "command": "local-supergraph-designs.exportSupergraphApiSchema",
-          "when": "view == local-supergraph-designs && viewItem == supergraphApiSchemaTreeItem",
+          "command": "studio-graphs.newDesignFromGraphOSSupergraph",
+          "when": "view == studio-graphs && viewItem == studioGraphTreeItem",
           "group": "2"
         },
         {
-          "command": "studio-graphs.createWorkbenchFromGraph",
-          "when": "view == studio-graphs && viewItem == studioGraphTreeItem"
-        },
-        {
-          "command": "studio-graphs.createWorkbenchFromPreloaded",
-          "when": "view == studio-graphs && viewItem == preloadedWorkbenchFile"
-        },
-        {
-          "command": "studio-graphs.createWorkbenchFromSupergraphVariant",
+          "command": "studio-graphs.newDesignFromGraphOSSupergraph",
           "when": "view == studio-graphs && viewItem == studioGraphVariantTreeItem"
         },
         {
-          "command": "studio-operations.addToWorkbench",
+          "command": "studio-operations.addToDesign",
           "when": "view == studio-operations && viewItem == studioOperationTreeItem",
           "group": "inline"
         },
         {
-          "command": "studio-operations.addToWorkbench",
+          "command": "studio-operations.addToDesign",
           "when": "view == studio-operations && viewItem == studioOperationTreeItem"
         }
       ]
