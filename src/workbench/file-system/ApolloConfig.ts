@@ -33,6 +33,7 @@ type Schema = {
 
 type MockSubgraph = {
   enabled: boolean;
+  customMocks?: string;
 };
 
 export type Operation = {

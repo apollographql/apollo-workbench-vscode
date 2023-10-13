@@ -298,6 +298,34 @@ export class FileProvider {
       await this.writeWorkbenchConfig(wbFilePath, wbFile);
     }
   }
+  /** */
+  async createCustomMocksLocally(
+    subgraphName: string,
+    wbFile: ApolloConfig,
+    wbFilePath: string,
+  ) {
+    if (StateManager.workspaceRoot) {
+      const mocksPath = resolve(
+        StateManager.workspaceRoot,
+        `${subgraphName}-mocks.js`,
+      );
+      await workspace.fs.writeFile(
+        Uri.parse(mocksPath),
+        new TextEncoder().encode(`const mocks = {
+          Int: () => 6,
+          Float: () => 22.1,
+          String: () => 'Hello',
+        };
+        module.exports = mocks;`),
+      );
+      wbFile.subgraphs[subgraphName].schema.mocks = {
+        enabled: true,
+        customMocks: mocksPath,
+      };
+      await this.writeWorkbenchConfig(wbFilePath, wbFile, false);
+      return mocksPath;
+    }
+  }
   /**
    * Creates a temporary copy of a local config file so we can modify schema based on workbench_design
    * @param ApolloConfig file

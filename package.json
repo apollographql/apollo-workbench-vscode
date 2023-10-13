@@ -256,6 +256,11 @@
         "category": "GraphOS"
       },
       {
+        "command": "local-supergraph-designs.addCustomMocksToSubgraph",
+        "title": "Add Custom Mocks",
+        "category": "GraphOS"
+      },
+      {
         "command": "local-supergraph-designs.deleteSubgraph",
         "title": "Delete Subgraph from Design",
         "icon": "$(trash)",
@@ -401,6 +406,11 @@
           "command": "local-supergraph-designs.mockSubgraph",
           "when": "view == local-supergraph-designs && viewItem == subgraphTreeItem",
           "group": "9@2"
+        },
+        {
+          "command": "local-supergraph-designs.addCustomMocksToSubgraph",
+          "when": "view == local-supergraph-designs && viewItem == subgraphTreeItem",
+          "group": "9@3"
         },
         {
           "command": "local-supergraph-designs.deleteSubgraph",

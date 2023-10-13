@@ -257,12 +257,7 @@ export async function startRoverDevSession(item?: SubgraphSummaryTreeItem) {
             for (let i = 0; i < numberOfSubgraphsToMock; i++) {
               const subgraphName = subgraphNamesToMock[i];
               const subgraph = subgraphsToMock[subgraphName];
-              const schemaPath =
-                subgraph.schema.workbench_design ?? subgraph.schema.file ?? '';
-              await Rover.instance.startMockedSubgraph(
-                subgraphName,
-                Uri.parse(schemaPath),
-              );
+              await Rover.instance.startMockedSubgraph(subgraphName, subgraph);
 
               progress.report({
                 message: `Mocked subgraph ${subgraphName}`,
@@ -650,11 +645,34 @@ export async function addFederationDirective(
   } else {
     await editor?.insertSnippet(
       new SnippetString(
-        `extend schema @link(url: "https://specs.apollo.dev/federation/v2.3", import: ["${directive}"])\n\n`,
+        `extend schema @link(url: "https://specs.apollo.dev/federation/v2.5", import: ["${directive}"])\n\n`,
       ),
       new Position(0, 0),
     );
   }
 
   await document.save();
+}
+
+export async function addCustomMocksToSubgraph(item: SubgraphTreeItem) {
+  let subgraphName;
+  let wbFile: ApolloConfig;
+  let wbFilePath;
+  let mocksPath: string | undefined;
+
+  if (item) {
+    subgraphName = item.subgraphName;
+    wbFilePath = item.wbFilePath;
+    wbFile = FileProvider.instance.workbenchFileFromPath(wbFilePath);
+
+    if (!wbFile.subgraphs[subgraphName].schema.mocks?.customMocks) {
+      mocksPath = await FileProvider.instance.createCustomMocksLocally(
+        subgraphName,
+        wbFile,
+        wbFilePath,
+      );
+    }
+
+    if (mocksPath) await workspace.openTextDocument(Uri.parse(mocksPath));
+  }
 }
