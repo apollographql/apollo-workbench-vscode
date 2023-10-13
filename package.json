@@ -207,7 +207,7 @@
       },
       {
         "command": "local-supergraph-designs.addSubgraph",
-        "title": "Add Subgraph to Design",
+        "title": "Add New Subgraph to Design",
         "icon": "$(add)",
         "category": "GraphOS"
       },
