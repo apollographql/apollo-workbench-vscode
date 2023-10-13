@@ -50,6 +50,7 @@ import {
 } from '../workbench/docProviders';
 import { openFolder } from './extension';
 import { whichDesign, whichOperation, whichSubgraph } from '../utils/uiHelpers';
+import { File } from 'buffer';
 
 let startingMocks = false;
 
@@ -195,7 +196,8 @@ export async function mockSubgraph(item?: SubgraphTreeItem) {
     ? item.subgraphName
     : await whichSubgraph(wbFilePath);
   if (!subgraphName) return;
-  await FileProvider.instance.convertSubgraphToDesign(wbFilePath, subgraphName);
+
+  await FileProvider.instance.mockSubgraphDesign(wbFilePath, subgraphName);
 }
 
 export async function stopRoverDevSession(item: SubgraphSummaryTreeItem) {
@@ -239,7 +241,7 @@ export async function startRoverDevSession(item?: SubgraphSummaryTreeItem) {
           const subgraphNames = Object.keys(wbFile.subgraphs);
           const subgraphsToMock: { [name: string]: Subgraph } = {};
           subgraphNames.forEach((s) => {
-            if (wbFile.subgraphs[s].schema.workbench_design)
+            if (wbFile.subgraphs[s].schema.mocks?.enabled)
               subgraphsToMock[s] = wbFile.subgraphs[s];
           });
           const subgraphNamesToMock = Object.keys(subgraphsToMock);

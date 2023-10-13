@@ -164,7 +164,25 @@ export class FileProvider {
       new TextEncoder().encode(dump(wbFile)),
     );
   }
+  /**
+   * Toggle the mocking capabbility of a subgraph. Defaults to enabling mock
+   * @param wbFilePath - Path to Workbench File
+   * @param subgraphName - Name of subgraph to be mocked in wb file
+   * @param shouldMock - What mock should be set for Subgraph mocking - Default: true
+   */
+  async mockSubgraphDesign(
+    wbFilePath: string,
+    subgraphName: string,
+    shouldMock = true,
+  ) {
+    const wbFile = this.workbenchFileFromPath(wbFilePath);
+    wbFile.subgraphs[subgraphName].schema.mocks = { enabled: shouldMock };
 
+    await workspace.fs.writeFile(
+      Uri.parse(wbFilePath),
+      new TextEncoder().encode(dump(wbFile)),
+    );
+  }
   async refreshWorkbenchFileComposition(wbFilePath: string) {
     log(`Refreshing composition for ${wbFilePath}`);
     return await window.withProgress(
