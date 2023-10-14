@@ -427,6 +427,9 @@ export async function addSubgraph(item?: SubgraphSummaryTreeItem) {
         routing_url: `http://localhost:${port}`,
         schema: {
           file: newSchemaFilePath,
+          mocks: {
+            enabled: true,
+          },
         },
       };
       await FileProvider.instance.writeWorkbenchConfig(wbFilePath, wbFile);
