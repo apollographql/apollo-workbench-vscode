@@ -31,7 +31,7 @@ export class Rover {
   private secondaryDevTerminals: Terminal[] = [];
 
   private async execute(command: string, json = true, addProfile = true) {
-    let cmd = json ? `${command} --output=json` : command;
+    let cmd = json ? `${command} --format=json` : command;
 
     if (addProfile && StateManager.settings_roverConfigProfile != '')
       cmd += ` --profile=${StateManager.settings_roverConfigProfile}`;
