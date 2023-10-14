@@ -10,6 +10,7 @@ schema:
 ```
 
 - Enable mocking by default for newly added subgraphs
+- Migrate to `rover --format` instead of output (deprecated)
 
 ## Apollo Workbench VSCode 3.2
 

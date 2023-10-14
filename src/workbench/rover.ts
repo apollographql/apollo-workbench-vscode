@@ -245,10 +245,10 @@ export class Rover {
         } catch (error) {
           log(`Unable to eval custom mocks. Did you export your mocks?`);
         }
-      }
+      } else schema = addMocksToSchema({ schema, preserveResolvers: true });
 
       const server = new ApolloServer({
-        schema: addMocksToSchema({ schema, preserveResolvers: true }),
+        schema, //: addMocksToSchema({ schema, preserveResolvers: true }),
       });
 
       //Set the port and server to local state
