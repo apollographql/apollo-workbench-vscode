@@ -1,5 +1,5 @@
 ---
-title: Testing Workbench graphs locally
+title: Mocking
 description: Running supergraph design locally with mocked subgraphs
 permalink: /mocking/
 layout: page
@@ -11,7 +11,7 @@ Apollo Workbench enables you to run a mocked version of any fully composing supe
 
 To start your mocked supergraph locally, click the triangular Play button that appears when hovering over the subgraphs row in the navigation panel:
 
-<img class="screenshot" src="./images/run-mocks-locally.png" alt="Play button for running supergraph locally" width="400" />
+<img class="screenshot" src="../images/run-mocks-locally.png" alt="Play button for running supergraph locally" width="400" />
 
 This utilizes [`rover dev`](https://www.apollographql.com/docs/rover/commands/dev) to run the supergraph locally with the Apollo Router. Apollo Sandbox will automatically open for you to write queries and view query plans.
 
@@ -48,7 +48,7 @@ users:
 
 You can define custom mocks for any subgraph in [the same format Apollo Server expects for mocks](https://www.apollographql.com/docs/apollo-server/testing/mocking/). Access the custom mocks for any subgraph by right-clicking the subgraph name and selecting **Open Custom Mocks**:
 
-<img class="screenshot" src="./images/custom-mocks-options.png" alt="Viewing custom mocks" width="400" />
+<img class="screenshot" src="../images/custom-mocks-options.png" alt="Viewing custom mocks" width="400" />
 
 > Custom mocks currently only work with a `.js` file that expects the ` mocks`` to be exported. The default new custom mocks contains the export for you. You can also import  `faker` if you want to customize your mocks.
 

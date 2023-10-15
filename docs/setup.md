@@ -1,5 +1,5 @@
 ---
-title: Setting up Apollo Workbench
+title: Setup
 description: Set up steps to get started using all the features of Apollo Workbench
 permalink: /setup/
 layout: page
@@ -18,7 +18,7 @@ After you install the extension, it adds a Workbench icon to your VS Code Activi
 
 The Workbench navigation panel is divided into three sections:
 
-- **Local supergraph designs.** This lists all of the `.apollo-workbench` files contained in the directory VS Code is opened to.
+- **Local supergraph designs.** This lists all of the supergraph config `.yaml` files contained in the directory VS Code is opened to.
 - **GraphOS supergraphs.** This lists all of the graphs you have access to in GraphOS. You can use this list to create a new design based on an existing graph.
   - To populate this list, you need to [authenticate Workbench with Studio](#authenticating-with-graphos).
 - **GraphOS operations.** This lists all of the GraphQL operations associated with whichever **GraphOS graph** is selected.
@@ -35,7 +35,7 @@ To log in to Studio from Workbench:
 
 3. From the Workbench tab in VS Code, click **Click here to login with your user api key**. (You can also run the `login` command in the command palette) Paste your API key into the input box:
 
-<img class="screenshot" src="./images/add-api-key.png" alt="Adding an API key to workbench" />
+<img class="screenshot" src="../images/add-api-key.png" alt="Adding an API key to workbench" />
 
 This saves the API key to your VS Code extension state.
 
