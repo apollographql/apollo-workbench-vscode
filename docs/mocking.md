@@ -1,7 +1,7 @@
 ---
 title: Testing Workbench graphs locally
 description: Running supergraph design locally with mocked subgraphs
-permalink: /mocking
+permalink: /mocking/
 layout: page
 ---
 

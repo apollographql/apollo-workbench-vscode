@@ -1,7 +1,7 @@
 ---
 title: Setting up Apollo Workbench
 description: Set up steps to get started using all the features of Apollo Workbench
-permalink: /setup
+permalink: /setup/
 layout: page
 ---
 
