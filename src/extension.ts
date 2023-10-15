@@ -44,7 +44,8 @@ import {
   addFederationDirective,
   startRoverDevSession,
   stopRoverDevSession,
-  mockSubgraph,
+  enableMocking,
+  disableMocking,
   viewOperationDesignSideBySide,
   addOperation,
   checkSubgraphSchema,
@@ -130,8 +131,12 @@ export async function activate(context: ExtensionContext) {
     checkSubgraphSchema,
   );
   commands.registerCommand(
-    'local-supergraph-designs.mockSubgraph',
-    mockSubgraph,
+    'local-supergraph-designs.enableMocking',
+    enableMocking,
+  );
+  commands.registerCommand(
+    'local-supergraph-designs.disableMocking',
+    disableMocking,
   );
   commands.registerCommand(
     'local-supergraph-designs.addCustomMocksToSubgraph',

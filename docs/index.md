@@ -3,8 +3,6 @@ title: Apollo Workbench
 description: Overview
 ---
 
-import { Link } from 'gatsby';
-
 **Apollo Workbench** is a [VS Code extension](https://marketplace.visualstudio.com/items?itemName=apollographql.apollo-workbench) that helps you design and reason about your organization's graph without writing any server code.
 
 Currently, Workbench is especially useful for working on _federated_ graphs. Whether you're creating a new graph or making changes to an existing one, Workbench helps you understand how your graph composes throughout the design process.
@@ -25,21 +23,23 @@ Currently, Workbench is especially useful for working on _federated_ graphs. Whe
 
 Quickly create a new design and start adding subgraphs:
 
-<img class="screenshot" src="../images/workbench/new-design.gif" alt="Creating a Workbench design from scratch" />
+<img class="screenshot" src="./images/new-design.gif" alt="Creating a Workbench design from scratch" />
 
 ### Import graphs from Studio
 
-After [authenticating Workbench with Apollo Studio](./setup/#authenticating-with-apollo-studio), you can create local Workbench designs that are based on any Studio graph you have access to:
+After [authenticating Workbench with GraphOS](./setup/#authenticating-with-graphos), you can create local Workbench designs that are based on any GraphOS graph you have access to:
 
-<img class="screenshot" src="../images/workbench/design-from-studio-graph.jpg" alt="Creating a Workbench design from Studio" width="500" />
+<img class="screenshot" src="./images/design-from-graphos-graph.png" alt="Creating a Workbench design from GraphOS" width="500" />
 
-See [Importing a Studio graph into Workbench](./import-studio-graph).
+All subgraphs in the re-created design will default to read-only and you will have to convert them to a local design file if you want to edit them or mock them. You can do this through the prompt that is displayed when you open the schema.
 
 ### View supergraph and API schemas
 
+Apollo Workbench runs `rover supergraph config` every time you save a design file.
+
 As soon as you have a design that successfully composes, you can view its supergraph and API schemas:
 
-<img class="screenshot" src="../images/workbench/view-supergraphSdl.jpg" alt="Viewing a supergraph schema in Workbench" width="700" />
+<img class="screenshot" src="./images/view-supergraphSdl.png" alt="Viewing a supergraph schema in Workbench" width="700" />
 
 These schemas update as you make changes to your subgraph schemas.
 
@@ -47,23 +47,23 @@ These schemas update as you make changes to your subgraph schemas.
 
 ### Build operations from scratch
 
-Workbench provides intelligent code completion to help you write operations against your design:
+Click "Add operation to design" or the "+" button if you have more than one design. You can associate an image for the design that is sourced from a remote url or local file:
 
-<img class="screenshot" src="../images/workbench/new-operation.jpg" alt="Creating a new operation in Workbench" />
+<img class="screenshot" src="./images/new-operation.png" alt="Creating a new operation in Workbench" />
 
 ### Import operations from Studio
 
 After [authenticating Workbench with Apollo Studio](./setup/#authenticating-with-apollo-studio), you can import operations that have been executed against any graph you have access to:
 
-<img class="screenshot" src="../images/workbench/studio-operations.jpg" alt="Query plan view" width="600" />
+<img class="screenshot" src="./images/studio-operations.jpg" alt="Query plan view" width="600" />
 
 See [Importing operations](./import-studio-graph/#importing-operations).
 
 ### View query plans
 
-You can view the query plan that the gateway uses to route each GraphQL operation based on your subgraph schemas:
+You will need to start the design to access Apollo Explorer where you can view the query plans. Just press the play button for the design:
 
-<img class="screenshot" src="../images/workbench/view-query-plan.jpg" alt="Query plan view" width="700" />
+<img class="screenshot" src="./images/view-query-plan.png" alt="Query plan view" width="700" />
 
 > Your design must compose successfully to be able to view query plan details.
 
@@ -73,15 +73,11 @@ You can view the query plan that the gateway uses to route each GraphQL operatio
 
 Any composition errors in your design are displayed in both the VS Code editor and the Problems panel. This helps you understand conflicts and resolve them before writing any server code for your subgraphs:
 
-<img class="screenshot" src="../images/workbench/composition-error.jpg" alt="In-line composition error info" width="500" />
+<img class="screenshot" src="./images/composition-error.png" alt="In-line composition error info" width="500" />
 
 ### Run locally with mocks
 
 See [Testing designs locally](./mocking/).
-
-## Export your designs
-
-See [Exporting Workbench designs](./exporting/).
 
 <hr/>
 

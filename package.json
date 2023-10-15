@@ -247,22 +247,27 @@
       },
       {
         "command": "local-supergraph-designs.checkSubgraphSchema",
-        "title": "Check Subgraph Schema",
+        "title": "GraphOS Schema Check",
         "category": "GraphOS"
       },
       {
-        "command": "local-supergraph-designs.mockSubgraph",
-        "title": "Mock Subgraph in Design",
+        "command": "local-supergraph-designs.enableMocking",
+        "title": "Enable Mocking",
+        "category": "GraphOS"
+      },
+      {
+        "command": "local-supergraph-designs.disableMocking",
+        "title": "Disable Mocking",
         "category": "GraphOS"
       },
       {
         "command": "local-supergraph-designs.addCustomMocksToSubgraph",
-        "title": "Add Custom Mocks",
+        "title": "Open Custom Mocks",
         "category": "GraphOS"
       },
       {
         "command": "local-supergraph-designs.deleteSubgraph",
-        "title": "Delete Subgraph from Design",
+        "title": "Delete Subgraph",
         "icon": "$(trash)",
         "category": "GraphOS"
       },
@@ -400,27 +405,32 @@
         {
           "command": "local-supergraph-designs.checkSubgraphSchema",
           "when": "view == local-supergraph-designs && viewItem == subgraphTreeItem",
-          "group": "9@1"
+          "group": "7@1"
         },
         {
-          "command": "local-supergraph-designs.mockSubgraph",
+          "command": "local-supergraph-designs.enableMocking",
           "when": "view == local-supergraph-designs && viewItem == subgraphTreeItem",
-          "group": "9@2"
+          "group": "8@1"
+        },
+        {
+          "command": "local-supergraph-designs.disableMocking",
+          "when": "view == local-supergraph-designs && viewItem == subgraphTreeItem",
+          "group": "8@2"
         },
         {
           "command": "local-supergraph-designs.addCustomMocksToSubgraph",
           "when": "view == local-supergraph-designs && viewItem == subgraphTreeItem",
-          "group": "9@3"
+          "group": "8@3"
         },
         {
           "command": "local-supergraph-designs.deleteSubgraph",
           "when": "view == local-supergraph-designs && viewItem == subgraphTreeItem",
-          "group": "9@3"
+          "group": "9@1"
         },
         {
           "command": "local-supergraph-designs.deleteOperation",
           "when": "view == local-supergraph-designs && viewItem == operationTreeItem",
-          "group": "10@1"
+          "group": "9@1"
         },
         {
           "command": "local-supergraph-designs.viewSupergraphSchema",

@@ -188,7 +188,7 @@ export async function checkSubgraphSchema(item?: SubgraphTreeItem) {
   }
 }
 
-export async function mockSubgraph(item?: SubgraphTreeItem) {
+const getSubgraph = async (item?: SubgraphTreeItem) => {
   const wbFilePath = item ? item.wbFilePath : await whichDesign();
   if (!wbFilePath) return;
 
@@ -197,7 +197,26 @@ export async function mockSubgraph(item?: SubgraphTreeItem) {
     : await whichSubgraph(wbFilePath);
   if (!subgraphName) return;
 
-  await FileProvider.instance.mockSubgraphDesign(wbFilePath, subgraphName);
+  return { wbFilePath, subgraphName };
+};
+
+export async function enableMocking(item?: SubgraphTreeItem) {
+  const s = await getSubgraph(item);
+  if (s)
+    await FileProvider.instance.mockSubgraphDesign(
+      s.wbFilePath,
+      s.subgraphName,
+    );
+}
+
+export async function disableMocking(item?: SubgraphTreeItem) {
+  const s = await getSubgraph(item);
+  if (s)
+    await FileProvider.instance.mockSubgraphDesign(
+      s.wbFilePath,
+      s.subgraphName,
+      false,
+    );
 }
 
 export async function stopRoverDevSession(item: SubgraphSummaryTreeItem) {
@@ -402,13 +421,17 @@ export async function addSubgraph(item?: SubgraphSummaryTreeItem) {
     const root = StateManager.workspaceRoot;
     if (root) {
       const newSchemaFilePath = resolve(root, `${subgraphName}.graphql`);
+      const wbFile = FileProvider.instance.workbenchFileFromPath(wbFilePath);
+      let schemaString =
+        'extend schema \n\t@link(url: "https://specs.apollo.dev/federation/v2.5", import: ["@key"])\n\ntype Product @key(fields:"id") { \n\tid: ID!\n\tname: String\n}';
+      if (Object.keys(wbFile.subgraphs).length == 0) {
+        schemaString += '\ntype Query {\n\tproducts: [Product]\n}';
+      }
+
       await workspace.fs.writeFile(
         Uri.parse(newSchemaFilePath),
-        Buffer.from(
-          'extend schema \n\t@link(url: "https://specs.apollo.dev/federation/v2.3", import: ["@key"])\n\ntype Query { \n\tdesignRoot: String\n}',
-        ),
+        Buffer.from(schemaString),
       );
-      const wbFile = FileProvider.instance.workbenchFileFromPath(wbFilePath);
       let port = 4001;
       for (const subgraphName in wbFile.subgraphs) {
         const subgraph = wbFile.subgraphs[subgraphName];
@@ -674,8 +697,11 @@ export async function addCustomMocksToSubgraph(item: SubgraphTreeItem) {
         wbFile,
         wbFilePath,
       );
-    }
+    } else mocksPath = wbFile.subgraphs[subgraphName].schema.mocks?.customMocks;
 
-    if (mocksPath) await workspace.openTextDocument(Uri.parse(mocksPath));
+    if (mocksPath) {
+      const doc = await workspace.openTextDocument(Uri.file(mocksPath));
+      await window.showTextDocument(doc);
+    }
   }
 }

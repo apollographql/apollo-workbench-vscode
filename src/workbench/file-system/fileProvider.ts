@@ -182,6 +182,7 @@ export class FileProvider {
       Uri.parse(wbFilePath),
       new TextEncoder().encode(dump(wbFile)),
     );
+    StateManager.instance.localSupergraphTreeDataProvider.refresh();
   }
   async refreshWorkbenchFileComposition(wbFilePath: string) {
     log(`Refreshing composition for ${wbFilePath}`);
@@ -311,12 +312,9 @@ export class FileProvider {
       );
       await workspace.fs.writeFile(
         Uri.parse(mocksPath),
-        new TextEncoder().encode(`const mocks = {
-          Int: () => 6,
-          Float: () => 22.1,
-          String: () => 'Hello',
-        };
-        module.exports = mocks;`),
+        new TextEncoder().encode(
+          `const mocks = {\n\tInt: () => 6,\n\tFloat: () => 22.1,\n\tString: () => 'Hello'\n};\n\nmodule.exports = mocks;`,
+        ),
       );
       wbFile.subgraphs[subgraphName].schema.mocks = {
         enabled: true,
