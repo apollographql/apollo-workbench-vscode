@@ -1,8 +1,6 @@
 # Apollo Workbench for VS Code
 
-Workbench is a VS Code extension to help design schemas using [Apollo Federation](https://www.apollographql.com/docs/federation) and work with the composed results. This extension exposes the functionality of [`rover`](https://www.apollographql.com/docs/rover/) for GraphOS in a friendly VS Code way. 
-
-***DISCLAIMER***: This project is project is maintained by Michael Watson because they use it in schema design discussions regularly. There are many other people that use this tool, but it has been blocked from supporting any new Federation features for some time now. This was due to Federation v1 and v2 eventually requiring different versions of `graphql` making it impossible to have the `npm` packages installed to make Workbench work. Many pieces have been moving in the background to where now Workbench uses `rover` for almost all of it's functionality and the federation specific `npm` packages have been removed (`@apollo/subgraph` is still present to mock schemas locally). If you are interested in helping contribute to this project, feel free to reach out in our [Discord server](https://discord.gg/graphos).
+The Apollo Workbench extension lets you design your schemas using [Apollo Federation](https://www.apollographql.com/docs/federation) and Schema Definition Language (SDL). This extension exposes the functionality of [`rover`](https://www.apollographql.com/docs/rover/) for GraphOS in a friendly VS Code way.
 
 ## Required Installations
 
@@ -14,15 +12,16 @@ Workbench is a VS Code extension to help design schemas using [Apollo Federation
 
 1. Head to your personal settings in Apollo Studio and create a user API key
 2. Click the login row or run the **GraphOS: Login** command form the VS Code command Pallete
-   
+
 ![](images/graphos-login.png)
 
-3. Paste your API key and hit 'Enter'. You should  see a list of your graphs show up
+3. Paste your API key and hit 'Enter'. You should see a list of your graphs show up
 
 ![](images/graphos-logged-in.png)
 
 ### Creating a new design from GraphOS
-*You must login to GraphOS to create designs from the schema registry*
+
+_You must login to GraphOS to create designs from the schema registry_
 
 1. Find the graph you want to create a design from. You can right click the design and go through a wizard to select with environment (variant) to start from or expand the graph and right click on the environment:
 
@@ -62,7 +61,7 @@ subgraphs:
       graphref: hack-the-e-commerce@main
       subgraph: orders
 operations: {}
-federation_version: '=2.3.5'
+federation_version: '=2.5.2'
 ```
 
 ### Creating a design from scratch
@@ -111,7 +110,8 @@ By default, designs running locally will route traffice to the `routing_url` def
 
 This will add a `file` property to your schema in the `yaml` file. If there isn't already a local `workbench_design` or a `file` already defined, a copy of the schema file will be created locally for that reference. Sometimes you may have both a `file` and `workbench_design` defined; for these cases you should always have them pointing at the same schema file.
 
-The following configuration has a local design file being used for composition and to be mocked locally. 
+The following configuration has a local design file being used for composition and to be mocked locally.
+
 ```
 subgraphs:
   users:
@@ -129,7 +129,7 @@ subgraphs:
 
 ### Checking subgraph schema changes
 
-You can right click any subgraph schema and select "Check Subgraph Schema". This will run a wizard to get the necessary information to run `rover subgraph check` ([docs](https://www.apollographql.com/docs/rover/commands/subgraphs#checking-subgraph-schema-changes)) and report the results. Once complete, VS Code will prompty you to open the check report directly in Apollo Studio, the web interface for GraphOS. 
+You can right click any subgraph schema and select "Check Subgraph Schema". This will run a wizard to get the necessary information to run `rover subgraph check` ([docs](https://www.apollographql.com/docs/rover/commands/subgraphs#checking-subgraph-schema-changes)) and report the results. Once complete, VS Code will prompty you to open the check report directly in Apollo Studio, the web interface for GraphOS.
 
 ### Associating an operation design with the Design
 
@@ -141,7 +141,7 @@ You can associate an image with your design now. Local files and urls are both s
 
 ### Adding an operation from GraphOS into the design
 
-You can load operations from GraphOS by clicking on any graph in the "GRAPHOS SUPERGRAPHS" section of the extension. Then you can select the "**+**" button for that operation in "GRAPHOS OPERATIONS" and select which design to add it to. 
+You can load operations from GraphOS by clicking on any graph in the "GRAPHOS SUPERGRAPHS" section of the extension. Then you can select the "**+**" button for that operation in "GRAPHOS OPERATIONS" and select which design to add it to.
 
 ### Opening a design in Apollo Explorer
 
@@ -164,4 +164,7 @@ Are you stuck? Want to contribute? Come visit us in the [Apollo Discord!](https:
 - [Michael Watson](https://github.com/michael-watson/)
 
 ## Licensing
-Source code in this repository is covered by the Elastic License 2.0 as designated by the LICENSE file in the root of the repository. 
+
+Source code in this repository is covered by the Elastic License 2.0 as designated by the LICENSE file in the root of the repository.
+
+**_DISCLAIMER_**: This project is project is maintained by Michael Watson because they use it in schema design discussions regularly. There are many other people that use this tool, but it has been blocked from supporting any new Federation features for some time now. This was due to Federation v1 and v2 eventually requiring different versions of `graphql` making it impossible to have the `npm` packages installed to make Workbench work. Many pieces have been moving in the background to where now Workbench uses `rover` for almost all of it's functionality and the federation specific `npm` packages have been removed (`@apollo/subgraph` is still present to mock schemas locally). If you are interested in helping contribute to this project, feel free to reach out in our [Discord server](https://discord.gg/graphos).
