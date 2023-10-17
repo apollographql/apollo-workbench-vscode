@@ -18,13 +18,17 @@ export async function addToDesign(op: StudioOperationTreeItem) {
     },
   );
   if (supergraphToAddOperationTo) {
-    const wbFile = supergraphs.get(supergraphToAddOperationTo);
+    const wbFilePath = supergraphNames[supergraphToAddOperationTo];
+    const wbFile = FileProvider.instance.workbenchFileFromPath(wbFilePath);
     if (wbFile) {
       wbFile.operations[op.operationName] = {
         document: op.operationSignature,
       };
 
-      await FileProvider.instance.writeWorkbenchConfig(supergraphNames[supergraphToAddOperationTo], wbFile);
+      await FileProvider.instance.writeWorkbenchConfig(
+        supergraphNames[supergraphToAddOperationTo],
+        wbFile,
+      );
     }
   }
 }

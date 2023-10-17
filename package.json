@@ -20,6 +20,8 @@
   ],
   "main": "./out/main.js",
   "scripts": {
+    "docs:build":"jekyll build",
+    "docs:start":"jekyll serve",
     "graphql-codegen": "graphql-codegen",
     "codegen": "apollo client:codegen --target=typescript  src/graphql/types --outputFlat",
     "vscode:prepublish": "npm run esbuild-base -- --minify",
