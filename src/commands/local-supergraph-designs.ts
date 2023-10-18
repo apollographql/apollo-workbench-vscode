@@ -24,6 +24,7 @@ import {
   SupergraphTreeItem,
   OperationTreeItem,
   AddDesignOperationTreeItem,
+  FederationVersionItem,
 } from '../workbench/tree-data-providers/superGraphTreeDataProvider';
 import {
   StudioGraphVariantTreeItem,
@@ -702,6 +703,32 @@ export async function addCustomMocksToSubgraph(item: SubgraphTreeItem) {
     if (mocksPath) {
       const doc = await workspace.openTextDocument(Uri.file(mocksPath));
       await window.showTextDocument(doc);
+    }
+  }
+}
+export async function changeDesignFederationVersion(
+  item: FederationVersionItem,
+) {
+  const wbFilePath = item.wbFilePath;
+  if (wbFilePath) {
+    const versions = [
+      '2.5.6',
+      '2.4.13',
+      '2.3.5',
+      '2.2.3',
+      '2.1.4',
+      '2.0.5',
+      '1',
+    ];
+    const selectedVersion = await window.showQuickPick(versions, {
+      title: 'Select Federation Version',
+      placeHolder: '=2.5.2',
+    });
+    if (selectedVersion) {
+      const wbFile = FileProvider.instance.workbenchFileFromPath(wbFilePath);
+      wbFile.federation_version =
+        selectedVersion.length == 1 ? selectedVersion : `=${selectedVersion}`;
+      FileProvider.instance.writeWorkbenchConfig(wbFilePath, wbFile);
     }
   }
 }

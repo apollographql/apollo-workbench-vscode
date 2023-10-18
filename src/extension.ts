@@ -51,6 +51,7 @@ import {
   checkSubgraphSchema,
   deleteOperation,
   addCustomMocksToSubgraph,
+  changeDesignFederationVersion,
 } from './commands/local-supergraph-designs';
 import { Rover } from './workbench/rover';
 import { viewOperationDesign } from './workbench/webviews/operationDesign';
@@ -145,6 +146,10 @@ export async function activate(context: ExtensionContext) {
   commands.registerCommand(
     'local-supergraph-designs.startRoverDevSession',
     startRoverDevSession,
+  );
+  commands.registerCommand(
+    'local-supergraph-designs.changeDesignFederationVersion',
+    changeDesignFederationVersion,
   );
 
   commands.registerCommand(
