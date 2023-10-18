@@ -14,6 +14,7 @@ import { FieldWithType } from './federationCompletionProvider';
 import { parse, StringValueNode, visit } from 'graphql';
 import { log } from '../utils/logger';
 import { stdout } from 'process';
+import { FileProvider } from './file-system/fileProvider';
 
 export class Rover {
   private static _instance: Rover;
@@ -28,7 +29,6 @@ export class Rover {
   }
 
   primaryDevTerminal: Terminal | undefined;
-  private secondaryDevTerminals: Terminal[] = [];
 
   private async execute(command: string, json = true, addProfile = true) {
     let cmd = json ? `${command} --format=json` : command;
@@ -282,13 +282,7 @@ export class Rover {
       Rover.instance.primaryDevTerminal.dispose();
     }
 
-    Rover.instance.secondaryDevTerminals.forEach((t) => {
-      t.sendText('\x03');
-      t.dispose();
-    });
-
     Rover.instance.primaryDevTerminal = undefined;
-    Rover.instance.secondaryDevTerminals = [];
 
     for (const port in Rover.instance.subgraphState) {
       Rover.instance.stopSubgraphOnPort(Number.parseInt(port));

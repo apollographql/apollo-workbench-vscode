@@ -216,6 +216,22 @@ export class FileProvider {
                 entities: designEntities,
               });
 
+              if (
+                compResults.data.success &&
+                Rover.instance.primaryDevTerminal != undefined
+              ) {
+                //Need to restart any mocked subgraphs running with `rover dev`
+                Object.keys(wbFile.subgraphs).forEach((subgraphName) => {
+                  const subgraph = wbFile.subgraphs[subgraphName];
+                  if (subgraph.schema.mocks?.enabled) {
+                    Rover.instance.restartMockedSubgraph(
+                      subgraphName,
+                      subgraph,
+                    );
+                  }
+                });
+              }
+
               return compResults.data.core_schema;
             } else if (compResults.error) {
               if (compResults.error.message == 'Failed to execute command') {
