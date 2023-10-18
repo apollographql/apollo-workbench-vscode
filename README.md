@@ -2,6 +2,8 @@
 
 The Apollo Workbench extension lets you design your schemas using [Apollo Federation](https://www.apollographql.com/docs/federation) and Schema Definition Language (SDL). This extension exposes the functionality of [`rover`](https://www.apollographql.com/docs/rover/) for GraphOS in a friendly VS Code way.
 
+For more detailed documentation, visit our GitHub [docs page](https://apollographql.github.io/apollo-workbench-vscode/).
+
 ## Required Installations
 
 **rover** - This extension requires the GraphOS CLI `rover` to be installed. Most of the functionality in the extension is based on various `rover` commands (like `rover supergraph compose`). There are [simple installation instructions](https://www.apollographql.com/docs/rover/getting-started) for various platforms to install `rover`.
