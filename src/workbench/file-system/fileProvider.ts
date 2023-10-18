@@ -164,7 +164,26 @@ export class FileProvider {
       new TextEncoder().encode(dump(wbFile)),
     );
   }
+  /**
+   * Toggle the mocking capabbility of a subgraph. Defaults to enabling mock
+   * @param wbFilePath - Path to Workbench File
+   * @param subgraphName - Name of subgraph to be mocked in wb file
+   * @param shouldMock - What mock should be set for Subgraph mocking - Default: true
+   */
+  async mockSubgraphDesign(
+    wbFilePath: string,
+    subgraphName: string,
+    shouldMock = true,
+  ) {
+    const wbFile = this.workbenchFileFromPath(wbFilePath);
+    wbFile.subgraphs[subgraphName].schema.mocks = { enabled: shouldMock };
 
+    await workspace.fs.writeFile(
+      Uri.parse(wbFilePath),
+      new TextEncoder().encode(dump(wbFile)),
+    );
+    StateManager.instance.localSupergraphTreeDataProvider.refresh();
+  }
   async refreshWorkbenchFileComposition(wbFilePath: string) {
     log(`Refreshing composition for ${wbFilePath}`);
     return await window.withProgress(
@@ -196,6 +215,22 @@ export class FileProvider {
                 designPath: wbFilePath,
                 entities: designEntities,
               });
+
+              if (
+                compResults.data.success &&
+                Rover.instance.primaryDevTerminal != undefined
+              ) {
+                //Need to restart any mocked subgraphs running with `rover dev`
+                Object.keys(wbFile.subgraphs).forEach((subgraphName) => {
+                  const subgraph = wbFile.subgraphs[subgraphName];
+                  if (subgraph.schema.mocks?.enabled) {
+                    Rover.instance.restartMockedSubgraph(
+                      subgraphName,
+                      subgraph,
+                    );
+                  }
+                });
+              }
 
               return compResults.data.core_schema;
             } else if (compResults.error) {
@@ -278,6 +313,31 @@ export class FileProvider {
         `${designName}.yaml`,
       );
       await this.writeWorkbenchConfig(wbFilePath, wbFile);
+    }
+  }
+  /** */
+  async createCustomMocksLocally(
+    subgraphName: string,
+    wbFile: ApolloConfig,
+    wbFilePath: string,
+  ) {
+    if (StateManager.workspaceRoot) {
+      const mocksPath = resolve(
+        StateManager.workspaceRoot,
+        `${subgraphName}-mocks.js`,
+      );
+      await workspace.fs.writeFile(
+        Uri.parse(mocksPath),
+        new TextEncoder().encode(
+          `const mocks = {\n\tInt: () => 6,\n\tFloat: () => 22.1,\n\tString: () => 'Hello'\n};\n\nmodule.exports = mocks;`,
+        ),
+      );
+      wbFile.subgraphs[subgraphName].schema.mocks = {
+        enabled: true,
+        customMocks: mocksPath,
+      };
+      await this.writeWorkbenchConfig(wbFilePath, wbFile, false);
+      return mocksPath;
     }
   }
   /**

@@ -44,17 +44,19 @@ import {
   addFederationDirective,
   startRoverDevSession,
   stopRoverDevSession,
-  mockSubgraph,
+  enableMocking,
+  disableMocking,
   viewOperationDesignSideBySide,
   addOperation,
   checkSubgraphSchema,
   deleteOperation,
+  addCustomMocksToSubgraph,
+  changeDesignFederationVersion,
 } from './commands/local-supergraph-designs';
 import { Rover } from './workbench/rover';
 import { viewOperationDesign } from './workbench/webviews/operationDesign';
 import { openSandbox } from './workbench/webviews/sandbox';
 import { FederationReferenceProvider } from './workbench/federationReferenceProvider';
-import {shellPathSync} from 'shell-path';
 
 export const outputChannel = window.createOutputChannel('Apollo Workbench');
 
@@ -63,7 +65,7 @@ export async function deactivate(context: ExtensionContext) {
   await Rover.instance.stopRoverDev();
 }
 
-export async function activate(context: ExtensionContext) {	
+export async function activate(context: ExtensionContext) {
   StateManager.init(context);
   context.workspaceState.update('selectedWbFile', '');
   context.globalState.update('APOLLO_SELECTED_GRAPH_ID', '');
@@ -130,12 +132,24 @@ export async function activate(context: ExtensionContext) {
     checkSubgraphSchema,
   );
   commands.registerCommand(
-    'local-supergraph-designs.mockSubgraph',
-    mockSubgraph,
+    'local-supergraph-designs.enableMocking',
+    enableMocking,
+  );
+  commands.registerCommand(
+    'local-supergraph-designs.disableMocking',
+    disableMocking,
+  );
+  commands.registerCommand(
+    'local-supergraph-designs.addCustomMocksToSubgraph',
+    addCustomMocksToSubgraph,
   );
   commands.registerCommand(
     'local-supergraph-designs.startRoverDevSession',
     startRoverDevSession,
+  );
+  commands.registerCommand(
+    'local-supergraph-designs.changeDesignFederationVersion',
+    changeDesignFederationVersion,
   );
 
   commands.registerCommand(
@@ -253,7 +267,7 @@ export async function activate(context: ExtensionContext) {
               if (composedSchema)
                 await Rover.instance.restartMockedSubgraph(
                   subgraphName,
-                  schemaUri,
+                  wbFile.subgraphs[subgraphName],
                 );
               else if (Rover.instance.primaryDevTerminal) {
                 window.showErrorMessage(

@@ -14,6 +14,7 @@ import { FieldWithType } from './federationCompletionProvider';
 import { parse, StringValueNode, visit } from 'graphql';
 import { log } from '../utils/logger';
 import { stdout } from 'process';
+import { FileProvider } from './file-system/fileProvider';
 
 export class Rover {
   private static _instance: Rover;
@@ -28,10 +29,9 @@ export class Rover {
   }
 
   primaryDevTerminal: Terminal | undefined;
-  private secondaryDevTerminals: Terminal[] = [];
 
   private async execute(command: string, json = true, addProfile = true) {
-    let cmd = json ? `${command} --output=json` : command;
+    let cmd = json ? `${command} --format=json` : command;
 
     if (addProfile && StateManager.settings_roverConfigProfile != '')
       cmd += ` --profile=${StateManager.settings_roverConfigProfile}`;
@@ -187,7 +187,7 @@ export class Rover {
     return port;
   }
 
-  async restartMockedSubgraph(subgraphName: string, schemaUri: Uri) {
+  async restartMockedSubgraph(subgraphName: string, subgraph: Subgraph) {
     if (!this.primaryDevTerminal) return;
 
     let port = 0;
@@ -196,20 +196,22 @@ export class Rover {
 
     if (port != 0) {
       this.stopSubgraphOnPort(port);
-      await this.startMockedSubgraph(subgraphName, schemaUri, port);
+      await this.startMockedSubgraph(subgraphName, subgraph, port);
     }
   }
 
   async startMockedSubgraph(
     subgraphName: string,
-    schemaUri: Uri,
+    subgraph: Subgraph,
     port?: number,
   ) {
     if (!port)
       port = this.portMapping[subgraphName] ?? this.getNextAvailablePort();
 
     try {
-      const schemaDesign = await workspace.fs.readFile(schemaUri);
+      const schemaPath =
+        subgraph.schema.workbench_design ?? subgraph.schema.file ?? '';
+      const schemaDesign = await workspace.fs.readFile(Uri.parse(schemaPath));
       const schemaString = new TextDecoder().decode(schemaDesign);
       const typeDefs = gql(schemaString);
       //Dynamically create __resolveReference resolvers based on defined entites in Graph
@@ -223,9 +225,30 @@ export class Rover {
             },
           }),
       );
-      const schema = buildSubgraphSchema({ typeDefs, resolvers });
+      let schema = buildSubgraphSchema({ typeDefs, resolvers });
+      const customMocks = subgraph.schema.mocks?.customMocks
+        ? await workspace.fs.readFile(
+            Uri.parse(subgraph.schema.mocks?.customMocks),
+          )
+        : undefined;
+
+      if (customMocks) {
+        try {
+          const mocks = eval(customMocks.toString());
+          if (mocks) {
+            schema = addMocksToSchema({
+              schema,
+              mocks,
+              preserveResolvers: true,
+            });
+          }
+        } catch (error) {
+          log(`Unable to eval custom mocks. Did you export your mocks?`);
+        }
+      } else schema = addMocksToSchema({ schema, preserveResolvers: true });
+
       const server = new ApolloServer({
-        schema: addMocksToSchema({ schema, preserveResolvers: true }),
+        schema, //: addMocksToSchema({ schema, preserveResolvers: true }),
       });
 
       //Set the port and server to local state
@@ -235,14 +258,11 @@ export class Rover {
       startStandaloneServer(server, {
         listen: { port },
       });
-
-      return undefined;
     } catch (err) {
       this.subgraphState[port].stop();
       delete this.subgraphState[port];
 
       console.log('unable to start mocked subgraph');
-      return undefined;
     }
   }
   private stopSubgraphOnPort(port: number) {
@@ -262,13 +282,7 @@ export class Rover {
       Rover.instance.primaryDevTerminal.dispose();
     }
 
-    Rover.instance.secondaryDevTerminals.forEach((t) => {
-      t.sendText('\x03');
-      t.dispose();
-    });
-
     Rover.instance.primaryDevTerminal = undefined;
-    Rover.instance.secondaryDevTerminals = [];
 
     for (const port in Rover.instance.subgraphState) {
       Rover.instance.stopSubgraphOnPort(Number.parseInt(port));

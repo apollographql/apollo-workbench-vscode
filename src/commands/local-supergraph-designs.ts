@@ -24,6 +24,7 @@ import {
   SupergraphTreeItem,
   OperationTreeItem,
   AddDesignOperationTreeItem,
+  FederationVersionItem,
 } from '../workbench/tree-data-providers/superGraphTreeDataProvider';
 import {
   StudioGraphVariantTreeItem,
@@ -50,6 +51,7 @@ import {
 } from '../workbench/docProviders';
 import { openFolder } from './extension';
 import { whichDesign, whichOperation, whichSubgraph } from '../utils/uiHelpers';
+import { File } from 'buffer';
 
 let startingMocks = false;
 
@@ -187,7 +189,7 @@ export async function checkSubgraphSchema(item?: SubgraphTreeItem) {
   }
 }
 
-export async function mockSubgraph(item?: SubgraphTreeItem) {
+const getSubgraph = async (item?: SubgraphTreeItem) => {
   const wbFilePath = item ? item.wbFilePath : await whichDesign();
   if (!wbFilePath) return;
 
@@ -195,7 +197,27 @@ export async function mockSubgraph(item?: SubgraphTreeItem) {
     ? item.subgraphName
     : await whichSubgraph(wbFilePath);
   if (!subgraphName) return;
-  await FileProvider.instance.convertSubgraphToDesign(wbFilePath, subgraphName);
+
+  return { wbFilePath, subgraphName };
+};
+
+export async function enableMocking(item?: SubgraphTreeItem) {
+  const s = await getSubgraph(item);
+  if (s)
+    await FileProvider.instance.mockSubgraphDesign(
+      s.wbFilePath,
+      s.subgraphName,
+    );
+}
+
+export async function disableMocking(item?: SubgraphTreeItem) {
+  const s = await getSubgraph(item);
+  if (s)
+    await FileProvider.instance.mockSubgraphDesign(
+      s.wbFilePath,
+      s.subgraphName,
+      false,
+    );
 }
 
 export async function stopRoverDevSession(item: SubgraphSummaryTreeItem) {
@@ -239,7 +261,7 @@ export async function startRoverDevSession(item?: SubgraphSummaryTreeItem) {
           const subgraphNames = Object.keys(wbFile.subgraphs);
           const subgraphsToMock: { [name: string]: Subgraph } = {};
           subgraphNames.forEach((s) => {
-            if (wbFile.subgraphs[s].schema.workbench_design)
+            if (wbFile.subgraphs[s].schema.mocks?.enabled)
               subgraphsToMock[s] = wbFile.subgraphs[s];
           });
           const subgraphNamesToMock = Object.keys(subgraphsToMock);
@@ -255,12 +277,7 @@ export async function startRoverDevSession(item?: SubgraphSummaryTreeItem) {
             for (let i = 0; i < numberOfSubgraphsToMock; i++) {
               const subgraphName = subgraphNamesToMock[i];
               const subgraph = subgraphsToMock[subgraphName];
-              const schemaPath =
-                subgraph.schema.workbench_design ?? subgraph.schema.file ?? '';
-              await Rover.instance.startMockedSubgraph(
-                subgraphName,
-                Uri.parse(schemaPath),
-              );
+              await Rover.instance.startMockedSubgraph(subgraphName, subgraph);
 
               progress.report({
                 message: `Mocked subgraph ${subgraphName}`,
@@ -405,13 +422,17 @@ export async function addSubgraph(item?: SubgraphSummaryTreeItem) {
     const root = StateManager.workspaceRoot;
     if (root) {
       const newSchemaFilePath = resolve(root, `${subgraphName}.graphql`);
+      const wbFile = FileProvider.instance.workbenchFileFromPath(wbFilePath);
+      let schemaString =
+        'extend schema \n\t@link(url: "https://specs.apollo.dev/federation/v2.5", import: ["@key"])\n\ntype Product @key(fields:"id") { \n\tid: ID!\n\tname: String\n}';
+      if (Object.keys(wbFile.subgraphs).length == 0) {
+        schemaString += '\ntype Query {\n\tproducts: [Product]\n}';
+      }
+
       await workspace.fs.writeFile(
         Uri.parse(newSchemaFilePath),
-        Buffer.from(
-          'extend schema \n\t@link(url: "https://specs.apollo.dev/federation/v2.3", import: ["@key"])\n\ntype Query { \n\tdesignRoot: String\n}',
-        ),
+        Buffer.from(schemaString),
       );
-      const wbFile = FileProvider.instance.workbenchFileFromPath(wbFilePath);
       let port = 4001;
       for (const subgraphName in wbFile.subgraphs) {
         const subgraph = wbFile.subgraphs[subgraphName];
@@ -430,6 +451,9 @@ export async function addSubgraph(item?: SubgraphSummaryTreeItem) {
         routing_url: `http://localhost:${port}`,
         schema: {
           file: newSchemaFilePath,
+          mocks: {
+            enabled: true,
+          },
         },
       };
       await FileProvider.instance.writeWorkbenchConfig(wbFilePath, wbFile);
@@ -648,11 +672,63 @@ export async function addFederationDirective(
   } else {
     await editor?.insertSnippet(
       new SnippetString(
-        `extend schema @link(url: "https://specs.apollo.dev/federation/v2.3", import: ["${directive}"])\n\n`,
+        `extend schema @link(url: "https://specs.apollo.dev/federation/v2.5", import: ["${directive}"])\n\n`,
       ),
       new Position(0, 0),
     );
   }
 
   await document.save();
+}
+
+export async function addCustomMocksToSubgraph(item: SubgraphTreeItem) {
+  let subgraphName;
+  let wbFile: ApolloConfig;
+  let wbFilePath;
+  let mocksPath: string | undefined;
+
+  if (item) {
+    subgraphName = item.subgraphName;
+    wbFilePath = item.wbFilePath;
+    wbFile = FileProvider.instance.workbenchFileFromPath(wbFilePath);
+
+    if (!wbFile.subgraphs[subgraphName].schema.mocks?.customMocks) {
+      mocksPath = await FileProvider.instance.createCustomMocksLocally(
+        subgraphName,
+        wbFile,
+        wbFilePath,
+      );
+    } else mocksPath = wbFile.subgraphs[subgraphName].schema.mocks?.customMocks;
+
+    if (mocksPath) {
+      const doc = await workspace.openTextDocument(Uri.file(mocksPath));
+      await window.showTextDocument(doc);
+    }
+  }
+}
+export async function changeDesignFederationVersion(
+  item: FederationVersionItem,
+) {
+  const wbFilePath = item.wbFilePath;
+  if (wbFilePath) {
+    const versions = [
+      '2.5.6',
+      '2.4.13',
+      '2.3.5',
+      '2.2.3',
+      '2.1.4',
+      '2.0.5',
+      '1',
+    ];
+    const selectedVersion = await window.showQuickPick(versions, {
+      title: 'Select Federation Version',
+      placeHolder: '=2.5.2',
+    });
+    if (selectedVersion) {
+      const wbFile = FileProvider.instance.workbenchFileFromPath(wbFilePath);
+      wbFile.federation_version =
+        selectedVersion.length == 1 ? selectedVersion : `=${selectedVersion}`;
+      FileProvider.instance.writeWorkbenchConfig(wbFilePath, wbFile);
+    }
+  }
 }

@@ -4,14 +4,14 @@ export class ApolloConfig {
   operations: { [name: string]: Operation } = {};
 
   constructor() {
-    this.federation_version = '=2.4.7';
+    this.federation_version = '=2.5.2';
   }
 
-  public static copy(config: ApolloConfig){
+  public static copy(config: ApolloConfig) {
     const newConfig = new ApolloConfig();
     newConfig.federation_version = config.federation_version;
     newConfig.subgraphs = config.subgraphs;
-    
+
     return newConfig;
   }
 }
@@ -28,9 +28,15 @@ type Schema = {
   subgraph_url?: string;
 
   workbench_design?: string;
+  mocks?: MockSubgraph;
+};
+
+type MockSubgraph = {
+  enabled: boolean;
+  customMocks?: string;
 };
 
 export type Operation = {
   document: string;
   ui_design?: string;
-}
+};

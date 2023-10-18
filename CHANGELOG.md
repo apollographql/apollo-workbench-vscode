@@ -1,4 +1,18 @@
-## Apollo Workbench VSCode 3.1
+## Apollo Workbench VSCode 3.2.1
+
+- Fix subgraph mocking and re-introduce custom mocks. Added supergraph config options:
+
+```
+schema:
+  mocks:
+    enabled: true
+    customMocks: ./subgraph-mocks.js
+```
+
+- Enable mocking by default for newly added subgraphs
+- Migrate to `rover --format` instead of output (deprecated)
+
+## Apollo Workbench VSCode 3.2
 
 - Fix `Converting circular structure to JSON --> starting at object with constructor 'B4' | property 'command' -> object with constructor 'Object' | property 'arguments' -> object with constructor 'Array' --- index 0 closes the circle` error when clicking a graph in the "GRAPHOS SUPERGRAPHS" view to load operations
 - Fix Start graph locally with `rover dev` using the config file directly
