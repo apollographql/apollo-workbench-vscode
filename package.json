@@ -7,7 +7,7 @@
     "url": "https://github.com/apollographql/apollo-workbench-vscode"
   },
   "license": "SEE LICENSE IN LICENSE",
-  "version": "3.2.1",
+  "version": "3.2.2",
   "publisher": "ApolloGraphQL",
   "engines": {
     "vscode": "^1.74.0"
@@ -20,8 +20,8 @@
   ],
   "main": "./out/main.js",
   "scripts": {
-    "docs:build":"jekyll build",
-    "docs:start":"jekyll serve",
+    "docs:build": "jekyll build",
+    "docs:start": "jekyll serve",
     "graphql-codegen": "graphql-codegen",
     "codegen": "apollo client:codegen --target=typescript  src/graphql/types --outputFlat",
     "vscode:prepublish": "npm run esbuild-base -- --minify",
