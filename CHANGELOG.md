@@ -11,6 +11,8 @@ schema:
 
 - Enable mocking by default for newly added subgraphs
 - Migrate to `rover --format` instead of output (deprecated)
+- Switching federation versions can be done directly in the file, or by clicking the version in Workbench
+- Multiple bug fixes
 
 ## Apollo Workbench VSCode 3.2
 
