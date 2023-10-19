@@ -287,7 +287,11 @@ export async function startRoverDevSession(item?: SubgraphSummaryTreeItem) {
           }
 
           //Start rover dev sessions
-          Rover.instance.startRoverDev(wbFilePath);
+          const tempPath = await FileProvider.instance.createTempWorkbenchFile(
+            wbFile,
+            wbFilePath,
+          );
+          Rover.instance.startRoverDev(tempPath);
 
           await new Promise<void>((resolve) => setTimeout(resolve, 5000));
           progress.report({
