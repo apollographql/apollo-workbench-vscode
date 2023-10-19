@@ -137,7 +137,7 @@ export class ApolloStudioGraphsTreeDataProvider
         items.push(new PreloadedWorkbenchTopLevel());
     } else {
       items.push(new NotLoggedInTreeItem());
-      items.push(new NotLoggedInTreeItem('Login to see Example Graphs'));
+      items.push(new SignupTreeItem());
       window
         .showInformationMessage('No user api key was found.', 'Login')
         .then((response) => {
@@ -150,11 +150,21 @@ export class ApolloStudioGraphsTreeDataProvider
 }
 
 export class NotLoggedInTreeItem extends TreeItem {
-  constructor(message = 'Click here to login with your user api key') {
-    super(message, TreeItemCollapsibleState.None);
+  constructor() {
+    super('Login with GraphOS', TreeItemCollapsibleState.None);
     this.command = {
       title: 'Login to Apollo',
       command: 'extension.login',
+    };
+  }
+}
+
+export class SignupTreeItem extends TreeItem {
+  constructor() {
+    super('Sign-up for GraphOS (free)', TreeItemCollapsibleState.None);
+    this.command = {
+      title: 'Sign-up with GraphOS',
+      command: 'extension.signUp',
     };
   }
 }

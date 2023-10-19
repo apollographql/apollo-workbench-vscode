@@ -24,6 +24,7 @@ import {
   ensureFolderIsOpen,
   enterGraphOSUserApiKey,
   deleteStudioApiKey as logout,
+  signUp,
 } from './commands/extension';
 import {
   refreshStudioGraphs as refreshSupergraphsFromGraphOS,
@@ -99,6 +100,7 @@ export async function activate(context: ExtensionContext) {
   //Global Extension Commands
   commands.registerCommand('extension.login', enterGraphOSUserApiKey);
   commands.registerCommand('extension.logout', logout);
+  commands.registerCommand('extension.signUp', signUp);
 
   //*Local Supergraph Designs TreeView
   //**Navigation Menu Commands
