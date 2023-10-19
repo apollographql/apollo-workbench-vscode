@@ -43,7 +43,7 @@ export async function openSandbox(item?: OperationTreeItem, document?: string) {
   if (!document && operationName)
     document = wbFile.operations[operationName].document;
 
-  await open(document);
+  if (document) await open(document);
 }
 
 async function open(document?: string) {

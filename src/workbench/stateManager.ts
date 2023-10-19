@@ -144,7 +144,10 @@ export class StateManager {
   set globalState_userApiKey(apiKey: string) {
     this.context?.globalState.update('APOLLO_KEY', apiKey);
 
-    if (!apiKey) this.globalState_selectedApolloAccount = '';
+    if (!apiKey) {
+      this.globalState_selectedApolloAccount = '';
+      this.setSelectedGraph();
+    }
 
     this.apolloStudioGraphsProvider.refresh();
     this.apolloStudioGraphOpsProvider.refresh();
@@ -156,7 +159,7 @@ export class StateManager {
   set globalState_selectedApolloAccount(accountId: string) {
     this.context?.globalState.update('APOLLO_SELCTED_ACCOUNT', accountId);
   }
-  setSelectedGraph(graphId: string, variant?: string) {
+  setSelectedGraph(graphId?: string, variant?: string) {
     this.context?.globalState.update('APOLLO_SELCTED_GRAPH_ID', graphId);
     this.context?.globalState.update('APOLLO_SELCTED_GRAPH_VARIANT', variant);
 

@@ -287,7 +287,11 @@ export async function startRoverDevSession(item?: SubgraphSummaryTreeItem) {
           }
 
           //Start rover dev sessions
-          Rover.instance.startRoverDev(wbFilePath);
+          const tempPath = await FileProvider.instance.createTempWorkbenchFile(
+            wbFile,
+            wbFilePath,
+          );
+          Rover.instance.startRoverDev(tempPath);
 
           await new Promise<void>((resolve) => setTimeout(resolve, 5000));
           progress.report({
@@ -424,7 +428,7 @@ export async function addSubgraph(item?: SubgraphSummaryTreeItem) {
       const newSchemaFilePath = resolve(root, `${subgraphName}.graphql`);
       const wbFile = FileProvider.instance.workbenchFileFromPath(wbFilePath);
       let schemaString =
-        'extend schema \n\t@link(url: "https://specs.apollo.dev/federation/v2.5", import: ["@key"])\n\ntype Product @key(fields:"id") { \n\tid: ID!\n\tname: String\n}';
+        'extend schema \n\t@link(url: "https://specs.apollo.dev/federation/v2.5", import: ["@key"])\n\ntype Product @key(fields:"id") { \n\tid: ID!\n}';
       if (Object.keys(wbFile.subgraphs).length == 0) {
         schemaString += '\ntype Query {\n\tproducts: [Product]\n}';
       }

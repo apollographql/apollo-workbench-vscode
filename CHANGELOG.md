@@ -1,3 +1,8 @@
+## Apollo Workbench VSCode 3.2.2
+
+- Fix `rover dev` when operations have argument variables present. We now use the sanitized config file process that we use for `rover supergraph compose` to strip the `operations` from the config file that is passed to `rover dev`.
+- Add GraphOS Signup and clarify login row for GraphOS view
+
 ## Apollo Workbench VSCode 3.2.1
 
 - Fix subgraph mocking and re-introduce custom mocks. Added supergraph config options:

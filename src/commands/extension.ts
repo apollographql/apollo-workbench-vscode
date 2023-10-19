@@ -17,8 +17,7 @@ export async function ensureFolderIsOpen() {
       'You must open a folder to create Apollo Workbench files',
       action,
     );
-    if (response == action)
-      await openFolder();
+    if (response == action) await openFolder();
   }
 }
 
@@ -36,6 +35,13 @@ export async function enterGraphOSUserApiKey() {
     log('No API key entered, login cancelled.');
     window.setStatusBarMessage('Login cancelled, no API key entered', 2000);
   }
+}
+
+export async function signUp() {
+  commands.executeCommand(
+    'vscode.open',
+    'https://studio.apollographql.com/signup?referrer=workbench',
+  );
 }
 
 export async function openFolder() {
