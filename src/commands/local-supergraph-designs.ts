@@ -1,7 +1,6 @@
 import {
   FileProvider,
   schemaFileUri,
-  tempSchemaFilePath,
 } from '../workbench/file-system/fileProvider';
 import {
   window,
@@ -15,7 +14,6 @@ import {
   ProgressLocation,
   ViewColumn,
   env,
-  Location,
 } from 'vscode';
 import { StateManager } from '../workbench/stateManager';
 import {
@@ -29,14 +27,12 @@ import {
 import {
   StudioGraphVariantTreeItem,
   StudioGraphTreeItem,
-  PreloadedWorkbenchFile,
 } from '../workbench/tree-data-providers/apolloStudioGraphsTreeDataProvider';
 import {
   getAccountGraphs,
   getGraphSchemasByVariant,
 } from '../graphql/graphClient';
-import { join, resolve } from 'path';
-import { readFileSync } from 'fs';
+import { resolve } from 'path';
 import { visit, print } from 'graphql';
 import { log } from '../utils/logger';
 import gql from 'graphql-tag';
@@ -51,7 +47,6 @@ import {
 } from '../workbench/docProviders';
 import { openFolder } from './extension';
 import { whichDesign, whichOperation, whichSubgraph } from '../utils/uiHelpers';
-import { File } from 'buffer';
 
 let startingMocks = false;
 
@@ -353,28 +348,12 @@ export async function editSubgraph(item?: SubgraphTreeItem) {
               'Convert to local design',
             )
             .then(async (value) => {
-              if (
-                StateManager.workspaceRoot &&
-                value == 'Convert to local design'
-              ) {
-                //We need to create the file in the relative workspace
-                const schemaFilePath = resolve(
-                  StateManager.workspaceRoot,
-                  `${subgraphName}.graphql`,
-                );
-                const schemaFileUri = Uri.parse(schemaFilePath);
-                await workspace.fs.copy(
-                  tempSchemaFilePath(wbFilePath, subgraphName),
-                  schemaFileUri,
-                  {
-                    overwrite: true,
-                  },
-                );
-                await FileProvider.instance.convertSubgraphToDesign(
-                  wbFilePath,
-                  subgraphName,
-                  schemaFilePath,
-                );
+              if (value == 'Convert to local design') {
+                const schemaFileUri =
+                  await FileProvider.instance.copySchemaToDeisgnFolder(
+                    subgraphName,
+                    wbFilePath,
+                  );
 
                 commands.executeCommand('vscode.open', schemaFileUri);
               }
@@ -423,47 +402,46 @@ export async function addSubgraph(item?: SubgraphSummaryTreeItem) {
     log(message);
     window.setStatusBarMessage(message, 3000);
   } else {
-    const root = StateManager.workspaceRoot;
-    if (root) {
-      const newSchemaFilePath = resolve(root, `${subgraphName}.graphql`);
-      const wbFile = FileProvider.instance.workbenchFileFromPath(wbFilePath);
-      let schemaString =
-        'extend schema \n\t@link(url: "https://specs.apollo.dev/federation/v2.5", import: ["@key"])\n\ntype Product @key(fields:"id") { \n\tid: ID!\n}';
-      if (Object.keys(wbFile.subgraphs).length == 0) {
-        schemaString += '\ntype Query {\n\tproducts: [Product]\n}';
-      }
-
-      await workspace.fs.writeFile(
-        Uri.parse(newSchemaFilePath),
-        Buffer.from(schemaString),
-      );
-      let port = 4001;
-      for (const subgraphName in wbFile.subgraphs) {
-        const subgraph = wbFile.subgraphs[subgraphName];
-        if (
-          subgraph.routing_url &&
-          subgraph.routing_url.includes('http://localhost:')
-        ) {
-          const portString = subgraph.routing_url.split(':')[2];
-          const subgraphPort = Number.parseInt(portString);
-          if (port < subgraphPort) port = subgraphPort;
-          else if (port == subgraphPort) port++;
-        }
-      }
-
-      wbFile.subgraphs[subgraphName] = {
-        routing_url: `http://localhost:${port}`,
-        schema: {
-          file: newSchemaFilePath,
-          mocks: {
-            enabled: true,
-          },
-        },
-      };
-      await FileProvider.instance.writeWorkbenchConfig(wbFilePath, wbFile);
+    const wbFile = FileProvider.instance.workbenchFileFromPath(wbFilePath);
+    let schemaString =
+      'extend schema \n\t@link(url: "https://specs.apollo.dev/federation/v2.5", import: ["@key"])\n\ntype Product @key(fields:"id") { \n\tid: ID!\n}';
+    if (Object.keys(wbFile.subgraphs).length == 0) {
+      schemaString += '\ntype Query {\n\tproducts: [Product]\n}';
     }
+    const newSchemaFilePath =
+      await FileProvider.instance.saveSchemaToDesignFolder(
+        schemaString,
+        subgraphName,
+        wbFilePath,
+      );
+
+    let port = 4001;
+    for (const subgraphName in wbFile.subgraphs) {
+      const subgraph = wbFile.subgraphs[subgraphName];
+      if (
+        subgraph.routing_url &&
+        subgraph.routing_url.includes('http://localhost:')
+      ) {
+        const portString = subgraph.routing_url.split(':')[2];
+        const subgraphPort = Number.parseInt(portString);
+        if (port < subgraphPort) port = subgraphPort;
+        else if (port == subgraphPort) port++;
+      }
+    }
+
+    wbFile.subgraphs[subgraphName] = {
+      routing_url: `http://localhost:${port}`,
+      schema: {
+        file: newSchemaFilePath,
+        mocks: {
+          enabled: true,
+        },
+      },
+    };
+    await FileProvider.instance.writeWorkbenchConfig(wbFilePath, wbFile);
   }
 }
+// }
 export async function deleteSubgraph(item?: SubgraphTreeItem) {
   const wbFilePath = item ? item.wbFilePath : await whichDesign();
   if (!wbFilePath) return;

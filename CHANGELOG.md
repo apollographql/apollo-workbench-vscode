@@ -2,6 +2,7 @@
 
 - Fix `rover dev` when operations have argument variables present. We now use the sanitized config file process that we use for `rover supergraph compose` to strip the `operations` from the config file that is passed to `rover dev`.
 - Add GraphOS Signup and clarify login row for GraphOS view
+- Have schema design files created in a design folder. Without the folder, creating a subgraph with the same name as another schema.graphql file in the folder will overwrite the schema.
 
 ## Apollo Workbench VSCode 3.2.1
 
