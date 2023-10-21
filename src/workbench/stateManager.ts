@@ -49,7 +49,7 @@ export class StateManager {
     return (
       workspace
         ?.getConfiguration('apollo-workbench')
-        ?.get('startingServerPort') ?? (4000 as number)
+        ?.get('startingServerPort') ?? (4001 as number)
     );
   }
   static get settings_openSandbox(): boolean {
@@ -59,10 +59,10 @@ export class StateManager {
         ?.get('openSandboxOnStartMocks') ?? true
     );
   }
-  static get settings_gatewayServerPort(): number {
+  static get settings_routerPort(): number {
     return (
-      workspace?.getConfiguration('apollo-workbench')?.get('gatewayPort') ??
-      (4001 as number)
+      workspace?.getConfiguration('apollo-workbench')?.get('router') ??
+      (4000 as number)
     );
   }
   static get settings_apiKey() {

@@ -3,6 +3,8 @@
 - Fix `rover dev` when operations have argument variables present. We now use the sanitized config file process that we use for `rover supergraph compose` to strip the `operations` from the config file that is passed to `rover dev`.
 - Add GraphOS Signup and clarify login row for GraphOS view
 - Have schema design files created in a design folder. Without the folder, creating a subgraph with the same name as another schema.graphql file in the folder will overwrite the schema.
+- Fix mocks staying open on ports. `rover dev` sessions will be stopped before any attempted start
+- Enable command to refresh Apollo sandbox. We don't have a stable way to know when `rover dev` is actually finished, we just wait 5s (which should cover most scenarios).
 
 ## Apollo Workbench VSCode 3.2.1
 

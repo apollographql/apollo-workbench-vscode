@@ -47,6 +47,7 @@ import {
 } from '../workbench/docProviders';
 import { openFolder } from './extension';
 import { whichDesign, whichOperation, whichSubgraph } from '../utils/uiHelpers';
+import { openSandboxWebview } from '../workbench/webviews/sandbox';
 
 let startingMocks = false;
 
@@ -252,54 +253,11 @@ export async function startRoverDevSession(item?: SubgraphSummaryTreeItem) {
           location: ProgressLocation.Notification,
         },
         async (progress) => {
-          //Calculate how many servers to mock
-          const subgraphNames = Object.keys(wbFile.subgraphs);
-          const subgraphsToMock: { [name: string]: Subgraph } = {};
-          subgraphNames.forEach((s) => {
-            if (wbFile.subgraphs[s].schema.mocks?.enabled)
-              subgraphsToMock[s] = wbFile.subgraphs[s];
-          });
-          const subgraphNamesToMock = Object.keys(subgraphsToMock);
-          const numberOfSubgraphsToMock = subgraphNamesToMock.length;
-          const increment =
-            100 / (numberOfSubgraphsToMock + subgraphNames.length);
-
-          //Mock any subgraphs we need to
-          if (numberOfSubgraphsToMock > 0) {
-            progress.report({
-              message: `${numberOfSubgraphsToMock} Subgraphs to mock`,
-            });
-            for (let i = 0; i < numberOfSubgraphsToMock; i++) {
-              const subgraphName = subgraphNamesToMock[i];
-              const subgraph = subgraphsToMock[subgraphName];
-              await Rover.instance.startMockedSubgraph(subgraphName, subgraph);
-
-              progress.report({
-                message: `Mocked subgraph ${subgraphName}`,
-                increment,
-              });
-            }
-          }
-
-          //Start rover dev sessions
-          const tempPath = await FileProvider.instance.createTempWorkbenchFile(
-            wbFile,
-            wbFilePath,
-          );
-          Rover.instance.startRoverDev(tempPath);
-
-          await new Promise<void>((resolve) => setTimeout(resolve, 5000));
-          progress.report({
-            message: 'Opening Sandbox',
-          });
-          await commands.executeCommand('local-supergraph-designs.sandbox', {
-            wbFilePath,
-          });
-          await new Promise<void>((resolve) => setTimeout(resolve, 500));
+          await Rover.instance.startRoverDev(wbFilePath, progress);
         },
       );
-    } catch (err) {
-      startingMocks = false;
+    } catch (err: any) {
+      log(err.toString());
     }
   } else {
     commands.executeCommand('workbench.action.showErrorsWarnings');

@@ -12,41 +12,20 @@ import {
   OperationTreeItem,
   SubgraphSummaryTreeItem,
 } from '../tree-data-providers/superGraphTreeDataProvider';
+import { StateManager } from '../stateManager';
 
 let panel: WebviewPanel | undefined;
 
-export async function openSandbox(item?: OperationTreeItem, document?: string) {
-  let errors = 0;
-  WorkbenchDiagnostics.instance.diagnosticCollections
-    .get(item?.wbFilePath ?? '')
-    ?.compositionDiagnostics.forEach(() => errors++);
-  if (errors > 0) {
-    commands.executeCommand('workbench.action.showErrorsWarnings');
-    window.showErrorMessage('Unable to start design due to composition errors');
-    return;
-  }
-  const wbFilePath = item ? item.wbFilePath : await whichDesign();
-  if (!wbFilePath) return;
-
-  const operationName = item
-    ? item.operationName
-    : await whichOperation(wbFilePath);
-
-  const wbFile = FileProvider.instance.workbenchFileFromPath(wbFilePath);
-
-  if (!Rover.instance.primaryDevTerminal) {
-    await startRoverDevSession(
-      new SubgraphSummaryTreeItem(wbFile.subgraphs, wbFilePath),
-    );
-  }
-
-  if (!document && operationName)
-    document = wbFile.operations[operationName].document;
-
-  if (document) await open(document);
+export async function refreshSandbox() {
+  panel?.dispose();
+  await openSandboxWebview();
 }
 
-async function open(document?: string) {
+export async function openSandbox(item?: OperationTreeItem, document?: string) {
+  await openSandboxWebview();
+}
+
+export async function openSandboxWebview(document?: string) {
   if (!Rover.instance.primaryDevTerminal) {
     window.showErrorMessage('Unable to open sandbox, no design running.');
   }
@@ -68,9 +47,10 @@ async function open(document?: string) {
     panel.onDidDispose(() => (panel = undefined));
   }
 
+  const routerPort = StateManager.settings_routerPort;
   const url = document
-    ? `http://localhost:4000?document=${encodeURIComponent(document)}`
-    : `http://localhost:4000`;
+    ? `http://localhost:${routerPort}?document=${encodeURIComponent(document)}`
+    : `http://localhost:${routerPort}`;
   panel.webview.html = getWebviewContent(url);
 
   await new Promise<void>((resolve) => setTimeout(resolve, 500));

@@ -5,8 +5,8 @@ import { ExecException, execSync, exec, spawn } from 'child_process';
 import util, { TextDecoder } from 'util';
 const execPromise = util.promisify(exec);
 import gql from 'graphql-tag';
-import { Terminal, Uri, window, workspace } from 'vscode';
-import { Subgraph } from './file-system/ApolloConfig';
+import { Progress, Terminal, Uri, window, workspace } from 'vscode';
+import { ApolloConfig, Subgraph } from './file-system/ApolloConfig';
 import { CompositionResults } from './file-system/CompositionResults';
 import { StateManager } from './stateManager';
 import { addMocksToSchema } from '@graphql-tools/mock';
@@ -15,6 +15,8 @@ import { parse, StringValueNode, visit } from 'graphql';
 import { log } from '../utils/logger';
 import { stdout } from 'process';
 import { FileProvider } from './file-system/fileProvider';
+import { openSandboxWebview } from './webviews/sandbox';
+import { statusBar } from '../extension';
 
 export class Rover {
   private static _instance: Rover;
@@ -28,6 +30,7 @@ export class Rover {
     log(`Rover Execution: ${command}`);
   }
 
+  runningFilePath: string | undefined;
   primaryDevTerminal: Terminal | undefined;
 
   private async execute(command: string, json = true, addProfile = true) {
@@ -276,7 +279,7 @@ export class Rover {
     if (this.portMapping[subgraphName]) delete this.portMapping[subgraphName];
   }
 
-  async stopRoverDev() {
+  stopRoverDev() {
     if (Rover.instance.primaryDevTerminal) {
       Rover.instance.primaryDevTerminal.sendText('\x03');
       Rover.instance.primaryDevTerminal.dispose();
@@ -288,16 +291,102 @@ export class Rover {
       Rover.instance.stopSubgraphOnPort(Number.parseInt(port));
     }
     Rover.instance.portMapping = {};
-
-    await new Promise((resolve) => setTimeout(resolve, 100));
   }
 
-  startRoverDev(pathToConfig: string) {
-    const command = `rover dev --supergraph-config=${pathToConfig}`;
-    const terminalName = `rover dev`;
-    this.primaryDevTerminal = window.createTerminal(terminalName);
+  async startRoverDev(
+    wbFilePath: string,
+    progress?: Progress<{
+      message?: string | undefined;
+      increment?: number | undefined;
+    }>,
+    totalIncrement?: number,
+  ) {
+    //States of rover dev
+    //  No terminal window created - starting for first time
+    //  Terminal window running rover dev - same design
+    //  Terminal window running rover dev - new design
+    //  Terminal window has kill sig from user
+    //  Terminal window killed by user
+    //
+    //  Since we don't have hooks for terminal events from the user, we
+    //  must ensure all mocks are stopped and rover dev is restarted.
+    //  Otherwise mocked ports can be kept alive and provide a very
+    //  confusing experience
+    if (!this.primaryDevTerminal && Object.keys(this.portMapping).length > 0) {
+      //  Terminal window has kill sig from user, old mock ports alive
+      Object.values(this.portMapping).forEach((port) =>
+        this.stopSubgraphOnPort(port),
+      );
+    } else if (!this.primaryDevTerminal) {
+      //  No terminal window created -  no running mocks - good ot go
+    } else if (this.primaryDevTerminal?.name != wbFilePath) {
+      //  Terminal window running rover dev - new design
+      // window.showInformationMessage(
+      //   'Currently running another design, switching to new design...',
+      // );
+      statusBar.text = 'Switching Design';
+      statusBar.show();
+
+      await this.stopRoverDev();
+    } else if (wbFilePath == this.primaryDevTerminal?.name) {
+      //  Terminal window running rover dev - same design
+      // window.showInformationMessage(
+      //   'Design is already running. Refreshing terminal and mocks...',
+      // );
+
+      statusBar.text = 'Refreshing Design';
+      statusBar.show();
+      await this.stopRoverDev();
+    } else {
+      await this.stopRoverDev();
+    }
+
+    const wbFile = FileProvider.instance.workbenchFileFromPath(wbFilePath);
+    const tempConfigPath = await FileProvider.instance.updateTempWorkbenchFile(
+      wbFile,
+    );
+
+    const subgraphNames = Object.keys(wbFile.subgraphs);
+    const subgraphsToMock: { [name: string]: Subgraph } = {};
+    subgraphNames.forEach((s) => {
+      if (wbFile.subgraphs[s].schema.mocks?.enabled)
+        subgraphsToMock[s] = wbFile.subgraphs[s];
+    });
+    const subgraphNamesToMock = Object.keys(subgraphsToMock);
+    const numberOfSubgraphsToMock = subgraphNamesToMock.length;
+
+    //Mock any subgraphs we need to
+    if (numberOfSubgraphsToMock > 0) {
+      progress?.report({
+        message: `${numberOfSubgraphsToMock} Subgraphs to mock`,
+      });
+      const increment = totalIncrement
+        ? totalIncrement / (numberOfSubgraphsToMock + subgraphNames.length)
+        : 100 / (numberOfSubgraphsToMock + subgraphNames.length);
+      for (let i = 0; i < numberOfSubgraphsToMock; i++) {
+        const subgraphName = subgraphNamesToMock[i];
+        const subgraph = subgraphsToMock[subgraphName];
+        await Rover.instance.startMockedSubgraph(subgraphName, subgraph);
+
+        progress?.report({
+          message: `Mocked subgraph ${subgraphName}`,
+          increment,
+        });
+      }
+    }
+
+    const command = `rover dev --supergraph-config=${tempConfigPath} --supergraph-port=${StateManager.settings_routerPort}`;
+    this.primaryDevTerminal = window.createTerminal(wbFilePath);
     this.primaryDevTerminal.show();
     this.primaryDevTerminal.sendText(command);
+    this.runningFilePath = wbFilePath;
+
+    await new Promise<void>((resolve) => setTimeout(resolve, 5000));
+    progress?.report({
+      message: 'Opening Sandbox',
+    });
+    await openSandboxWebview();
+    statusBar.hide();
   }
 
   static extractDefinedEntities(schema: string) {
