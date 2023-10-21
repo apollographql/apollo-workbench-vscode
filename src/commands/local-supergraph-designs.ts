@@ -464,21 +464,46 @@ export async function newDesign() {
   if (!StateManager.workspaceRoot) {
     await promptOpenFolder();
   } else {
-    const workbenchName = await window.showInputBox({
-      placeHolder: 'Enter name for workbench file',
-    });
-    if (!workbenchName) {
-      const msg =
-        'No name was provided for the file.\n Cancelling new workbench create';
-      log(msg);
-      window.showErrorMessage(msg);
-    } else {
+    const workbenchName = await getDesignName();
+    if (workbenchName) {
       await FileProvider.instance.createWorkbenchFileLocally(
         workbenchName,
         new ApolloConfig(),
       );
     }
   }
+}
+
+const regexp = new RegExp('^[^#]+$');
+
+async function getDesignName(name?: string) {
+  const cancelMessage =
+    'No name was provided for the file.\n Cancelling new workbench create';
+  let workbenchName = await window.showInputBox({
+    placeHolder: name ?? 'Enter name for workbench file',
+    value: name,
+  });
+  if (!workbenchName) {
+    log(cancelMessage);
+    window.showErrorMessage(cancelMessage);
+  } else {
+    while (workbenchName && !regexp.test(workbenchName)) {
+      const msg = 'You cannot use characters like `#` in the design name';
+      log(msg);
+      window.showErrorMessage(msg);
+      workbenchName = await window.showInputBox({
+        placeHolder: 'Enter name for workbench file',
+      });
+    }
+
+    if (workbenchName) {
+      log(`Got design name: ${workbenchName}`);
+    } else {
+      log(cancelMessage);
+    }
+  }
+
+  return workbenchName;
 }
 
 export async function newDesignFromGraphOSSupergraph(
@@ -513,42 +538,32 @@ export async function newDesignFromGraphOSSupergraph(
         'You must select a variant to load the graph from',
       );
     } else {
-      await createWorkbench(graphId, selectedVariant);
+      const defaultGraphName = `${graphId}-${selectedVariant}-`;
+      const graphName = await getDesignName(defaultGraphName);
+      if (graphName) {
+        const workbenchFile: ApolloConfig = new ApolloConfig();
+        const results = await getGraphSchemasByVariant(
+          graphId,
+          selectedVariant,
+        );
+        //Create YAML from config
+        results.graph?.variant?.subgraphs?.map(
+          (service) =>
+            (workbenchFile.subgraphs[service.name] = {
+              routing_url: service.url ?? '',
+              schema: {
+                graphref: `${graphId}@${selectedVariant}`,
+                subgraph: service.name,
+              },
+            }),
+        );
+
+        await FileProvider.instance.createWorkbenchFileLocally(
+          graphName,
+          workbenchFile,
+        );
+      }
     }
-  }
-}
-async function createWorkbench(graphId: string, selectedVariant: string) {
-  const defaultGraphName = `${graphId}-${selectedVariant}-`;
-  const graphName = await window.showInputBox({
-    prompt: 'Enter a name for your new workbench file',
-    placeHolder: defaultGraphName,
-    value: defaultGraphName,
-  });
-  if (graphName) {
-    const workbenchFile: ApolloConfig = new ApolloConfig();
-
-    const results = await getGraphSchemasByVariant(graphId, selectedVariant);
-    //Create YAML from config
-
-    results.graph?.variant?.subgraphs?.map(
-      (service) =>
-        (workbenchFile.subgraphs[service.name] = {
-          routing_url: service.url ?? '',
-          schema: {
-            graphref: `${graphId}@${selectedVariant}`,
-            subgraph: service.name,
-          },
-        }),
-    );
-
-    await FileProvider.instance.createWorkbenchFileLocally(
-      graphName,
-      workbenchFile,
-    );
-  } else {
-    window.showInformationMessage(
-      'You must provide a name to create a new workbench file',
-    );
   }
 }
 
