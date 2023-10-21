@@ -196,6 +196,12 @@
         "category": "GraphOS"
       },
       {
+        "command": "local-supergraph-designs.refreshSandbox",
+        "title": "Refresh Apollo Sandbox",
+        "icon": "$(refresh)",
+        "category": "GraphOS"
+      },
+      {
         "command": "local-supergraph-designs.refresh",
         "title": "Refresh Local Designs",
         "icon": "$(refresh)",

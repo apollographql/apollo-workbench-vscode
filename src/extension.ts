@@ -5,6 +5,8 @@ import {
   window,
   ExtensionContext,
   Uri,
+  StatusBarItem,
+  StatusBarAlignment,
 } from 'vscode';
 
 import { StateManager } from './workbench/stateManager';
@@ -56,20 +58,45 @@ import {
 } from './commands/local-supergraph-designs';
 import { Rover } from './workbench/rover';
 import { viewOperationDesign } from './workbench/webviews/operationDesign';
-import { openSandbox } from './workbench/webviews/sandbox';
+import { openSandbox, refreshSandbox } from './workbench/webviews/sandbox';
 import { FederationReferenceProvider } from './workbench/federationReferenceProvider';
 
 export const outputChannel = window.createOutputChannel('Apollo Workbench');
+
+process.stdin.resume(); // so the program will not close instantly
+
+function exitHandler(options, exitCode) {
+  if (options.cleanup) Rover.instance.stopRoverDev();
+  if (exitCode || exitCode === 0) console.log(exitCode);
+  if (options.exit) process.exit();
+}
+
+// do something when app is closing
+process.on('exit', exitHandler.bind(null, { cleanup: true }));
+
+// catches ctrl+c event
+process.on('SIGINT', exitHandler.bind(null, { exit: true }));
+
+// catches "kill pid" (for example: nodemon restart)
+process.on('SIGUSR1', exitHandler.bind(null, { exit: true }));
+process.on('SIGUSR2', exitHandler.bind(null, { exit: true }));
+
+// catches uncaught exceptions
+process.on('uncaughtException', exitHandler.bind(null, { exit: true }));
 
 // Our event when vscode deactivates
 export async function deactivate(context: ExtensionContext) {
   await Rover.instance.stopRoverDev();
 }
 
+export let statusBar: StatusBarItem;
+
 export async function activate(context: ExtensionContext) {
   StateManager.init(context);
   context.workspaceState.update('selectedWbFile', '');
   context.globalState.update('APOLLO_SELECTED_GRAPH_ID', '');
+  statusBar = window.createStatusBarItem(StatusBarAlignment.Right, 100);
+  context.subscriptions.push(statusBar);
 
   languages.registerCompletionItemProvider(
     'graphql',
@@ -167,6 +194,12 @@ export async function activate(context: ExtensionContext) {
   );
   context.subscriptions.push(
     commands.registerCommand('local-supergraph-designs.sandbox', openSandbox),
+  );
+  context.subscriptions.push(
+    commands.registerCommand(
+      'local-supergraph-designs.refreshSandbox',
+      refreshSandbox,
+    ),
   );
   context.subscriptions.push(
     commands.registerCommand(

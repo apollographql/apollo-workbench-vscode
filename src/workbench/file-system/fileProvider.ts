@@ -12,7 +12,7 @@ import { getFileName } from '../../utils/path';
 import { homedir } from 'os';
 import { print, parse as gqlParse } from 'graphql';
 import { extractEntities } from '../federationCompletionProvider';
-import { openFolder } from '../../commands/extension';
+
 export const schemaFileUri = (filePath: string, wbFilePath: string) => {
   if (parse(filePath).dir == '.') {
     const wbFileFolder = wbFilePath.split(getFileName(wbFilePath))[0];
@@ -177,6 +177,9 @@ export class FileProvider {
   ) {
     const wbFile = this.workbenchFileFromPath(wbFilePath);
     wbFile.subgraphs[subgraphName].schema.mocks = { enabled: shouldMock };
+    if (shouldMock && !wbFile.subgraphs[subgraphName].schema.workbench_design) {
+      await this.copySchemaToDeisgnFolder(subgraphName, wbFilePath);
+    }
 
     await workspace.fs.writeFile(
       Uri.parse(wbFilePath),
@@ -198,10 +201,7 @@ export class FileProvider {
 
         try {
           if (wbFile) {
-            const tempPath = await this.createTempWorkbenchFile(
-              wbFile,
-              wbFilePath,
-            );
+            const tempPath = await this.updateTempWorkbenchFile(wbFile);
             const compResults = await Rover.instance.compose(tempPath);
             if (compResults.data.success) {
               WorkbenchDiagnostics.instance.clearCompositionDiagnostics(
@@ -346,10 +346,11 @@ export class FileProvider {
    * @param Path to ApolloConfig file
    * @returns Path where temporary config file lives
    */
-  async createTempWorkbenchFile(wbFile: ApolloConfig, wbFilePath: string) {
-    const wbTempFolder = resolve(homedir(), '.apollo-workbench');
-    const tempPath = resolve(homedir(), '.apollo-workbench', 'supergraph.yaml');
-    await workspace.fs.createDirectory(Uri.parse(wbTempFolder));
+  async updateTempWorkbenchFile(wbFile: ApolloConfig) {
+    const tempPath = this.getTempWorkbenchFilePath();
+    await workspace.fs.createDirectory(
+      Uri.parse(resolve(homedir(), '.apollo-workbench')),
+    );
 
     const tempWbFile = ApolloConfig.copy(wbFile);
     Object.keys(wbFile.subgraphs).forEach((subgraphName) => {
@@ -371,6 +372,10 @@ export class FileProvider {
     await this.writeWorkbenchConfig(tempPath, tempWbFile, false);
 
     return tempPath;
+  }
+
+  getTempWorkbenchFilePath() {
+    return resolve(homedir(), '.apollo-workbench', 'supergraph.yaml');
   }
 
   async writeWorkbenchConfig(
@@ -471,5 +476,60 @@ export class FileProvider {
       });
     }
     return items;
+  }
+  async saveSchemaToDesignFolder(
+    schema: string,
+    subgraphName: string,
+    wbFilePath: string,
+  ) {
+    const newSchemaFilePath = await this.getDesignFolderSchemaPath(
+      wbFilePath,
+      subgraphName,
+    );
+    if (newSchemaFilePath) {
+      await workspace.fs.writeFile(
+        Uri.parse(newSchemaFilePath),
+        Buffer.from(schema),
+      );
+
+      return newSchemaFilePath;
+    }
+  }
+  async copySchemaToDeisgnFolder(subgraphName: string, wbFilePath: string) {
+    const schemaFilePath = await this.getDesignFolderSchemaPath(
+      wbFilePath,
+      subgraphName,
+    );
+    if (schemaFilePath) {
+      const schemaFileUri = Uri.parse(schemaFilePath);
+      await workspace.fs.copy(
+        tempSchemaFilePath(wbFilePath, subgraphName),
+        schemaFileUri,
+        {
+          overwrite: true,
+        },
+      );
+
+      await this.convertSubgraphToDesign(
+        wbFilePath,
+        subgraphName,
+        schemaFilePath,
+      );
+
+      return schemaFileUri;
+    }
+  }
+
+  private async getDesignFolderSchemaPath(
+    wbFilePath: string,
+    subgraphName: string,
+  ) {
+    const root = StateManager.workspaceRoot;
+    if (root) {
+      const wbFileName = getFileName(wbFilePath);
+      const schemaFolderPath = resolve(root, `${wbFileName}-schemas`);
+      await workspace.fs.createDirectory(Uri.parse(schemaFolderPath));
+      return resolve(schemaFolderPath, `${subgraphName}.graphql`);
+    }
   }
 }
