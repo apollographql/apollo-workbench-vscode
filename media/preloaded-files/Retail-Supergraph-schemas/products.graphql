@@ -1,0 +1,165 @@
+schema @link(url: "https://specs.apollo.dev/link/v1.0") {
+  query: Query
+}
+
+extend schema
+  @link(
+    url: "https://specs.apollo.dev/federation/v2.0"
+    import: ["@key", "@tag"]
+  )
+
+directive @link(
+  url: String
+  as: String
+  for: link__Purpose
+  import: [link__Import]
+) repeatable on SCHEMA
+
+directive @key(
+  fields: federation__FieldSet!
+  resolvable: Boolean = true
+) repeatable on OBJECT | INTERFACE
+
+directive @federation__requires(
+  fields: federation__FieldSet!
+) on FIELD_DEFINITION
+
+directive @federation__provides(
+  fields: federation__FieldSet!
+) on FIELD_DEFINITION
+
+directive @federation__external(reason: String) on OBJECT | FIELD_DEFINITION
+
+directive @tag(
+  name: String!
+) repeatable on FIELD_DEFINITION | OBJECT | INTERFACE | UNION | ARGUMENT_DEFINITION | SCALAR | ENUM | ENUM_VALUE | INPUT_OBJECT | INPUT_FIELD_DEFINITION
+
+directive @federation__extends on OBJECT | INTERFACE
+
+directive @federation__shareable on OBJECT | FIELD_DEFINITION
+
+directive @federation__inaccessible on FIELD_DEFINITION | OBJECT | INTERFACE | UNION | ARGUMENT_DEFINITION | SCALAR | ENUM | ENUM_VALUE | INPUT_OBJECT | INPUT_FIELD_DEFINITION
+
+directive @federation__override(from: String!) on FIELD_DEFINITION
+
+type Query {
+  """
+  Get all available products to shop for. Optionally provide some search filters
+  """
+  searchProducts(searchInput: ProductSearchInput! = {}): [Product]
+
+  """
+  Get all available variants of products to shop for. Optionally provide some search filters
+  """
+  searchVariants(searchInput: VariantSearchInput! = {}): [Variant]
+
+  """
+  Get a specific product by id. Useful for the product details page or checkout page
+  """
+  product(id: ID!): Product
+
+  """
+  Get a specific variant by id. Useful for the product details page or checkout page
+  """
+  variant(id: ID!): Variant
+  _entities(representations: [_Any!]!): [_Entity]!
+  _service: _Service!
+}
+
+"""
+Search filters for when returning Products
+"""
+input ProductSearchInput {
+  titleStartsWith: String
+}
+
+"""
+Search filters for when returning Variants
+"""
+input VariantSearchInput {
+  sizeStartsWith: String
+}
+
+"""
+A specific product sold by our store. This contains all the high level details but is not the purchasable item.
+See Variant for more info.
+"""
+type Product @key(fields: "id") @key(fields: "upc") @tag(name: "partner") {
+  id: ID! @tag(name: "internal")
+  upc: ID!
+  title: String
+  description: String
+  mediaUrl: String
+
+  """
+  Mock random date of when a product might be released
+  """
+  releaseDate: String
+
+  """
+  Variants of the products to view specific size/color/price options
+  """
+  variants(searchInput: VariantSearchInput = {}): [Variant]
+}
+
+"""
+A variant of a product which is a unique combination of attributes like size and color
+Variants are the entities that are added to carts and purchased
+"""
+type Variant @key(fields: "id") {
+  id: ID!
+
+  """
+  Link back to the parent Product
+  """
+  product: Product
+
+  """
+  Optional color option for this variant
+  """
+  colorway: String
+
+  """
+  Price in decimals for this variant
+  """
+  price: Float!
+
+  """
+  Optional size option for this variant
+  """
+  size: String
+
+  """
+  Optional dimensions. Can be use to calculate other info like shipping or packaging
+  """
+  dimensions: String
+
+  """
+  Optional weight. Can be use to calculate other info like shipping or packaging
+  """
+  weight: Float
+}
+
+enum link__Purpose {
+  """
+  `SECURITY` features provide metadata necessary to securely resolve fields.
+  """
+  SECURITY
+
+  """
+  `EXECUTION` features provide metadata necessary for operation execution.
+  """
+  EXECUTION
+}
+
+scalar link__Import
+
+scalar federation__FieldSet
+
+scalar _Any
+
+type _Service {
+  sdl: String
+}
+
+union _Entity = Product | Variant

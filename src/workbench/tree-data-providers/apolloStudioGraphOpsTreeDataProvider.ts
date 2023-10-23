@@ -1,15 +1,16 @@
 import * as vscode from 'vscode';
 import { getGraphOps } from '../../graphql/graphClient';
 import { StateManager } from '../stateManager';
-import { NotLoggedInTreeItem } from './apolloStudioGraphsTreeDataProvider';
+import { StudioOperationTreeItem } from './tree-items/graphos-operations/studioOperationTreeItem';
 
 export class ApolloStudioGraphOpsTreeDataProvider
-  implements vscode.TreeDataProvider<vscode.TreeItem> {
+  implements vscode.TreeDataProvider<vscode.TreeItem>
+{
   private _onDidChangeTreeData: vscode.EventEmitter<
     vscode.TreeItem | undefined
   > = new vscode.EventEmitter<vscode.TreeItem | undefined>();
-  readonly onDidChangeTreeData: vscode.Event<vscode.TreeItem | undefined> = this
-    ._onDidChangeTreeData.event;
+  readonly onDidChangeTreeData: vscode.Event<vscode.TreeItem | undefined> =
+    this._onDidChangeTreeData.event;
 
   refresh(): void {
     this._onDidChangeTreeData.fire(undefined);
@@ -35,7 +36,7 @@ export class ApolloStudioGraphOpsTreeDataProvider
     if (selectedGraphId) {
       //Create objects for next for loop
       //  Return A specific account with all graphs
-      const graphOps = await getGraphOps( selectedGraphId, graphVariant);
+      const graphOps = await getGraphOps(selectedGraphId, graphVariant);
 
       noOperationsFoundMessage = graphVariant
         ? `No operations found for ${graphOps.service?.title}@${graphVariant}`
@@ -83,22 +84,5 @@ export class ApolloStudioGraphOpsTreeDataProvider
         vscode.TreeItemCollapsibleState.None,
       ),
     ];
-  }
-}
-
-export class StudioOperationTreeItem extends vscode.TreeItem {
-  constructor(
-    public readonly operationId: string,
-    public readonly operationName: string,
-    public readonly operationSignature: string,
-  ) {
-    super(operationName, vscode.TreeItemCollapsibleState.None);
-    this.contextValue = 'studioOperationTreeItem';
-    this.description = `id:${operationId.substring(0, 6)}`;
-    this.command = {
-      title: 'View Operation',
-      command: 'studio-graphs.viewStudioOperation',
-      arguments: [this],
-    };
   }
 }

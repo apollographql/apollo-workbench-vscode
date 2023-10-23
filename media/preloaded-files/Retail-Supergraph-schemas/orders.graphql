@@ -1,0 +1,102 @@
+schema @link(url: "https://specs.apollo.dev/link/v1.0") {
+  query: Query
+}
+
+extend schema
+  @link(url: "https://specs.apollo.dev/federation/v2.0", import: ["@key"])
+
+directive @link(
+  url: String
+  as: String
+  for: link__Purpose
+  import: [link__Import]
+) repeatable on SCHEMA
+
+directive @key(
+  fields: federation__FieldSet!
+  resolvable: Boolean = true
+) repeatable on OBJECT | INTERFACE
+
+directive @federation__requires(
+  fields: federation__FieldSet!
+) on FIELD_DEFINITION
+
+directive @federation__provides(
+  fields: federation__FieldSet!
+) on FIELD_DEFINITION
+
+directive @federation__external(reason: String) on OBJECT | FIELD_DEFINITION
+
+directive @federation__tag(
+  name: String!
+) repeatable on FIELD_DEFINITION | OBJECT | INTERFACE | UNION | ARGUMENT_DEFINITION | SCALAR | ENUM | ENUM_VALUE | INPUT_OBJECT | INPUT_FIELD_DEFINITION
+
+directive @federation__extends on OBJECT | INTERFACE
+
+directive @federation__shareable on OBJECT | FIELD_DEFINITION
+
+directive @federation__inaccessible on FIELD_DEFINITION | OBJECT | INTERFACE | UNION | ARGUMENT_DEFINITION | SCALAR | ENUM | ENUM_VALUE | INPUT_OBJECT | INPUT_FIELD_DEFINITION
+
+directive @federation__override(from: String!) on FIELD_DEFINITION
+
+type Query {
+  """
+  Get a specific order by id. Meant to be used for a detailed view of an order
+  """
+  order(id: ID!): Order
+  _entities(representations: [_Any!]!): [_Entity]!
+  _service: _Service!
+}
+
+"""
+Returns information about a specific purchase
+"""
+type Order @key(fields: "id") {
+  """
+  Each order has a unique id which is separate from the user or items they bought
+  """
+  id: ID!
+
+  """
+  The user who made the purchase
+  """
+  buyer: User!
+
+  """
+  A list of all the items they purchased. This is the Variants, not the Products so we know exactly which
+  product and which size/color/feature was bought
+  """
+  items: [Variant!]!
+}
+
+type User @key(fields: "id", resolvable: false) {
+  id: ID!
+}
+
+type Variant @key(fields: "id", resolvable: false) {
+  id: ID!
+}
+
+enum link__Purpose {
+  """
+  `SECURITY` features provide metadata necessary to securely resolve fields.
+  """
+  SECURITY
+
+  """
+  `EXECUTION` features provide metadata necessary for operation execution.
+  """
+  EXECUTION
+}
+
+scalar link__Import
+
+scalar federation__FieldSet
+
+scalar _Any
+
+type _Service {
+  sdl: String
+}
+
+union _Entity = Order | User | Variant

@@ -1,6 +1,13 @@
 import { existsSync, readdirSync } from 'fs';
 import path, { join, parse, resolve, normalize } from 'path';
-import { commands, ProgressLocation, Uri, window, workspace } from 'vscode';
+import {
+  commands,
+  FileType,
+  ProgressLocation,
+  Uri,
+  window,
+  workspace,
+} from 'vscode';
 import { StateManager } from '../stateManager';
 import { WorkbenchDiagnostics } from '../diagnosticsManager';
 import { log } from '../../utils/logger';
@@ -454,29 +461,30 @@ export class FileProvider {
     return workbenchFiles;
   }
 
-  getPreloadedWorkbenchFiles() {
+  async getPreloadedWorkbenchFiles() {
     const items: { fileName: string; path: string }[] = [];
-    const preloadFileDir = join(
-      __dirname,
-      '..',
-      '..',
-      '..',
-      'media',
-      `preloaded-files`,
-    );
+    const preloadFileDir = join(__dirname, '..', 'media', `preloaded-files`);
     if (existsSync(preloadFileDir)) {
-      const preloadedDirectory = readdirSync(preloadFileDir, {
-        encoding: 'utf-8',
-      });
+      const preloadedDirectory = await workspace.fs.readDirectory(
+        Uri.parse(preloadFileDir),
+      );
       preloadedDirectory.map((item) => {
-        items.push({
-          fileName: item.split('.')[0],
-          path: `${preloadFileDir}/${item}`,
-        });
+        const fileName = item[0];
+        const fileType = item[1] as FileType;
+        if (fileType == FileType.File && fileName.includes('.yaml'))
+          items.push({
+            fileName: fileName.split('.')[0],
+            path: `${preloadFileDir}/${fileName}`,
+          });
       });
     }
     return items;
   }
+  async getPreloadedWorkbenchFile(filePath: string) {
+    const file = await workspace.fs.readFile(Uri.parse(filePath));
+    return load(file.toString()) as ApolloConfig;
+  }
+
   async saveSchemaToDesignFolder(
     schema: string,
     subgraphName: string,

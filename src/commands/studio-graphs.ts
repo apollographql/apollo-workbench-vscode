@@ -59,6 +59,7 @@ export async function switchOrg() {
   if (accountId) {
     StateManager.instance.setSelectedGraph('');
     StateManager.instance.globalState_selectedApolloAccount = accountId;
+    StateManager.instance.apolloStudioGraphsProvider.refresh();
   } else {
     log('Unable to get orgs');
     window.showErrorMessage(

@@ -1,4 +1,3 @@
-import path from 'path';
 import {
   getAccountGraphs,
   getUserMemberships,
@@ -11,9 +10,13 @@ import {
   Event,
   window,
   commands,
-  TreeItemCollapsibleState,
 } from 'vscode';
-import { FileProvider } from '../file-system/fileProvider';
+import { NotLoggedInTreeItem } from './tree-items/graphos-supergraphs/notLoggedInTreeItem';
+import { SignupTreeItem } from './tree-items/graphos-supergraphs/signupTreeItem';
+import { PreloadedWorkbenchTopLevel } from './tree-items/graphos-supergraphs/preloadedWorkbenchTopLevel';
+import { StudioGraphVariantTreeItem } from './tree-items/graphos-supergraphs/studioGraphVariantTreeItem';
+import { StudioGraphTreeItem } from './tree-items/graphos-supergraphs/studioGraphTreeItem';
+import { StudioAccountTreeItem } from './tree-items/graphos-supergraphs/studioAccountTreeItem';
 
 export class ApolloStudioGraphsTreeDataProvider
   implements TreeDataProvider<TreeItem>
@@ -146,121 +149,5 @@ export class ApolloStudioGraphsTreeDataProvider
     }
 
     return items;
-  }
-}
-
-export class NotLoggedInTreeItem extends TreeItem {
-  constructor() {
-    super('Login with GraphOS', TreeItemCollapsibleState.None);
-    this.command = {
-      title: 'Login to Apollo',
-      command: 'extension.login',
-    };
-  }
-}
-
-export class SignupTreeItem extends TreeItem {
-  constructor() {
-    super('Sign-up for GraphOS (free)', TreeItemCollapsibleState.None);
-    this.command = {
-      title: 'Sign-up with GraphOS',
-      command: 'extension.signUp',
-    };
-  }
-}
-
-export class StudioAccountTreeItem extends TreeItem {
-  children: StudioGraphTreeItem[] = new Array<StudioGraphTreeItem>();
-
-  constructor(
-    public readonly accountId: string,
-    public readonly accountName?: string,
-  ) {
-    super(accountName ?? accountId, TreeItemCollapsibleState.Expanded);
-    this.contextValue = 'studioAccountTreeItem';
-  }
-  getChildren(element?: TreeItem): Thenable<TreeItem[]> {
-    return new Promise(() => this.children);
-  }
-}
-
-export class StudioGraphTreeItem extends TreeItem {
-  children: StudioGraphVariantTreeItem[] =
-    new Array<StudioGraphVariantTreeItem>();
-  variants: string[] = [];
-
-  constructor(
-    public readonly graphId: string,
-    public readonly graphName: string,
-  ) {
-    super(graphName, TreeItemCollapsibleState.Collapsed);
-    this.contextValue = 'studioGraphTreeItem';
-    this.command = {
-      title: 'Load Graph Operations',
-      command: 'studio-graphs.loadOperationsFromGraphOS',
-      arguments: [this],
-    };
-  }
-  getChildren(element?: TreeItem): Thenable<TreeItem[]> {
-    return new Promise(() => this.children);
-  }
-}
-export class StudioGraphVariantTreeItem extends TreeItem {
-  children: StudioGraphVariantServiceTreeItem[] =
-    new Array<StudioGraphVariantServiceTreeItem>();
-
-  constructor(
-    public readonly graphId: string,
-    public readonly graphVariant: string,
-  ) {
-    super(graphVariant, TreeItemCollapsibleState.None);
-    this.contextValue = 'studioGraphVariantTreeItem';
-    this.command = {
-      title: 'Load Graph Operations',
-      command: 'studio-graphs.loadOperationsFromGraphOS',
-      arguments: [this, graphVariant],
-    };
-  }
-  getChildren(element?: TreeItem): Thenable<TreeItem[]> {
-    return new Promise(() => this.children);
-  }
-}
-
-export class StudioGraphVariantServiceTreeItem extends TreeItem {
-  constructor(
-    public readonly graphId: string,
-    public readonly graphVariant: string,
-    public readonly name,
-    public readonly sdl: string,
-  ) {
-    super(name, TreeItemCollapsibleState.None);
-    this.contextValue = 'studioGraphVariantServiceTreeItem';
-    this.iconPath = {
-      light: path.join(__dirname, '..', 'media', 'graphql-logo.png'),
-      dark: path.join(__dirname, '..', 'media', 'graphql-logo.png'),
-    };
-  }
-}
-export class PreloadedWorkbenchTopLevel extends TreeItem {
-  children: PreloadedWorkbenchFile[] = new Array<PreloadedWorkbenchFile>();
-
-  constructor() {
-    super('Example Graphs', TreeItemCollapsibleState.Collapsed);
-
-    const preloadedFiles = FileProvider.instance?.getPreloadedWorkbenchFiles();
-    preloadedFiles.map((preloadedFile) => {
-      this.children.push(new PreloadedWorkbenchFile(preloadedFile.fileName));
-    });
-  }
-
-  getChildren(element?: PreloadedWorkbenchTopLevel): Thenable<TreeItem[]> {
-    return new Promise(() => this.children);
-  }
-}
-export class PreloadedWorkbenchFile extends TreeItem {
-  constructor(public readonly fileName: string) {
-    super(fileName, TreeItemCollapsibleState.None);
-
-    this.contextValue = 'preloadedWorkbenchFile';
   }
 }
