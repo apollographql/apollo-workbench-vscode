@@ -21,11 +21,13 @@ import { print, parse as gqlParse } from 'graphql';
 import { extractEntities } from '../federationCompletionProvider';
 
 export const schemaFileUri = (filePath: string, wbFilePath: string) => {
+  const test = resolve(filePath);
+  const test1 = Uri.parse(test);
   if (parse(filePath).dir == '.') {
     const wbFileFolder = wbFilePath.split(getFileName(wbFilePath))[0];
     return Uri.parse(resolve(wbFileFolder, normalize(filePath)));
   }
-  return Uri.parse(filePath);
+  return Uri.parse(resolve(filePath));
 };
 
 export const tempSchemaFilePath = (wbFilePath: string, subgraphName: string) =>
@@ -368,6 +370,7 @@ export class FileProvider {
         );
 
         delete tempWbFile.subgraphs[subgraphName].schema.subgraph_url;
+        delete tempWbFile.subgraphs[subgraphName].schema.workbench_design;
       } else if (wbFile.subgraphs[subgraphName].schema.file) {
         tempWbFile.subgraphs[subgraphName].schema.file = resolve(
           StateManager.workspaceRoot ?? '',

@@ -5,7 +5,7 @@ subgraphs:
     schema:
       workbench_design: ./Retail-Supergraph-schemas/users.graphql
       file: >-
-        /Users/michaelwatson/Documents/devrel/@key-with-trevor/Retail-Supergraph-schemas/users.graphql
+        ./Retail-Supergraph-schemas/users.graphql
       mocks:
         enabled: true
   shipping:
@@ -13,7 +13,7 @@ subgraphs:
     schema:
       workbench_design: ./Retail-Supergraph-schemas/shipping.graphql
       file: >-
-        /Users/michaelwatson/Documents/devrel/@key-with-trevor/Retail-Supergraph-schemas/shipping.graphql
+        ./Retail-Supergraph-schemas/shipping.graphql
       mocks:
         enabled: true
   reviews:
@@ -21,7 +21,7 @@ subgraphs:
     schema:
       workbench_design: ./Retail-Supergraph-schemas/reviews.graphql
       file: >-
-        /Users/michaelwatson/Documents/devrel/@key-with-trevor/Retail-Supergraph-schemas/reviews.graphql
+        ./Retail-Supergraph-schemas/reviews.graphql
       mocks:
         enabled: true
   products:
@@ -29,7 +29,7 @@ subgraphs:
     schema:
       workbench_design: ./Retail-Supergraph-schemas/products.graphql
       file: >-
-        /Users/michaelwatson/Documents/devrel/@key-with-trevor/Retail-Supergraph-schemas/products.graphql
+        ./Retail-Supergraph-schemas/products.graphql
       mocks:
         enabled: true
   orders:
@@ -37,7 +37,7 @@ subgraphs:
     schema:
       workbench_design: ./Retail-Supergraph-schemas/orders.graphql
       file: >-
-        /Users/michaelwatson/Documents/devrel/@key-with-trevor/Retail-Supergraph-schemas/orders.graphql
+        ./Retail-Supergraph-schemas/orders.graphql
       mocks:
         enabled: true
   inventory:
@@ -45,7 +45,7 @@ subgraphs:
     schema:
       workbench_design: ./Retail-Supergraph-schemas/inventory.graphql
       file: >-
-        /Users/michaelwatson/Documents/devrel/@key-with-trevor/Retail-Supergraph-schemas/inventory.graphql
+        ./Retail-Supergraph-schemas/inventory.graphql
       mocks:
         enabled: true
   discovery:
@@ -53,7 +53,7 @@ subgraphs:
     schema:
       workbench_design: ./Retail-Supergraph-schemas/discovery.graphql
       file: >-
-        /Users/michaelwatson/Documents/devrel/@key-with-trevor/Retail-Supergraph-schemas/discovery.graphql
+        ./Retail-Supergraph-schemas/discovery.graphql
       mocks:
         enabled: true
 operations: {}

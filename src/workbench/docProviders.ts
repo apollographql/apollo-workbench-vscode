@@ -11,6 +11,7 @@ import {
   TextDocumentContentProvider,
   TreeItem,
   Uri,
+  window,
   workspace,
 } from 'vscode';
 import { FileProvider } from './file-system/fileProvider';
@@ -19,7 +20,9 @@ export class DesignOperationsDocumentProvider implements FileSystemProvider {
   static scheme = 'workbench';
   static Uri(wbFilePath: string, operationName: string): Uri {
     return Uri.parse(
-      `${DesignOperationsDocumentProvider.scheme}:${resolve(operationName)}.graphql?${wbFilePath}`,
+      `${DesignOperationsDocumentProvider.scheme}:${resolve(
+        operationName,
+      )}.graphql?${wbFilePath}`,
     );
   }
 
@@ -46,12 +49,16 @@ export class DesignOperationsDocumentProvider implements FileSystemProvider {
       wbFile.operations[operationName].document = formattedDoc;
     else wbFile.operations[operationName] = { document: formattedDoc };
 
-    return FileProvider.instance.writeWorkbenchConfig(wbFilePath, wbFile, false);
+    return FileProvider.instance.writeWorkbenchConfig(
+      wbFilePath,
+      wbFile,
+      false,
+    );
   }
 
   private getDetails(uri: Uri) {
     return {
-      operationName: uri.path.split('.')[0].replaceAll('/',''),
+      operationName: uri.path.split('.')[0].replaceAll('/', ''),
       wbFilePath: uri.query,
     };
   }
@@ -141,6 +148,36 @@ export class ApolloRemoteSchemaProvider implements TextDocumentContentProvider {
     if (!tempUri) return 'Unable to get remote schema';
 
     const content = await workspace.fs.readFile(tempUri);
+    return new TextDecoder().decode(content);
+  }
+}
+
+export enum Preloaded {
+  SpotifyShowcase = 1,
+  RetailSupergraph = 2,
+}
+export class PreloadedSchemaProvider implements TextDocumentContentProvider {
+  static scheme = 'apollo-workbench-preloaded-schema';
+  static Uri(wbFilePath: string, subgraphName: string): Uri {
+    return Uri.parse(
+      `${ApolloRemoteSchemaProvider.scheme}:${subgraphName}.graphql?${wbFilePath}#${subgraphName}`,
+    );
+  }
+  static async Open(wbFilePath: string, subgraphName: string) {
+    const uri = Uri.parse(
+      `${PreloadedSchemaProvider.scheme}:${subgraphName}.graphql?${wbFilePath}#${subgraphName}`,
+    );
+    await window.showTextDocument(uri, { preview: true });
+  }
+  async provideTextDocumentContent(uri: Uri): Promise<string> {
+    const wbFilePath = uri.query;
+    const subgraphName = uri.fragment;
+    const schemaFilePath = resolve(
+      `${wbFilePath.split('.yaml')[0]}-schemas`,
+      `${subgraphName}.graphql`,
+    );
+
+    const content = await workspace.fs.readFile(Uri.parse(schemaFilePath));
     return new TextDecoder().decode(content);
   }
 }

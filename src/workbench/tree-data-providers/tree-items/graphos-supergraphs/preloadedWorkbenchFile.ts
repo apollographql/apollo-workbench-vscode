@@ -19,7 +19,9 @@ export class PreloadedWorkbenchFile extends TreeItem {
       this.filePath,
     );
     Object.keys(wbFile.subgraphs).forEach((s) =>
-      this.children.push(new PreloadedSubgraph(s, this.filePath)),
+      this.children.push(
+        new PreloadedSubgraph(s, this.fileName, this.filePath),
+      ),
     );
 
     return this.children;

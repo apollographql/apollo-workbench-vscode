@@ -86,7 +86,7 @@ export class Rover {
 
   async compose(pathToConfig: string) {
     const command = `rover supergraph compose --config="${pathToConfig}"`;
-    const result = await this.execute(command);
+    const result = await this.execute(command, true);
 
     if (result == undefined)
       return {

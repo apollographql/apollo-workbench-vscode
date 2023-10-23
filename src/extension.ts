@@ -20,6 +20,7 @@ import {
   ApolloRemoteSchemaProvider,
   ApolloStudioOperationsProvider,
   DesignOperationsDocumentProvider,
+  PreloadedSchemaProvider,
 } from './workbench/docProviders';
 import { addToDesign } from './commands/studio-operations';
 import {
@@ -60,6 +61,8 @@ import { Rover } from './workbench/rover';
 import { viewOperationDesign } from './workbench/webviews/operationDesign';
 import { openSandbox, refreshSandbox } from './workbench/webviews/sandbox';
 import { FederationReferenceProvider } from './workbench/federationReferenceProvider';
+import { viewPreloadedSchema } from './commands/preloaded';
+import { resolve } from 'path';
 
 export const outputChannel = window.createOutputChannel('Apollo Workbench');
 
@@ -224,6 +227,12 @@ export async function activate(context: ExtensionContext) {
     'current-workbench-schemas.addFederationDirective',
     addFederationDirective,
   );
+  //Preloaded Commands
+  commands.registerCommand(
+    'preloaded.viewPreloadedSchema',
+    viewPreloadedSchema,
+  );
+
   //Apollo Studio Graphs Commands
   commands.registerCommand(
     'studio-graphs.refreshSupergraphsFromGraphOS',
@@ -254,6 +263,10 @@ export async function activate(context: ExtensionContext) {
   workspace.registerTextDocumentContentProvider(
     ApolloRemoteSchemaProvider.scheme,
     new ApolloRemoteSchemaProvider(),
+  );
+  workspace.registerTextDocumentContentProvider(
+    PreloadedSchemaProvider.scheme,
+    new PreloadedSchemaProvider(),
   );
   languages.registerReferenceProvider(
     { language: 'graphql' },

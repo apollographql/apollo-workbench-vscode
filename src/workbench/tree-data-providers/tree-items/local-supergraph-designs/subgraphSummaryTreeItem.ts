@@ -2,6 +2,7 @@ import { TreeItem, TreeItemCollapsibleState } from 'vscode';
 import { Subgraph } from '../../../file-system/ApolloConfig';
 import { StateManager } from '../../../stateManager';
 import { media } from '../../superGraphTreeDataProvider';
+import { SubgraphTreeItem } from './subgraphTreeItem';
 
 export class SubgraphSummaryTreeItem extends TreeItem {
   subgraphs: TreeItem[] = new Array<TreeItem>();
