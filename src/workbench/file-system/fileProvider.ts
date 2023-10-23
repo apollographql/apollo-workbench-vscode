@@ -21,13 +21,8 @@ import { print, parse as gqlParse } from 'graphql';
 import { extractEntities } from '../federationCompletionProvider';
 
 export const schemaFileUri = (filePath: string, wbFilePath: string) => {
-  const test = resolve(filePath);
-  const test1 = Uri.parse(test);
-  if (parse(filePath).dir == '.') {
-    const wbFileFolder = wbFilePath.split(getFileName(wbFilePath))[0];
-    return Uri.parse(resolve(wbFileFolder, normalize(filePath)));
-  }
-  return Uri.parse(resolve(filePath));
+  const path = resolve(StateManager.workspaceRoot ?? '', filePath);
+  return Uri.parse(path);
 };
 
 export const tempSchemaFilePath = (wbFilePath: string, subgraphName: string) =>
@@ -187,7 +182,9 @@ export class FileProvider {
     const wbFile = this.workbenchFileFromPath(wbFilePath);
     wbFile.subgraphs[subgraphName].schema.mocks = { enabled: shouldMock };
     if (shouldMock && !wbFile.subgraphs[subgraphName].schema.workbench_design) {
-      await this.copySchemaToDeisgnFolder(subgraphName, wbFilePath);
+      wbFile.subgraphs[subgraphName].schema.workbench_design =
+        wbFile.subgraphs[subgraphName].schema.file;
+      // await this.copySchemaToDeisgnFolder(subgraphName, wbFilePath);
     }
 
     await workspace.fs.writeFile(
@@ -331,8 +328,10 @@ export class FileProvider {
     wbFilePath: string,
   ) {
     if (StateManager.workspaceRoot) {
+      const wbFileName = getFileName(wbFilePath);
       const mocksPath = resolve(
         StateManager.workspaceRoot,
+        `${wbFileName}-schemas`,
         `${subgraphName}-mocks.js`,
       );
       await workspace.fs.writeFile(
@@ -362,24 +361,37 @@ export class FileProvider {
     );
 
     const tempWbFile = ApolloConfig.copy(wbFile);
-    Object.keys(wbFile.subgraphs).forEach((subgraphName) => {
-      if (wbFile.subgraphs[subgraphName].schema.workbench_design) {
+    Object.keys(tempWbFile.subgraphs).forEach((subgraphName) => {
+      if (tempWbFile.subgraphs[subgraphName].schema.workbench_design) {
         tempWbFile.subgraphs[subgraphName].schema.file = resolve(
           StateManager.workspaceRoot ?? '',
-          wbFile.subgraphs[subgraphName].schema.workbench_design ?? '',
+          tempWbFile.subgraphs[subgraphName].schema.workbench_design ?? '',
         );
 
         delete tempWbFile.subgraphs[subgraphName].schema.subgraph_url;
         delete tempWbFile.subgraphs[subgraphName].schema.workbench_design;
-      } else if (wbFile.subgraphs[subgraphName].schema.file) {
+      } else if (tempWbFile.subgraphs[subgraphName].schema.file) {
         tempWbFile.subgraphs[subgraphName].schema.file = resolve(
           StateManager.workspaceRoot ?? '',
-          wbFile.subgraphs[subgraphName].schema.file ?? '',
+          tempWbFile.subgraphs[subgraphName].schema.file ?? '',
         );
+      }
+
+      if (tempWbFile.subgraphs[subgraphName].schema.mocks?.enabled) {
+        const mockedPort = Rover.instance.portMapping[subgraphName];
+        if (mockedPort)
+          tempWbFile.subgraphs[
+            subgraphName
+          ].routing_url = `http://localhost:${mockedPort}`;
+
+        delete tempWbFile.subgraphs[subgraphName].schema.mocks;
       }
     });
 
-    await this.writeWorkbenchConfig(tempPath, tempWbFile, false);
+    await workspace.fs.writeFile(
+      Uri.parse(tempPath),
+      new TextEncoder().encode(dump(tempWbFile)),
+    );
 
     return tempPath;
   }

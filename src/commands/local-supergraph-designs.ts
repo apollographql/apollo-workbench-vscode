@@ -44,6 +44,7 @@ import { StudioGraphVariantTreeItem } from '../workbench/tree-data-providers/tre
 import { StudioGraphTreeItem } from '../workbench/tree-data-providers/tree-items/graphos-supergraphs/studioGraphTreeItem';
 import { SupergraphTreeItem } from '../workbench/tree-data-providers/tree-items/local-supergraph-designs/supergraphTreeItem';
 import { FederationVersionItem } from '../workbench/tree-data-providers/tree-items/local-supergraph-designs/federationVersionItem';
+import { resolvePath } from '../utils/uri';
 
 let startingMocks = false;
 
@@ -276,12 +277,10 @@ export async function editSubgraph(item?: SubgraphTreeItem) {
     const wbFile = FileProvider.instance.workbenchFileFromPath(wbFilePath);
     const subgraphSchemaConfig = wbFile.subgraphs[subgraphName]?.schema;
     if (subgraphSchemaConfig?.file) {
-      await window.showTextDocument(
-        schemaFileUri(subgraphSchemaConfig.file, wbFilePath),
-      );
+      await window.showTextDocument(resolvePath(subgraphSchemaConfig.file));
     } else if (subgraphSchemaConfig.workbench_design) {
       await window.showTextDocument(
-        schemaFileUri(subgraphSchemaConfig.workbench_design, wbFilePath),
+        resolvePath(subgraphSchemaConfig.workbench_design),
       );
     } else {
       const tempLocation = ApolloRemoteSchemaProvider.Uri(

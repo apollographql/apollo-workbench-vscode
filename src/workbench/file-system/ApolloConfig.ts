@@ -8,11 +8,7 @@ export class ApolloConfig {
   }
 
   public static copy(config: ApolloConfig) {
-    const newConfig = new ApolloConfig();
-    newConfig.federation_version = config.federation_version;
-    newConfig.subgraphs = config.subgraphs;
-
-    return newConfig;
+    return JSON.parse(JSON.stringify(config));
   }
 }
 

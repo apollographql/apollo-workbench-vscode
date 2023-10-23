@@ -1,3 +1,8 @@
+## Apollo Workbench VSCode 3.2.4
+
+- Rover commands now favor `--profile` vs using `APOLLO_KEY`. This can be set in `apollo-workbench.roverConfigProfile` of your VS Code settings.
+- Reintroduced "Example Designs" that users don't have to login to try out. They open in read only and are copied locally when you want to edit the files.
+
 ## Apollo Workbench VSCode 3.2.2
 
 - Fix `rover dev` when operations have argument variables present. We now use the sanitized config file process that we use for `rover supergraph compose` to strip the `operations` from the config file that is passed to `rover dev`.

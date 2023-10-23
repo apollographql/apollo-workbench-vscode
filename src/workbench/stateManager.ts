@@ -88,16 +88,6 @@ export class StateManager {
       .getConfiguration('apollo-workbench')
       .get('daysOfOperationsToFetch') as number;
   }
-  static get settings_gatewayReCompositionInterval() {
-    return workspace
-      .getConfiguration('apollo-workbench')
-      .get('gatewayReCompositionInterval') as number;
-  }
-  static get settings_displayGettingStarted() {
-    return workspace
-      .getConfiguration('apollo-workbench')
-      .get('displayGettingStarted') as boolean;
-  }
   static get settings_displayExampleGraphs() {
     return workspace
       .getConfiguration('apollo-workbench')
@@ -107,11 +97,6 @@ export class StateManager {
     return workspace
       .getConfiguration('apollo-workbench')
       .get('tlsRejectUnauthorized') as boolean;
-  }
-  static get settings_headersToForwardFromGateway() {
-    return workspace
-      .getConfiguration('apollo-workbench')
-      .get('headersToForwardFromGateway') as Array<string>;
   }
   static get settings_apolloOrg() {
     return workspace

@@ -12,11 +12,11 @@ export async function viewPreloadedSchema(item: PreloadedSubgraph) {
   await PreloadedSchemaProvider.Open(item.wbFilePath, item.subgraphName);
   await window
     .showInformationMessage(
-      `You are opening a schema file  that lives in a remote source and any edits you make won't be reflected in your design. Would you like to change this schema to a local design file?`,
-      'Convert to local design',
+      `You are opening an example design that will be read-only. Would you like to copy the design locally to edit?`,
+      'Copy design',
     )
     .then(async (value) => {
-      if (value == 'Convert to local design') {
+      if (value == 'Copy design') {
         const root = StateManager.workspaceRoot;
         if (root) {
           const wbFileUri = Uri.parse(item.wbFilePath);

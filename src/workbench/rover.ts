@@ -15,6 +15,7 @@ import { log } from '../utils/logger';
 import { FileProvider } from './file-system/fileProvider';
 import { openSandboxWebview } from './webviews/sandbox';
 import { statusBar } from '../extension';
+import { resolvePath } from '../utils/uri';
 
 export class Rover {
   private static _instance: Rover;
@@ -214,7 +215,7 @@ export class Rover {
     try {
       const schemaPath =
         subgraph.schema.workbench_design ?? subgraph.schema.file ?? '';
-      const schemaDesign = await workspace.fs.readFile(Uri.parse(schemaPath));
+      const schemaDesign = await workspace.fs.readFile(resolvePath(schemaPath));
       const schemaString = new TextDecoder().decode(schemaDesign);
       const typeDefs = gql(schemaString);
       //Dynamically create __resolveReference resolvers based on defined entites in Graph
@@ -251,7 +252,7 @@ export class Rover {
       } else schema = addMocksToSchema({ schema, preserveResolvers: true });
 
       const server = new ApolloServer({
-        schema, //: addMocksToSchema({ schema, preserveResolvers: true }),
+        schema,
       });
 
       //Set the port and server to local state
@@ -327,7 +328,7 @@ export class Rover {
       statusBar.text = 'Switching Design';
       statusBar.show();
 
-      await this.stopRoverDev();
+      this.stopRoverDev();
     } else if (wbFilePath == this.primaryDevTerminal?.name) {
       //  Terminal window running rover dev - same design
       // window.showInformationMessage(
@@ -336,16 +337,12 @@ export class Rover {
 
       statusBar.text = 'Refreshing Design';
       statusBar.show();
-      await this.stopRoverDev();
+      this.stopRoverDev();
     } else {
-      await this.stopRoverDev();
+      this.stopRoverDev();
     }
 
     const wbFile = FileProvider.instance.workbenchFileFromPath(wbFilePath);
-    const tempConfigPath = await FileProvider.instance.updateTempWorkbenchFile(
-      wbFile,
-    );
-
     const subgraphNames = Object.keys(wbFile.subgraphs);
     const subgraphsToMock: { [name: string]: Subgraph } = {};
     subgraphNames.forEach((s) => {
@@ -375,7 +372,9 @@ export class Rover {
       }
     }
 
-    const command = `rover dev --supergraph-config=${tempConfigPath} --supergraph-port=${StateManager.settings_routerPort}`;
+    await FileProvider.instance.updateTempWorkbenchFile(wbFile);
+    const config = FileProvider.instance.getTempWorkbenchFilePath();
+    const command = `rover dev --supergraph-config=${config} --supergraph-port=${StateManager.settings_routerPort}`;
     this.primaryDevTerminal = window.createTerminal(wbFilePath);
     this.primaryDevTerminal.show();
     this.primaryDevTerminal.sendText(command);
