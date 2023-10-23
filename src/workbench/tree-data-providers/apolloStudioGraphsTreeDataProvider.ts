@@ -141,6 +141,10 @@ export class ApolloStudioGraphsTreeDataProvider
     } else {
       items.push(new NotLoggedInTreeItem());
       items.push(new SignupTreeItem());
+
+      if (StateManager.settings_displayExampleGraphs)
+        items.push(new PreloadedWorkbenchTopLevel());
+
       window
         .showInformationMessage('No user api key was found.', 'Login')
         .then((response) => {
