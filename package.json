@@ -129,33 +129,12 @@
           "default": 4001,
           "description": "Specifies the url endpoint to be used for the Apollo Studio Graph"
         },
-        "apollo-workbench.gatewayReCompositionInterval": {
-          "type": [
-            "number"
-          ],
-          "default": 10000,
-          "description": "Specifies the interval the Apollo Gateway will try re-composing it's schema in ms"
-        },
         "apollo-workbench.daysOfOperationsToFetch": {
           "type": [
             "number"
           ],
           "default": 30,
           "description": "Specifies the number of days to select operations from Apollo Studio (to current day)"
-        },
-        "apollo-workbench.runOperationRegistry": {
-          "type": [
-            "boolean"
-          ],
-          "default": false,
-          "description": "Specifies the url endpoint to be used for the Apollo Studio Graph"
-        },
-        "apollo-workbench.displayGettingStarted": {
-          "type": [
-            "boolean"
-          ],
-          "default": true,
-          "description": "Specifies whether to display the 'Getting Started' section is shown in the 'Local Schema Files' TreeView"
         },
         "apollo-workbench.displayExampleGraphs": {
           "type": [
@@ -170,11 +149,6 @@
           ],
           "default": false,
           "description": "Specifies whether to set `NODE_TLS_REJECT_UNAUTHORIZED=0` or not. `NODE_TLS_REJECT_UNAUTHORIZED=0` is the default to avoid enterprise cert issues in development - Note this should never be done in production"
-        },
-        "apollo-workbench.headersToForwardFromGateway": {
-          "type": "array",
-          "default": [],
-          "description": "Specifies what headers should be forwarded from the gateway to downstream mocked services"
         },
         "apollo-workbench.local-designs.expandSubgraphsByDefault": {
           "type": "boolean",

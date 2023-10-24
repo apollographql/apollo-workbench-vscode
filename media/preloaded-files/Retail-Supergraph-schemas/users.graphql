@@ -1,0 +1,134 @@
+schema @link(url: "https://specs.apollo.dev/link/v1.0") {
+  query: Query
+}
+
+extend schema
+  @link(url: "https://specs.apollo.dev/federation/v2.0", import: ["@key"])
+
+directive @link(
+  url: String
+  as: String
+  for: link__Purpose
+  import: [link__Import]
+) repeatable on SCHEMA
+
+directive @key(
+  fields: federation__FieldSet!
+  resolvable: Boolean = true
+) repeatable on OBJECT | INTERFACE
+
+directive @federation__requires(
+  fields: federation__FieldSet!
+) on FIELD_DEFINITION
+
+directive @federation__provides(
+  fields: federation__FieldSet!
+) on FIELD_DEFINITION
+
+directive @federation__external(reason: String) on OBJECT | FIELD_DEFINITION
+
+directive @federation__tag(
+  name: String!
+) repeatable on FIELD_DEFINITION | OBJECT | INTERFACE | UNION | ARGUMENT_DEFINITION | SCALAR | ENUM | ENUM_VALUE | INPUT_OBJECT | INPUT_FIELD_DEFINITION
+
+directive @federation__extends on OBJECT | INTERFACE
+
+directive @federation__shareable on OBJECT | FIELD_DEFINITION
+
+directive @federation__inaccessible on FIELD_DEFINITION | OBJECT | INTERFACE | UNION | ARGUMENT_DEFINITION | SCALAR | ENUM | ENUM_VALUE | INPUT_OBJECT | INPUT_FIELD_DEFINITION
+
+directive @federation__override(from: String!) on FIELD_DEFINITION
+
+type Query {
+  """
+  Get the current user from our fake "auth" headers
+  Set the "x-user-id" header to the user id.
+  """
+  user: User
+  _entities(representations: [_Any!]!): [_Entity]!
+  _service: _Service!
+}
+
+"""
+An user account in our system
+"""
+type User @key(fields: "id") {
+  id: ID!
+
+  """
+  The users login username
+  """
+  username: String!
+
+  """
+  Get the list of last session id of user activity
+  """
+  previousSessions: [ID!]
+
+  """
+  Total saved loyalty points and rewards
+  """
+  loyaltyPoints: Int
+
+  """
+  Saved payment methods that can be used to submit orders
+  """
+  paymentMethods: [PaymentMethod]
+
+  """
+  The users previous purchases
+  """
+  orders: [Order]
+
+  """
+  The users current saved shipping address
+  """
+  shippingAddress: String
+}
+
+"""
+A saved payment option for an user
+"""
+type PaymentMethod {
+  id: ID!
+  name: String
+  description: String
+  type: PaymentType!
+}
+
+"""
+A fix set of payment types that we accept
+"""
+enum PaymentType {
+  CREDIT_CARD
+  DEBIT_CARD
+  BANK_ACCOUNT
+}
+
+type Order @key(fields: "id", resolvable: false) {
+  id: ID!
+}
+
+enum link__Purpose {
+  """
+  `SECURITY` features provide metadata necessary to securely resolve fields.
+  """
+  SECURITY
+
+  """
+  `EXECUTION` features provide metadata necessary for operation execution.
+  """
+  EXECUTION
+}
+
+scalar link__Import
+
+scalar federation__FieldSet
+
+scalar _Any
+
+type _Service {
+  sdl: String
+}
+
+union _Entity = Order | User

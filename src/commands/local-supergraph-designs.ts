@@ -17,18 +17,6 @@ import {
 } from 'vscode';
 import { StateManager } from '../workbench/stateManager';
 import {
-  SubgraphTreeItem,
-  SubgraphSummaryTreeItem,
-  SupergraphTreeItem,
-  OperationTreeItem,
-  AddDesignOperationTreeItem,
-  FederationVersionItem,
-} from '../workbench/tree-data-providers/superGraphTreeDataProvider';
-import {
-  StudioGraphVariantTreeItem,
-  StudioGraphTreeItem,
-} from '../workbench/tree-data-providers/apolloStudioGraphsTreeDataProvider';
-import {
   getAccountGraphs,
   getGraphSchemasByVariant,
 } from '../graphql/graphClient';
@@ -48,6 +36,15 @@ import {
 import { openFolder } from './extension';
 import { whichDesign, whichOperation, whichSubgraph } from '../utils/uiHelpers';
 import { openSandboxWebview } from '../workbench/webviews/sandbox';
+import { OperationTreeItem } from '../workbench/tree-data-providers/tree-items/local-supergraph-designs/operationTreeItem';
+import { SubgraphTreeItem } from '../workbench/tree-data-providers/tree-items/local-supergraph-designs/subgraphTreeItem';
+import { SubgraphSummaryTreeItem } from '../workbench/tree-data-providers/tree-items/local-supergraph-designs/subgraphSummaryTreeItem';
+import { AddDesignOperationTreeItem } from '../workbench/tree-data-providers/tree-items/local-supergraph-designs/addDesignOperationTreeItem';
+import { StudioGraphVariantTreeItem } from '../workbench/tree-data-providers/tree-items/graphos-supergraphs/studioGraphVariantTreeItem';
+import { StudioGraphTreeItem } from '../workbench/tree-data-providers/tree-items/graphos-supergraphs/studioGraphTreeItem';
+import { SupergraphTreeItem } from '../workbench/tree-data-providers/tree-items/local-supergraph-designs/supergraphTreeItem';
+import { FederationVersionItem } from '../workbench/tree-data-providers/tree-items/local-supergraph-designs/federationVersionItem';
+import { resolvePath } from '../utils/uri';
 
 let startingMocks = false;
 
@@ -280,12 +277,10 @@ export async function editSubgraph(item?: SubgraphTreeItem) {
     const wbFile = FileProvider.instance.workbenchFileFromPath(wbFilePath);
     const subgraphSchemaConfig = wbFile.subgraphs[subgraphName]?.schema;
     if (subgraphSchemaConfig?.file) {
-      await window.showTextDocument(
-        schemaFileUri(subgraphSchemaConfig.file, wbFilePath),
-      );
+      await window.showTextDocument(resolvePath(subgraphSchemaConfig.file));
     } else if (subgraphSchemaConfig.workbench_design) {
       await window.showTextDocument(
-        schemaFileUri(subgraphSchemaConfig.workbench_design, wbFilePath),
+        resolvePath(subgraphSchemaConfig.workbench_design),
       );
     } else {
       const tempLocation = ApolloRemoteSchemaProvider.Uri(

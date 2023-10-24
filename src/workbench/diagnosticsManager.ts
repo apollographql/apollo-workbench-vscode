@@ -17,6 +17,7 @@ import { StateManager } from './stateManager';
 import { getFileName } from '../utils/path';
 import { ApolloRemoteSchemaProvider } from './docProviders';
 import { existsSync, readFileSync } from 'fs';
+import { resolvePath } from '../utils/uri';
 
 interface WorkbenchDiagnosticCollections {
   compositionDiagnostics: DiagnosticCollection;
@@ -124,9 +125,9 @@ export class WorkbenchDiagnostics {
               const schema = wbFile.subgraphs[subgraph].schema;
               let schemaPath: Uri;
               if (schema.workbench_design) {
-                schemaPath = Uri.parse(schema.workbench_design);
+                schemaPath = resolvePath(schema.workbench_design);
               } else if (schema.file) {
-                schemaPath = Uri.parse(schema.file);
+                schemaPath = resolvePath(schema.file);
               } else {
                 schemaPath = ApolloRemoteSchemaProvider.Uri(
                   wbFilePath,
@@ -152,7 +153,7 @@ export class WorkbenchDiagnostics {
               ? errorNode.start.column + errorNode.end.column - 1
               : 0,
           );
-          const diagnostic = this.generateDiagnostic(errorMessage,range);
+          const diagnostic = this.generateDiagnostic(errorMessage, range);
 
           if (!diagnosticsGroups[subgraphName])
             diagnosticsGroups[subgraphName] = [diagnostic];
@@ -174,11 +175,7 @@ export class WorkbenchDiagnostics {
     range: Range = new Range(0, 0, 0, 0),
     severity: DiagnosticSeverity = DiagnosticSeverity.Error,
   ) {
-    const diagnostic = new Diagnostic(
-      range,
-      message,
-      severity,
-    );
+    const diagnostic = new Diagnostic(range, message, severity);
 
     if (message.includes('If you meant the "@'))
       diagnostic.code = `addDirective:${message.split('"')[1]}`;

@@ -1,11 +1,16 @@
 import { StateManager } from '../workbench/stateManager';
-import { StudioOperationTreeItem } from '../workbench/tree-data-providers/apolloStudioGraphOpsTreeDataProvider';
-import { env, Uri, window } from 'vscode';
-import { ApolloStudioOperationsProvider } from '../workbench/docProviders';
+import { env, ProgressLocation, Uri, window } from 'vscode';
+import {
+  ApolloRemoteSchemaProvider,
+  ApolloStudioOperationsProvider,
+} from '../workbench/docProviders';
 import { getUserMemberships } from '../graphql/graphClient';
 import { enterGraphOSUserApiKey } from './extension';
-import { StudioGraphTreeItem } from '../workbench/tree-data-providers/apolloStudioGraphsTreeDataProvider';
 import { log } from 'console';
+import { StudioGraphTreeItem } from '../workbench/tree-data-providers/tree-items/graphos-supergraphs/studioGraphTreeItem';
+import { StudioOperationTreeItem } from '../workbench/tree-data-providers/tree-items/graphos-operations/studioOperationTreeItem';
+import { PreloadedSubgraph } from '../workbench/tree-data-providers/tree-items/graphos-supergraphs/preloadedSubgraph';
+import { FileProvider } from '../workbench/file-system/fileProvider';
 
 export async function openInGraphOS(item: StudioGraphTreeItem) {
   const url = `https://studio.apollographql.com/graph/${item.graphId}/home`;
@@ -59,6 +64,7 @@ export async function switchOrg() {
   if (accountId) {
     StateManager.instance.setSelectedGraph('');
     StateManager.instance.globalState_selectedApolloAccount = accountId;
+    StateManager.instance.apolloStudioGraphsProvider.refresh();
   } else {
     log('Unable to get orgs');
     window.showErrorMessage(

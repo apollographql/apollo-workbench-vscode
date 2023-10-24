@@ -1,6 +1,13 @@
 import { existsSync, readdirSync } from 'fs';
 import path, { join, parse, resolve, normalize } from 'path';
-import { commands, ProgressLocation, Uri, window, workspace } from 'vscode';
+import {
+  commands,
+  FileType,
+  ProgressLocation,
+  Uri,
+  window,
+  workspace,
+} from 'vscode';
 import { StateManager } from '../stateManager';
 import { WorkbenchDiagnostics } from '../diagnosticsManager';
 import { log } from '../../utils/logger';
@@ -14,11 +21,8 @@ import { print, parse as gqlParse } from 'graphql';
 import { extractEntities } from '../federationCompletionProvider';
 
 export const schemaFileUri = (filePath: string, wbFilePath: string) => {
-  if (parse(filePath).dir == '.') {
-    const wbFileFolder = wbFilePath.split(getFileName(wbFilePath))[0];
-    return Uri.parse(resolve(wbFileFolder, normalize(filePath)));
-  }
-  return Uri.parse(filePath);
+  const path = resolve(StateManager.workspaceRoot ?? '', filePath);
+  return Uri.parse(path);
 };
 
 export const tempSchemaFilePath = (wbFilePath: string, subgraphName: string) =>
@@ -178,7 +182,9 @@ export class FileProvider {
     const wbFile = this.workbenchFileFromPath(wbFilePath);
     wbFile.subgraphs[subgraphName].schema.mocks = { enabled: shouldMock };
     if (shouldMock && !wbFile.subgraphs[subgraphName].schema.workbench_design) {
-      await this.copySchemaToDeisgnFolder(subgraphName, wbFilePath);
+      wbFile.subgraphs[subgraphName].schema.workbench_design =
+        wbFile.subgraphs[subgraphName].schema.file;
+      // await this.copySchemaToDeisgnFolder(subgraphName, wbFilePath);
     }
 
     await workspace.fs.writeFile(
@@ -322,8 +328,10 @@ export class FileProvider {
     wbFilePath: string,
   ) {
     if (StateManager.workspaceRoot) {
+      const wbFileName = getFileName(wbFilePath);
       const mocksPath = resolve(
         StateManager.workspaceRoot,
+        `${wbFileName}-schemas`,
         `${subgraphName}-mocks.js`,
       );
       await workspace.fs.writeFile(
@@ -353,23 +361,37 @@ export class FileProvider {
     );
 
     const tempWbFile = ApolloConfig.copy(wbFile);
-    Object.keys(wbFile.subgraphs).forEach((subgraphName) => {
-      if (wbFile.subgraphs[subgraphName].schema.workbench_design) {
+    Object.keys(tempWbFile.subgraphs).forEach((subgraphName) => {
+      if (tempWbFile.subgraphs[subgraphName].schema.workbench_design) {
         tempWbFile.subgraphs[subgraphName].schema.file = resolve(
           StateManager.workspaceRoot ?? '',
-          wbFile.subgraphs[subgraphName].schema.workbench_design ?? '',
+          tempWbFile.subgraphs[subgraphName].schema.workbench_design ?? '',
         );
 
         delete tempWbFile.subgraphs[subgraphName].schema.subgraph_url;
-      } else if (wbFile.subgraphs[subgraphName].schema.file) {
+        delete tempWbFile.subgraphs[subgraphName].schema.workbench_design;
+      } else if (tempWbFile.subgraphs[subgraphName].schema.file) {
         tempWbFile.subgraphs[subgraphName].schema.file = resolve(
           StateManager.workspaceRoot ?? '',
-          wbFile.subgraphs[subgraphName].schema.file ?? '',
+          tempWbFile.subgraphs[subgraphName].schema.file ?? '',
         );
+      }
+
+      if (tempWbFile.subgraphs[subgraphName].schema.mocks?.enabled) {
+        const mockedPort = Rover.instance.portMapping[subgraphName];
+        if (mockedPort)
+          tempWbFile.subgraphs[
+            subgraphName
+          ].routing_url = `http://localhost:${mockedPort}`;
+
+        delete tempWbFile.subgraphs[subgraphName].schema.mocks;
       }
     });
 
-    await this.writeWorkbenchConfig(tempPath, tempWbFile, false);
+    await workspace.fs.writeFile(
+      Uri.parse(tempPath),
+      new TextEncoder().encode(dump(tempWbFile)),
+    );
 
     return tempPath;
   }
@@ -454,29 +476,30 @@ export class FileProvider {
     return workbenchFiles;
   }
 
-  getPreloadedWorkbenchFiles() {
+  async getPreloadedWorkbenchFiles() {
     const items: { fileName: string; path: string }[] = [];
-    const preloadFileDir = join(
-      __dirname,
-      '..',
-      '..',
-      '..',
-      'media',
-      `preloaded-files`,
-    );
+    const preloadFileDir = join(__dirname, '..', 'media', `preloaded-files`);
     if (existsSync(preloadFileDir)) {
-      const preloadedDirectory = readdirSync(preloadFileDir, {
-        encoding: 'utf-8',
-      });
+      const preloadedDirectory = await workspace.fs.readDirectory(
+        Uri.parse(preloadFileDir),
+      );
       preloadedDirectory.map((item) => {
-        items.push({
-          fileName: item.split('.')[0],
-          path: `${preloadFileDir}/${item}`,
-        });
+        const fileName = item[0];
+        const fileType = item[1] as FileType;
+        if (fileType == FileType.File && fileName.includes('.yaml'))
+          items.push({
+            fileName: fileName.split('.')[0],
+            path: `${preloadFileDir}/${fileName}`,
+          });
       });
     }
     return items;
   }
+  async getPreloadedWorkbenchFile(filePath: string) {
+    const file = await workspace.fs.readFile(Uri.parse(filePath));
+    return load(file.toString()) as ApolloConfig;
+  }
+
   async saveSchemaToDesignFolder(
     schema: string,
     subgraphName: string,

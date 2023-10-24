@@ -1,22 +1,21 @@
 import { buildSubgraphSchema } from '@apollo/subgraph';
 import { ApolloServer } from '@apollo/server';
 import { startStandaloneServer } from '@apollo/server/standalone';
-import { ExecException, execSync, exec, spawn } from 'child_process';
-import util, { TextDecoder } from 'util';
-const execPromise = util.promisify(exec);
+import { spawn } from 'child_process';
+import { TextDecoder } from 'util';
 import gql from 'graphql-tag';
 import { Progress, Terminal, Uri, window, workspace } from 'vscode';
-import { ApolloConfig, Subgraph } from './file-system/ApolloConfig';
+import { Subgraph } from './file-system/ApolloConfig';
 import { CompositionResults } from './file-system/CompositionResults';
 import { StateManager } from './stateManager';
 import { addMocksToSchema } from '@graphql-tools/mock';
 import { FieldWithType } from './federationCompletionProvider';
 import { parse, StringValueNode, visit } from 'graphql';
 import { log } from '../utils/logger';
-import { stdout } from 'process';
 import { FileProvider } from './file-system/fileProvider';
 import { openSandboxWebview } from './webviews/sandbox';
 import { statusBar } from '../extension';
+import { resolvePath } from '../utils/uri';
 
 export class Rover {
   private static _instance: Rover;
@@ -27,19 +26,26 @@ export class Rover {
   }
 
   logCommand(command: string) {
+    if (command.includes('APOLLO_KEY')) {
+      const split = command.split(' ');
+      split.shift();
+      command = split.join(' ');
+    }
     log(`Rover Execution: ${command}`);
   }
 
   runningFilePath: string | undefined;
   primaryDevTerminal: Terminal | undefined;
 
-  private async execute(command: string, json = true, addProfile = true) {
+  private async execute(command: string, json = true) {
     let cmd = json ? `${command} --format=json` : command;
+    if (StateManager.settings_roverConfigProfile) {
+      cmd = `${cmd} --profile=${StateManager.settings_roverConfigProfile}`;
+    } else if (StateManager.instance.globalState_userApiKey) {
+      cmd = `APOLLO_KEY=${StateManager.instance.globalState_userApiKey} ${cmd}`;
+    }
 
-    if (addProfile && StateManager.settings_roverConfigProfile != '')
-      cmd += ` --profile=${StateManager.settings_roverConfigProfile}`;
-
-    log(`Rover Execution: ${cmd}`);
+    this.logCommand(cmd);
 
     if (process.platform !== 'win32') {
       //workaround, source rover binary from install location
@@ -80,9 +86,8 @@ export class Rover {
   }
 
   async compose(pathToConfig: string) {
-    const result = await this.execute(
-      `rover supergraph compose --config="${pathToConfig}"`,
-    );
+    const command = `rover supergraph compose --config="${pathToConfig}"`;
+    const result = await this.execute(command, true);
 
     if (result == undefined)
       return {
@@ -100,9 +105,9 @@ export class Rover {
     subgraphName: string;
     schemaPath: string;
   }) {
-    const result = await this.execute(
-      `rover subgraph check ${input.graphRef} --schema=${input.schemaPath} --name=${input.subgraphName}`,
-    );
+    const command = `rover subgraph check ${input.graphRef} --schema=${input.schemaPath} --name=${input.subgraphName}`;
+
+    const result = await this.execute(command);
 
     if (result == undefined)
       return {
@@ -121,7 +126,9 @@ export class Rover {
       };
 
     const compResults = JSON.parse(result) as CompositionResults;
-    const reportUrl = ((compResults.data as any)?.target_url as string) ?? '';
+    const reportUrl =
+      ((compResults.data as any)?.tasks?.operations?.target_url as string) ??
+      '';
 
     return { ...compResults, reportUrl };
   }
@@ -149,27 +156,21 @@ export class Rover {
   }
 
   async subgraphGraphOSFetch(graphRef: string, subgraph: string) {
-    const result = await this.execute(
-      `rover subgraph fetch ${graphRef} --name=${subgraph}`,
-      false,
-    );
+    const command = `rover subgraph fetch ${graphRef} --name=${subgraph}`;
+    const result = await this.execute(command, false);
 
     return result ? result : '';
   }
   async subgraphIntrospect(url: string) {
-    let sdl = await this.execute(
-      `rover subgraph introspect ${url}`,
-      false,
-      false,
-    );
+    let sdl = await this.execute(`rover subgraph introspect ${url}`, false);
     if (!sdl ?? sdl == '') {
-      sdl = await this.execute(`rover graph introspect ${url}`, false, false);
+      sdl = await this.execute(`rover graph introspect ${url}`, false);
     }
     return sdl ? sdl : '';
   }
 
   async getProfiles(): Promise<string[]> {
-    const results = await this.execute(`rover config list`, true, false);
+    const results = await this.execute(`rover config list`, true);
     if (!results) return [];
 
     const data = JSON.parse(results).data;
@@ -214,7 +215,7 @@ export class Rover {
     try {
       const schemaPath =
         subgraph.schema.workbench_design ?? subgraph.schema.file ?? '';
-      const schemaDesign = await workspace.fs.readFile(Uri.parse(schemaPath));
+      const schemaDesign = await workspace.fs.readFile(resolvePath(schemaPath));
       const schemaString = new TextDecoder().decode(schemaDesign);
       const typeDefs = gql(schemaString);
       //Dynamically create __resolveReference resolvers based on defined entites in Graph
@@ -251,7 +252,7 @@ export class Rover {
       } else schema = addMocksToSchema({ schema, preserveResolvers: true });
 
       const server = new ApolloServer({
-        schema, //: addMocksToSchema({ schema, preserveResolvers: true }),
+        schema,
       });
 
       //Set the port and server to local state
@@ -327,7 +328,7 @@ export class Rover {
       statusBar.text = 'Switching Design';
       statusBar.show();
 
-      await this.stopRoverDev();
+      this.stopRoverDev();
     } else if (wbFilePath == this.primaryDevTerminal?.name) {
       //  Terminal window running rover dev - same design
       // window.showInformationMessage(
@@ -336,16 +337,12 @@ export class Rover {
 
       statusBar.text = 'Refreshing Design';
       statusBar.show();
-      await this.stopRoverDev();
+      this.stopRoverDev();
     } else {
-      await this.stopRoverDev();
+      this.stopRoverDev();
     }
 
     const wbFile = FileProvider.instance.workbenchFileFromPath(wbFilePath);
-    const tempConfigPath = await FileProvider.instance.updateTempWorkbenchFile(
-      wbFile,
-    );
-
     const subgraphNames = Object.keys(wbFile.subgraphs);
     const subgraphsToMock: { [name: string]: Subgraph } = {};
     subgraphNames.forEach((s) => {
@@ -375,7 +372,9 @@ export class Rover {
       }
     }
 
-    const command = `rover dev --supergraph-config=${tempConfigPath} --supergraph-port=${StateManager.settings_routerPort}`;
+    await FileProvider.instance.updateTempWorkbenchFile(wbFile);
+    const config = FileProvider.instance.getTempWorkbenchFilePath();
+    const command = `rover dev --supergraph-config=${config} --supergraph-port=${StateManager.settings_routerPort}`;
     this.primaryDevTerminal = window.createTerminal(wbFilePath);
     this.primaryDevTerminal.show();
     this.primaryDevTerminal.sendText(command);

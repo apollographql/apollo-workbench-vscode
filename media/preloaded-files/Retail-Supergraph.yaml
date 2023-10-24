@@ -1,0 +1,59 @@
+federation_version: '=2.5.2'
+subgraphs:
+  users:
+    routing_url: https://apollosolutions--retail-supergraph.fly.dev/users/graphql
+    schema:
+      workbench_design: ./Retail-Supergraph-schemas/users.graphql
+      file: >-
+        ./Retail-Supergraph-schemas/users.graphql
+      mocks:
+        enabled: true
+  shipping:
+    routing_url: https://apollosolutions--retail-supergraph.fly.dev/shipping/graphql
+    schema:
+      workbench_design: ./Retail-Supergraph-schemas/shipping.graphql
+      file: >-
+        ./Retail-Supergraph-schemas/shipping.graphql
+      mocks:
+        enabled: true
+  reviews:
+    routing_url: https://apollosolutions--retail-supergraph.fly.dev/reviews/graphql
+    schema:
+      workbench_design: ./Retail-Supergraph-schemas/reviews.graphql
+      file: >-
+        ./Retail-Supergraph-schemas/reviews.graphql
+      mocks:
+        enabled: true
+  products:
+    routing_url: https://apollosolutions--retail-supergraph.fly.dev/products/graphql
+    schema:
+      workbench_design: ./Retail-Supergraph-schemas/products.graphql
+      file: >-
+        ./Retail-Supergraph-schemas/products.graphql
+      mocks:
+        enabled: true
+  orders:
+    routing_url: https://apollosolutions--retail-supergraph.fly.dev/orders/graphql
+    schema:
+      workbench_design: ./Retail-Supergraph-schemas/orders.graphql
+      file: >-
+        ./Retail-Supergraph-schemas/orders.graphql
+      mocks:
+        enabled: true
+  inventory:
+    routing_url: https://apollosolutions--retail-supergraph.fly.dev/inventory/graphql
+    schema:
+      workbench_design: ./Retail-Supergraph-schemas/inventory.graphql
+      file: >-
+        ./Retail-Supergraph-schemas/inventory.graphql
+      mocks:
+        enabled: true
+  discovery:
+    routing_url: https://apollosolutions--retail-supergraph.fly.dev/discovery/graphql
+    schema:
+      workbench_design: ./Retail-Supergraph-schemas/discovery.graphql
+      file: >-
+        ./Retail-Supergraph-schemas/discovery.graphql
+      mocks:
+        enabled: true
+operations: {}

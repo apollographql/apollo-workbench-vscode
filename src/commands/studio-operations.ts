@@ -1,7 +1,7 @@
-import { StudioOperationTreeItem } from '../workbench/tree-data-providers/apolloStudioGraphOpsTreeDataProvider';
 import { FileProvider } from '../workbench/file-system/fileProvider';
 import { window } from 'vscode';
 import { getFileName } from '../utils/path';
+import { StudioOperationTreeItem } from '../workbench/tree-data-providers/tree-items/graphos-operations/studioOperationTreeItem';
 
 export async function addToDesign(op: StudioOperationTreeItem) {
   const supergraphs = FileProvider.instance.getWorkbenchFiles();
