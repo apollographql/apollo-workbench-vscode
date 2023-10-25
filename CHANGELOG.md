@@ -1,3 +1,7 @@
+## Apollo Workbench VSCode 3.2.7
+
+- Fix bundling pre-loaded .graphql files into extension
+
 ## Apollo Workbench VSCode 3.2.6
 
 - Rover commands now favor `--profile` vs using `APOLLO_KEY`. This can be set in `apollo-workbench.roverConfigProfile` of your VS Code settings.

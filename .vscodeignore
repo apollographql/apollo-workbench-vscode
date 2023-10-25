@@ -1,7 +1,7 @@
 **/*.ts
 **/tsconfig.json
 !file.ts
-**/*.graphql
+graphos-schema.graphql
 **/*.vsix
 .env
 *.vsix

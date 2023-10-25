@@ -10,7 +10,7 @@
   "version": "3.2.6",
   "publisher": "ApolloGraphQL",
   "engines": {
-    "vscode": "^1.74.0"
+    "vscode": "^1.80.0"
   },
   "categories": [
     "Other"
