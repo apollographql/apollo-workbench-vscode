@@ -4,7 +4,15 @@ import { startStandaloneServer } from '@apollo/server/standalone';
 import { spawn } from 'child_process';
 import { TextDecoder } from 'util';
 import gql from 'graphql-tag';
-import { Progress, Terminal, Uri, window, workspace } from 'vscode';
+import {
+  Progress,
+  Terminal,
+  Uri,
+  commands,
+  env,
+  window,
+  workspace,
+} from 'vscode';
 import { Subgraph } from './file-system/ApolloConfig';
 import { CompositionResults } from './file-system/CompositionResults';
 import { StateManager } from './stateManager';
@@ -16,6 +24,7 @@ import { FileProvider } from './file-system/fileProvider';
 import { openSandboxWebview } from './webviews/sandbox';
 import { statusBar } from '../extension';
 import { resolvePath } from '../utils/uri';
+import { normalizePath } from '../utils/path';
 
 export class Rover {
   private static _instance: Rover;
@@ -41,9 +50,14 @@ export class Rover {
     let cmd = json ? `${command} --format=json` : command;
     if (StateManager.settings_roverConfigProfile) {
       cmd = `${cmd} --profile=${StateManager.settings_roverConfigProfile}`;
-    } else if (StateManager.instance.globalState_userApiKey) {
-      cmd = `APOLLO_KEY=${StateManager.instance.globalState_userApiKey} ${cmd}`;
     }
+    // TODO: Verify this doesn't actually work on mac, it probably can be removed
+    // else if (StateManager.instance.globalState_userApiKey) {
+    //   if (process.platform != 'win32')
+    //     cmd = `set APOLLO_KEY=${StateManager.instance.globalState_userApiKey};${cmd}`;
+    //   else
+    //     cmd = `APOLLO_KEY=${StateManager.instance.globalState_userApiKey} ${cmd}`;
+    // }
 
     this.logCommand(cmd);
 
@@ -94,8 +108,39 @@ export class Rover {
         data: { success: false },
         error: { message: 'Rover command failed' },
       } as CompositionResults;
-
+    else if (result == '') {
+      log('Rover is not installed');
+      window
+        .showErrorMessage(
+          'You must install the Rover CLI to use this extension. After installing the Rover CLI, you will need to restart VS Code and accept the license.',
+          'Install Rover',
+        )
+        .then((r) => {
+          if (r == 'Install Rover') {
+            env.openExternal(
+              Uri.parse(
+                'https://www.apollographql.com/docs/rover/getting-started',
+              ),
+            );
+          }
+        });
+    }
     const compResults = JSON.parse(result) as CompositionResults;
+
+    if (compResults.error && compResults.error.message.includes('ELv2')) {
+      log('ELv2 for Rover needs to be accepted');
+      const preloaded =
+        await FileProvider.instance.getPreloadedWorkbenchFiles();
+      const preloadedPath = normalizePath(preloaded[0].path);
+      await window.showErrorMessage(
+        'Certain Rover commands require you to accept the terms of the ELv2 licesnse. A terminal window will be opened for you to accept the ELv2 license. After accepting, you can close the terminal window and use this extension normally.',
+        { modal: true },
+      );
+
+      const term = window.createTerminal('Rover ELv2 accept');
+      term.sendText(`rover supergraph compose --config="${preloadedPath}"`);
+      term.show();
+    }
 
     return compResults;
   }
@@ -146,6 +191,20 @@ export class Rover {
         subgraph.schema.graphref,
         subgraph.schema.subgraph,
       );
+      if (!sdl) {
+        log('Not authenticated. Must run rover config auth');
+        window
+          .showErrorMessage(
+            'Fetching schemas from GraphOS requires you to authenticate the Rover CLI with your User API key. A terminal window will open for you to configure this.',
+            { modal: true },
+          )
+          .then(() => {
+            const term = window.createTerminal('rover config auth');
+            term.sendText('rover config auth');
+            term.show();
+          });
+        throw new Error('Rover is not configured');
+      }
     } else {
       sdl = await this.subgraphIntrospect(
         subgraph.schema.subgraph_url ?? subgraph.routing_url ?? '',

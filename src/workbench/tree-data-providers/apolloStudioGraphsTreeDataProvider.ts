@@ -11,12 +11,12 @@ import {
   window,
   commands,
 } from 'vscode';
-import { NotLoggedInTreeItem } from './tree-items/graphos-supergraphs/notLoggedInTreeItem';
 import { SignupTreeItem } from './tree-items/graphos-supergraphs/signupTreeItem';
 import { PreloadedWorkbenchTopLevel } from './tree-items/graphos-supergraphs/preloadedWorkbenchTopLevel';
 import { StudioGraphVariantTreeItem } from './tree-items/graphos-supergraphs/studioGraphVariantTreeItem';
 import { StudioGraphTreeItem } from './tree-items/graphos-supergraphs/studioGraphTreeItem';
 import { StudioAccountTreeItem } from './tree-items/graphos-supergraphs/studioAccountTreeItem';
+import NotLoggedInTreeItem from './tree-items/graphos-supergraphs/notLoggedInTreeItem';
 
 export class ApolloStudioGraphsTreeDataProvider
   implements TreeDataProvider<TreeItem>

@@ -1,5 +1,5 @@
 import { existsSync, readdirSync } from 'fs';
-import path, { join, parse, resolve, normalize } from 'path';
+import path, { join, resolve } from 'path';
 import {
   commands,
   FileType,
@@ -15,22 +15,26 @@ import { load, dump } from 'js-yaml';
 import { TextDecoder, TextEncoder } from 'util';
 import { ApolloConfig } from './ApolloConfig';
 import { Rover } from '../rover';
-import { getFileName } from '../../utils/path';
+import { getFileName, normalizePath } from '../../utils/path';
 import { homedir } from 'os';
 import { print, parse as gqlParse } from 'graphql';
 import { extractEntities } from '../federationCompletionProvider';
 
 export const schemaFileUri = (filePath: string, wbFilePath: string) => {
-  const path = resolve(StateManager.workspaceRoot ?? '', filePath);
+  const path = normalizePath(
+    resolve(StateManager.workspaceRoot ?? '', filePath),
+  );
   return Uri.parse(path);
 };
 
 export const tempSchemaFilePath = (wbFilePath: string, subgraphName: string) =>
   Uri.parse(
-    resolve(
-      StateManager.instance.extensionGlobalStoragePath,
-      'schemas',
-      `${getFileName(wbFilePath)}-${subgraphName}.graphql`,
+    normalizePath(
+      resolve(
+        StateManager.instance.extensionGlobalStoragePath,
+        'schemas',
+        `${getFileName(wbFilePath)}-${subgraphName}.graphql`,
+      ),
     ),
   );
 export const tempOperationFilePath = (
@@ -38,10 +42,12 @@ export const tempOperationFilePath = (
   operationName: string,
 ) =>
   Uri.parse(
-    resolve(
-      StateManager.instance.extensionGlobalStoragePath,
-      'operations',
-      `${getFileName(wbFilePath)}-${operationName}.graphql`,
+    normalizePath(
+      resolve(
+        StateManager.instance.extensionGlobalStoragePath,
+        'operations',
+        `${getFileName(wbFilePath)}-${operationName}.graphql`,
+      ),
     ),
   );
 
@@ -150,9 +156,8 @@ export class FileProvider {
         subgraphName,
       );
       if (tempUri && StateManager.workspaceRoot) {
-        const schemaFilePath = resolve(
-          StateManager.workspaceRoot,
-          `${subgraphName}.graphql`,
+        const schemaFilePath = normalizePath(
+          resolve(StateManager.workspaceRoot, `${subgraphName}.graphql`),
         );
         const schemaFileUri = Uri.parse(schemaFilePath);
         await workspace.fs.copy(tempUri, schemaFileUri, {
@@ -314,10 +319,10 @@ export class FileProvider {
   //Workbench File Implementations
   async createWorkbenchFileLocally(designName: string, wbFile: ApolloConfig) {
     if (StateManager.workspaceRoot) {
-      const wbFilePath = resolve(
-        StateManager.workspaceRoot,
-        `${designName}.yaml`,
+      let wbFilePath = normalizePath(
+        resolve(StateManager.workspaceRoot, `${designName}.yaml`),
       );
+
       await this.writeWorkbenchConfig(wbFilePath, wbFile);
     }
   }
@@ -329,10 +334,12 @@ export class FileProvider {
   ) {
     if (StateManager.workspaceRoot) {
       const wbFileName = getFileName(wbFilePath);
-      const mocksPath = resolve(
-        StateManager.workspaceRoot,
-        `${wbFileName}-schemas`,
-        `${subgraphName}-mocks.js`,
+      const mocksPath = normalizePath(
+        resolve(
+          StateManager.workspaceRoot,
+          `${wbFileName}-schemas`,
+          `${subgraphName}-mocks.js`,
+        ),
       );
       await workspace.fs.writeFile(
         Uri.parse(mocksPath),
@@ -357,23 +364,27 @@ export class FileProvider {
   async updateTempWorkbenchFile(wbFile: ApolloConfig) {
     const tempPath = this.getTempWorkbenchFilePath();
     await workspace.fs.createDirectory(
-      Uri.parse(resolve(homedir(), '.apollo-workbench')),
+      Uri.parse(normalizePath(resolve(homedir(), '.apollo-workbench'))),
     );
 
     const tempWbFile = ApolloConfig.copy(wbFile);
     Object.keys(tempWbFile.subgraphs).forEach((subgraphName) => {
       if (tempWbFile.subgraphs[subgraphName].schema.workbench_design) {
-        tempWbFile.subgraphs[subgraphName].schema.file = resolve(
-          StateManager.workspaceRoot ?? '',
-          tempWbFile.subgraphs[subgraphName].schema.workbench_design ?? '',
+        tempWbFile.subgraphs[subgraphName].schema.file = normalizePath(
+          resolve(
+            StateManager.workspaceRoot ?? '',
+            tempWbFile.subgraphs[subgraphName].schema.workbench_design ?? '',
+          ),
         );
 
         delete tempWbFile.subgraphs[subgraphName].schema.subgraph_url;
         delete tempWbFile.subgraphs[subgraphName].schema.workbench_design;
       } else if (tempWbFile.subgraphs[subgraphName].schema.file) {
-        tempWbFile.subgraphs[subgraphName].schema.file = resolve(
-          StateManager.workspaceRoot ?? '',
-          tempWbFile.subgraphs[subgraphName].schema.file ?? '',
+        tempWbFile.subgraphs[subgraphName].schema.file = normalizePath(
+          resolve(
+            StateManager.workspaceRoot ?? '',
+            tempWbFile.subgraphs[subgraphName].schema.file ?? '',
+          ),
         );
       }
 
@@ -397,7 +408,9 @@ export class FileProvider {
   }
 
   getTempWorkbenchFilePath() {
-    return resolve(homedir(), '.apollo-workbench', 'supergraph.yaml');
+    return normalizePath(
+      resolve(homedir(), '.apollo-workbench', 'supergraph.yaml'),
+    );
   }
 
   async writeWorkbenchConfig(
@@ -405,10 +418,15 @@ export class FileProvider {
     wbFile: ApolloConfig,
     shouldRefresh = true,
   ) {
-    await workspace.fs.writeFile(
-      Uri.parse(path),
-      new TextEncoder().encode(dump(wbFile)),
-    );
+    const test = Uri.parse(path);
+    try {
+      await workspace.fs.writeFile(
+        Uri.parse(path),
+        new TextEncoder().encode(dump(wbFile)),
+      );
+    } catch (err) {
+      console.log(err);
+    }
 
     if (shouldRefresh)
       StateManager.instance.localSupergraphTreeDataProvider.refresh();
@@ -456,7 +474,7 @@ export class FileProvider {
       const directory = directories[0];
       const dirents = readdirSync(directory, { withFileTypes: true });
       for (const dirent of dirents) {
-        const directoryPath = path.resolve(directory, dirent.name);
+        const directoryPath = normalizePath(resolve(directory, dirent.name));
         if (dirent.isDirectory() && dirent.name != 'node_modules') {
           directories.push(directoryPath);
         } else if (dirent.name.includes('.yaml')) {
@@ -478,7 +496,9 @@ export class FileProvider {
 
   async getPreloadedWorkbenchFiles() {
     const items: { fileName: string; path: string }[] = [];
-    const preloadFileDir = join(__dirname, '..', 'media', `preloaded-files`);
+    const preloadFileDir = normalizePath(
+      join(__dirname, '..', 'media', `preloaded-files`),
+    );
     if (existsSync(preloadFileDir)) {
       const preloadedDirectory = await workspace.fs.readDirectory(
         Uri.parse(preloadFileDir),
@@ -550,9 +570,13 @@ export class FileProvider {
     const root = StateManager.workspaceRoot;
     if (root) {
       const wbFileName = getFileName(wbFilePath);
-      const schemaFolderPath = resolve(root, `${wbFileName}-schemas`);
+      const schemaFolderPath = normalizePath(
+        resolve(root, `${wbFileName}-schemas`),
+      );
       await workspace.fs.createDirectory(Uri.parse(schemaFolderPath));
-      return resolve(schemaFolderPath, `${subgraphName}.graphql`);
+      return normalizePath(
+        resolve(schemaFolderPath, `${subgraphName}.graphql`),
+      );
     }
   }
 }

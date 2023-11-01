@@ -7,6 +7,7 @@ import {
   PreloadedSchemaProvider,
 } from '../workbench/docProviders';
 import { StateManager } from '../workbench/stateManager';
+import { normalizePath } from '../utils/path';
 
 export async function viewPreloadedSchema(item: PreloadedSubgraph) {
   await PreloadedSchemaProvider.Open(item.wbFilePath, item.subgraphName);
@@ -26,20 +27,24 @@ export async function viewPreloadedSchema(item: PreloadedSubgraph) {
 
           await workspace.fs.copy(
             wbFileUri,
-            Uri.parse(resolve(root, `${item.wbFileName}.yaml`)),
+            Uri.parse(normalizePath(resolve(root, `${item.wbFileName}.yaml`))),
           );
           await workspace.fs.copy(
             schemasFolder,
-            Uri.parse(resolve(root, `${item.wbFileName}-schemas`)),
+            Uri.parse(
+              normalizePath(resolve(root, `${item.wbFileName}-schemas`)),
+            ),
           );
           StateManager.instance.localSupergraphTreeDataProvider.refresh();
           commands.executeCommand(
             'vscode.open',
             Uri.parse(
-              resolve(
-                root,
-                `${item.wbFileName}-schemas`,
-                `${item.subgraphName}.graphql`,
+              normalizePath(
+                resolve(
+                  root,
+                  `${item.wbFileName}-schemas`,
+                  `${item.subgraphName}.graphql`,
+                ),
               ),
             ),
           );
