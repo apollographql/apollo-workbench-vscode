@@ -28,12 +28,14 @@ export async function viewPreloadedSchema(item: PreloadedSubgraph) {
           await workspace.fs.copy(
             wbFileUri,
             Uri.parse(normalizePath(resolve(root, `${item.wbFileName}.yaml`))),
+            { overwrite: true },
           );
           await workspace.fs.copy(
             schemasFolder,
             Uri.parse(
               normalizePath(resolve(root, `${item.wbFileName}-schemas`)),
             ),
+            { overwrite: true },
           );
           StateManager.instance.localSupergraphTreeDataProvider.refresh();
           commands.executeCommand(
