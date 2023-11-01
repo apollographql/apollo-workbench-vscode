@@ -15,6 +15,7 @@ import {
   workspace,
 } from 'vscode';
 import { FileProvider } from './file-system/fileProvider';
+import { normalizePath } from '../utils/path';
 
 export class DesignOperationsDocumentProvider implements FileSystemProvider {
   static scheme = 'workbench';
@@ -172,9 +173,11 @@ export class PreloadedSchemaProvider implements TextDocumentContentProvider {
   async provideTextDocumentContent(uri: Uri): Promise<string> {
     const wbFilePath = uri.query;
     const subgraphName = uri.fragment;
-    const schemaFilePath = resolve(
-      `${wbFilePath.split('.yaml')[0]}-schemas`,
-      `${subgraphName}.graphql`,
+    const schemaFilePath = normalizePath(
+      resolve(
+        `${wbFilePath.split('.yaml')[0]}-schemas`,
+        `${subgraphName}.graphql`,
+      ),
     );
 
     const content = await workspace.fs.readFile(Uri.parse(schemaFilePath));

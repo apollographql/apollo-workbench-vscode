@@ -1,10 +1,9 @@
 import * as assert from 'assert';
 
 import { it, before } from 'mocha';
-import { activateExtension, cleanupWorkbenchFiles } from './helpers';
 import { StateManager } from '../../workbench/stateManager';
-import { NotLoggedInTreeItem } from '../../workbench/tree-data-providers/apolloStudioGraphsTreeDataProvider';
 import { commands } from 'vscode';
+import NotLoggedInTreeItem from '../../workbench/tree-data-providers/tree-items/graphos-supergraphs/notLoggedInTreeItem';
 
 suite('Default Workbench Tests', async () => {
   before(async () => {

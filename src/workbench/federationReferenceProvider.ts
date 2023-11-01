@@ -20,6 +20,7 @@ import {
   ReferenceProvider,
   TextDocument,
   Uri,
+  window,
   workspace,
 } from 'vscode';
 import { getFileName } from '../utils/path';
@@ -27,6 +28,7 @@ import { ApolloConfig } from './file-system/ApolloConfig';
 import { FileProvider, tempSchemaFilePath } from './file-system/fileProvider';
 import { Rover } from './rover';
 import { start } from 'repl';
+import { log } from '../utils/logger';
 
 export class FederationReferenceProvider implements ReferenceProvider {
   provideReferences(
@@ -93,6 +95,20 @@ export class FederationReferenceProvider implements ReferenceProvider {
           subgraph.schema.graphref,
           subgraph.schema.subgraph ?? name,
         );
+        if (!sdl) {
+          log('Not authenticated. Must run rover config auth');
+          window
+            .showErrorMessage(
+              'Fetching schemas from GraphOS requires you to authenticate the Rover CLI with your User API key.',
+              { modal: true },
+            )
+            .then(() => {
+              const term = window.createTerminal('rover config auth');
+              term.sendText('rover config auth');
+              term.show();
+            });
+        }
+
         uri = tempSchemaFilePath(wbFilePath, name);
       } else if (subgraph.schema.file) {
         uri = Uri.parse(subgraph.schema.file);
@@ -102,13 +118,16 @@ export class FederationReferenceProvider implements ReferenceProvider {
         sdl = await Rover.instance.subgraphFetch(subgraph);
       }
 
-      const getRange = (node: ObjectTypeDefinitionNode | NameNode | TypeNode) => {
+      const getRange = (
+        node: ObjectTypeDefinitionNode | NameNode | TypeNode,
+      ) => {
         if (!node.loc) return new Range(0, 0, 0, 0);
         const startLine =
           node.loc.startToken.line > 0 ? node.loc.startToken.line - 1 : 0;
         const startCharacter =
           node.loc.startToken.column > 0 ? node.loc.startToken.column - 1 : 0;
-        const endLine = node.loc.endToken.line > 0 ? node.loc.endToken.line - 1 : 0;
+        const endLine =
+          node.loc.endToken.line > 0 ? node.loc.endToken.line - 1 : 0;
         const endCharacter =
           startCharacter + (node.loc.endToken.end - node.loc.endToken.start);
         return new Range(startLine, startCharacter, endLine, endCharacter);
@@ -149,5 +168,5 @@ export class FederationReferenceProvider implements ReferenceProvider {
     }
 
     return locations;
-  }  
+  }
 }

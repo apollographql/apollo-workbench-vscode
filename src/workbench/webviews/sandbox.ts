@@ -1,18 +1,8 @@
 import path from 'path';
-import { commands, Uri, ViewColumn, WebviewPanel, window } from 'vscode';
-import { startRoverDevSession } from '../../commands/local-supergraph-designs';
-import { log } from '../../utils/logger';
-import { getFileName } from '../../utils/path';
-import { whichDesign, whichOperation } from '../../utils/uiHelpers';
-import { WorkbenchDiagnostics } from '../diagnosticsManager';
-import { ApolloConfig } from '../file-system/ApolloConfig';
-import { FileProvider } from '../file-system/fileProvider';
+import { Uri, ViewColumn, WebviewPanel, window } from 'vscode';
 import { Rover } from '../rover';
-import {
-  OperationTreeItem,
-  SubgraphSummaryTreeItem,
-} from '../tree-data-providers/superGraphTreeDataProvider';
 import { StateManager } from '../stateManager';
+import { OperationTreeItem } from '../tree-data-providers/tree-items/local-supergraph-designs/operationTreeItem';
 
 let panel: WebviewPanel | undefined;
 

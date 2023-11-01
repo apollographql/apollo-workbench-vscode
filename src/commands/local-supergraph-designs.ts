@@ -456,6 +456,7 @@ export async function addOperation(
 }
 
 export async function newDesign() {
+  const test = StateManager.workspaceRoot;
   if (!StateManager.workspaceRoot) {
     await promptOpenFolder();
   } else {

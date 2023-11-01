@@ -1,3 +1,8 @@
+## Apollo Workbench VSCode 3.2.8
+
+- Normalize paths so extension works on Windows - verified on Windows 11
+- Add prompts for missing rover installation, ELv2 prompt and config auth. Terminal windows are also created with the commands for the user.
+
 ## Apollo Workbench VSCode 3.2.7
 
 - Fix bundling pre-loaded .graphql files into extension

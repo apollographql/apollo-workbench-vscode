@@ -9,7 +9,7 @@ import {
 import { whichDesign, whichOperation } from '../../utils/uiHelpers';
 import { FileProvider } from '../file-system/fileProvider';
 import { StateManager } from '../stateManager';
-import { OperationTreeItem } from '../tree-data-providers/superGraphTreeDataProvider';
+import { OperationTreeItem } from '../tree-data-providers/tree-items/local-supergraph-designs/operationTreeItem';
 
 function getWebviewContent(webview: Webview, src: any) {
   return `
