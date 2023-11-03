@@ -301,7 +301,8 @@ export class Rover {
           if (mocks) {
             schema = addMocksToSchema({
               schema,
-              mocks,
+              mocks: mocks?.mocks ? mocks.mocks : mocks,
+              resolvers: mocks?.resolvers ? mocks.resolvers : {},
               preserveResolvers: true,
             });
           }

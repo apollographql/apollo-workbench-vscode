@@ -341,11 +341,13 @@ export class FileProvider {
           `${subgraphName}-mocks.js`,
         ),
       );
+      const preloadFileDir = normalizePath(
+        resolve(__dirname, '..', 'media', `preloaded-files`, 'customMocks.txt'),
+      );
+      const code = await workspace.fs.readFile(Uri.parse(preloadFileDir));
       await workspace.fs.writeFile(
         Uri.parse(mocksPath),
-        new TextEncoder().encode(
-          `const mocks = {\n\tInt: () => 6,\n\tFloat: () => 22.1,\n\tString: () => 'Hello'\n};\n\nmodule.exports = mocks;`,
-        ),
+        new TextEncoder().encode(code.toString()),
       );
       wbFile.subgraphs[subgraphName].schema.mocks = {
         enabled: true,

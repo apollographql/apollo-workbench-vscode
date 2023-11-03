@@ -1,3 +1,8 @@
+const console = {} as any;
+console.log = function (message: string) {
+  log(`conslog.log - ${message}`);
+};
+
 import {
   workspace,
   commands,
@@ -62,7 +67,7 @@ import { viewOperationDesign } from './workbench/webviews/operationDesign';
 import { openSandbox, refreshSandbox } from './workbench/webviews/sandbox';
 import { FederationReferenceProvider } from './workbench/federationReferenceProvider';
 import { viewPreloadedSchema } from './commands/preloaded';
-import { resolve } from 'path';
+import { log } from './utils/logger';
 
 export const outputChannel = window.createOutputChannel('Apollo Workbench');
 
