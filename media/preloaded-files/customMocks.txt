@@ -1,0 +1,28 @@
+/* eslint-disable @typescript-eslint/no-var-requires */
+const { faker } = require("@faker-js/faker");
+
+const mocks = {
+  Int: () => 6,
+  Float: () => 22.1,
+  String: () => "Hello",
+  Product: () => ({
+    id: () => faker.commerce.isbn(),
+  }),
+};
+
+//Add this to this subgraphs schema to test out the resolver below
+//type Query {
+//  catFact: String
+//}
+const resolvers = {
+  Query: {
+    catFact: async () => {
+      console.log(`Getting random cat fact`);
+      const response = await fetch("https://catfact.ninja/fact");
+      const jsonResponse = await response.json();
+      return jsonResponse.fact;
+    },
+  },
+};
+
+module.exports = { mocks, resolvers };

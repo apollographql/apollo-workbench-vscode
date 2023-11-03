@@ -62,7 +62,7 @@ import { viewOperationDesign } from './workbench/webviews/operationDesign';
 import { openSandbox, refreshSandbox } from './workbench/webviews/sandbox';
 import { FederationReferenceProvider } from './workbench/federationReferenceProvider';
 import { viewPreloadedSchema } from './commands/preloaded';
-import { resolve } from 'path';
+import { log } from './utils/logger';
 
 export const outputChannel = window.createOutputChannel('Apollo Workbench');
 
@@ -324,6 +324,14 @@ export async function activate(context: ExtensionContext) {
                 Rover.instance.stopRoverDev();
                 commands.executeCommand('workbench.action.showErrorsWarnings');
               }
+            } else if (
+              docPath ==
+              wbFile.subgraphs[subgraphName].schema.mocks?.customMocks
+            ) {
+              await Rover.instance.restartMockedSubgraph(
+                subgraphName,
+                wbFile.subgraphs[subgraphName],
+              );
             }
           });
       });

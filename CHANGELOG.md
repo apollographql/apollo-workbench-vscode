@@ -1,3 +1,9 @@
+## Apollo Workbench VSCode 3.2.9
+
+- Addresses [issue #164](https://github.com/apollographql/apollo-workbench-vscode/issues/164) - Custom mocks now supports simple resolvers. Default custom mocks now have a simple example of fetch with `catFacts` for any `Product`. `__resolveReference` for any entity can also be defined and this will override the custom generated resolver for the mocks.
+- Bundle [@faker-js](https://github.com/faker-js) into custom mocks. Default custom mocks have example for `Product.id`
+- Hot reload mocks while `rover dev` is running
+
 ## Apollo Workbench VSCode 3.2.8
 
 - Normalize paths so extension works on Windows - verified on Windows 11
