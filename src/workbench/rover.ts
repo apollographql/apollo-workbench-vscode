@@ -487,6 +487,8 @@ export class Rover {
     this.primaryDevTerminal.sendText(command);
     this.runningFilePath = wbFilePath;
 
+    this.logCommand(command);
+
     await new Promise<void>((resolve) => setTimeout(resolve, 5000));
     progress?.report({
       message: 'Opening Sandbox',
