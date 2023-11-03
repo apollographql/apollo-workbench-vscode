@@ -1,8 +1,3 @@
-const console = {} as any;
-console.log = function (message: string) {
-  log(`conslog.log - ${message}`);
-};
-
 import {
   workspace,
   commands,
@@ -329,6 +324,14 @@ export async function activate(context: ExtensionContext) {
                 Rover.instance.stopRoverDev();
                 commands.executeCommand('workbench.action.showErrorsWarnings');
               }
+            } else if (
+              docPath ==
+              wbFile.subgraphs[subgraphName].schema.mocks?.customMocks
+            ) {
+              await Rover.instance.restartMockedSubgraph(
+                subgraphName,
+                wbFile.subgraphs[subgraphName],
+              );
             }
           });
       });

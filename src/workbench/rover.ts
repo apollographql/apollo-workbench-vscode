@@ -18,7 +18,7 @@ import { CompositionResults } from './file-system/CompositionResults';
 import { StateManager } from './stateManager';
 import { addMocksToSchema } from '@graphql-tools/mock';
 import { FieldWithType } from './federationCompletionProvider';
-import { parse, StringValueNode, visit } from 'graphql';
+import { GraphQLSchema, parse, StringValueNode, visit } from 'graphql';
 import { log } from '../utils/logger';
 import { FileProvider } from './file-system/fileProvider';
 import { openSandboxWebview } from './webviews/sandbox';
@@ -253,11 +253,14 @@ export class Rover {
   async restartMockedSubgraph(subgraphName: string, subgraph: Subgraph) {
     if (!this.primaryDevTerminal) return;
 
+    log(`Restarting subgraph: ${subgraphName}`);
+
     let port = 0;
     for (const sn in this.portMapping)
       if (sn == subgraphName) port = this.portMapping[sn];
 
     if (port != 0) {
+      log(`Stopping subgraph on port: ${port}`);
       this.stopSubgraphOnPort(port);
       await this.startMockedSubgraph(subgraphName, subgraph, port);
     }
@@ -278,17 +281,17 @@ export class Rover {
       const schemaString = new TextDecoder().decode(schemaDesign);
       const typeDefs = gql(schemaString);
       //Dynamically create __resolveReference resolvers based on defined entites in Graph
-      const resolvers = {};
+      const mockedResolveReferences = {};
       const entities = Rover.extractDefinedEntities(schemaString);
       Object.keys(entities).forEach(
         (entity) =>
-          (resolvers[entity] = {
-            __resolveReference(parent, args) {
+          (mockedResolveReferences[entity] = {
+            __resolveReference(parent, args, context, info) {
               return { ...parent };
             },
           }),
       );
-      let schema = buildSubgraphSchema({ typeDefs, resolvers });
+      let schema: GraphQLSchema | undefined;
       const customMocks = subgraph.schema.mocks?.customMocks
         ? await workspace.fs.readFile(
             Uri.parse(subgraph.schema.mocks?.customMocks),
@@ -297,22 +300,64 @@ export class Rover {
 
       if (customMocks) {
         try {
+          const console = {} as any;
+          console.log = function (str: string) {
+            log(`conslog.log - ${str}`);
+          };
           const mocks = eval(customMocks.toString());
           if (mocks) {
+            //If user defined custom resolvers
+            if (mocks.resolvers) {
+              //Delete __resolveReference that we created for mocks
+              Object.keys(mocks.resolvers).forEach((type) => {
+                if (
+                  mocks.resolvers[type]?.__resolveReference &&
+                  mockedResolveReferences[type].__resolveReference
+                ) {
+                  delete mockedResolveReferences[type].__resolveReference;
+
+                  if (Object.values(mockedResolveReferences[type]).length == 0)
+                    delete mockedResolveReferences[type];
+                }
+              });
+
+              //If type is defined in custom resolvers,
+              //We need to combine the resolvers and delete from mocks
+              Object.keys(mockedResolveReferences).forEach((type) => {
+                if (mocks.resolvers[type]) {
+                  mocks.resolvers[type].__resolveReference =
+                    mockedResolveReferences[type].__resolveReference;
+                  delete mockedResolveReferences[type];
+                }
+              });
+
+              schema = buildSubgraphSchema({
+                typeDefs,
+                resolvers: { ...mocks.resolvers, ...mockedResolveReferences },
+              });
+            }
+
             schema = addMocksToSchema({
               schema,
               mocks: mocks?.mocks ? mocks.mocks : mocks,
-              resolvers: mocks?.resolvers ? mocks.resolvers : {},
               preserveResolvers: true,
             });
           }
         } catch (error) {
           log(`Unable to eval custom mocks. Did you export your mocks?`);
         }
-      } else schema = addMocksToSchema({ schema, preserveResolvers: true });
+      }
 
       const server = new ApolloServer({
-        schema,
+        schema: schema
+          ? schema
+          : addMocksToSchema({
+              schema: buildSubgraphSchema({
+                typeDefs,
+                resolvers: mockedResolveReferences,
+              }),
+              preserveResolvers: true,
+            }),
       });
 
       //Set the port and server to local state
@@ -321,7 +366,9 @@ export class Rover {
 
       startStandaloneServer(server, {
         listen: { port },
-      });
+      }).then(({ url }) =>
+        log(`\t${subgraphName} mock server running at ${url}`),
+      );
     } catch (err) {
       this.subgraphState[port].stop();
       delete this.subgraphState[port];

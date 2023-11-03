@@ -319,7 +319,7 @@ export class FileProvider {
   //Workbench File Implementations
   async createWorkbenchFileLocally(designName: string, wbFile: ApolloConfig) {
     if (StateManager.workspaceRoot) {
-      let wbFilePath = normalizePath(
+      const wbFilePath = normalizePath(
         resolve(StateManager.workspaceRoot, `${designName}.yaml`),
       );
 
