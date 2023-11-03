@@ -61,8 +61,15 @@ export class StateManager {
   }
   static get settings_routerPort(): number {
     return (
-      workspace?.getConfiguration('apollo-workbench')?.get('router') ??
+      workspace?.getConfiguration('apollo-workbench')?.get('routerPort') ??
       (4000 as number)
+    );
+  }
+  static get settings_routerConfigFile(): string {
+    return (
+      workspace
+        ?.getConfiguration('apollo-workbench')
+        ?.get('routerConfigFile') ?? ''
     );
   }
   static get settings_apiKey() {

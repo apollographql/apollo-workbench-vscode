@@ -484,9 +484,11 @@ export class Rover {
 
     await FileProvider.instance.updateTempWorkbenchFile(wbFile);
     const config = FileProvider.instance.getTempWorkbenchFilePath();
-    const configPath = normalizePath(
-      resolve(__dirname, '..', 'media', `preloaded-files`, 'router.yaml'),
-    );
+    const configPath = StateManager.settings_routerConfigFile
+      ? StateManager.settings_routerConfigFile
+      : normalizePath(
+          resolve(__dirname, '..', 'media', `preloaded-files`, 'router.yaml'),
+        );
     const command = `rover dev --supergraph-config=${config} --supergraph-port=${StateManager.settings_routerPort} --router-config=${configPath}`;
     this.primaryDevTerminal = window.createTerminal(wbFilePath);
     this.primaryDevTerminal.show();

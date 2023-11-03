@@ -1,6 +1,7 @@
 ## Apollo Workbench VSCpde 3.2.10
 
 - Forward all headers sent to the router to any mocked subgraph. All header values will be exposed on the `context` in resolvers to be accessed in custom mocks
+- Support `apollo-workbench.routerConfigFile` for a custom router configuration file to pass to `rover dev`
 - Hot fix for `schema is undefined` when starting up a design
 
 ## Apollo Workbench VSCode 3.2.9

@@ -108,12 +108,18 @@
           "default": true,
           "description": "Determines whether https://studio.apollographql.com/sandbox should be opened when mocks are started for a workbench design"
         },
-        "apollo-workbench.gatewayPort": {
+        "apollo-workbench.routerPort": {
           "type": [
             "number"
           ],
           "default": 4000,
           "description": "Specifies the url endpoint to be used for the Apollo Studio Graph"
+        },
+        "apollo-workbench.routerConfigFile": {
+          "type": [
+            "string"
+          ],
+          "description": "File pointer to the router config to be used with rover dev"
         },
         "apollo-workbench.roverConfigProfile": {
           "type": [
