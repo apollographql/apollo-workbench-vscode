@@ -1,3 +1,9 @@
+## Apollo Workbench VSCpde 3.2.10
+
+- Forward all headers sent to the router to any mocked subgraph. All header values will be exposed on the `context` in resolvers to be accessed in custom mocks
+- Support `apollo-workbench.routerConfigFile` for a custom router configuration file to pass to `rover dev`
+- Hot fix for `schema is undefined` when starting up a design
+
 ## Apollo Workbench VSCode 3.2.9
 
 - Addresses [issue #164](https://github.com/apollographql/apollo-workbench-vscode/issues/164) - Custom mocks now supports simple resolvers. Default custom mocks now have a simple example of fetch with `catFacts` for any `Product`. `__resolveReference` for any entity can also be defined and this will override the custom generated resolver for the mocks.

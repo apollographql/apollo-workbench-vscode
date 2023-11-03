@@ -25,6 +25,7 @@ import { openSandboxWebview } from './webviews/sandbox';
 import { statusBar } from '../extension';
 import { resolvePath } from '../utils/uri';
 import { normalizePath } from '../utils/path';
+import { resolve } from 'path';
 
 export class Rover {
   private static _instance: Rover;
@@ -337,11 +338,12 @@ export class Rover {
               });
             }
 
-            schema = addMocksToSchema({
-              schema,
-              mocks: mocks?.mocks ? mocks.mocks : mocks,
-              preserveResolvers: true,
-            });
+            if (schema)
+              schema = addMocksToSchema({
+                schema,
+                mocks: mocks?.mocks ? mocks.mocks : mocks,
+                preserveResolvers: true,
+              });
           }
         } catch (error) {
           log(`Unable to eval custom mocks. Did you export your mocks?`);
@@ -366,6 +368,7 @@ export class Rover {
 
       startStandaloneServer(server, {
         listen: { port },
+        context: async ({ req }) => ({ ...req.headers }),
       }).then(({ url }) =>
         log(`\t${subgraphName} mock server running at ${url}`),
       );
@@ -481,7 +484,12 @@ export class Rover {
 
     await FileProvider.instance.updateTempWorkbenchFile(wbFile);
     const config = FileProvider.instance.getTempWorkbenchFilePath();
-    const command = `rover dev --supergraph-config=${config} --supergraph-port=${StateManager.settings_routerPort}`;
+    const configPath = StateManager.settings_routerConfigFile
+      ? StateManager.settings_routerConfigFile
+      : normalizePath(
+          resolve(__dirname, '..', 'media', `preloaded-files`, 'router.yaml'),
+        );
+    const command = `rover dev --supergraph-config=${config} --supergraph-port=${StateManager.settings_routerPort} --router-config=${configPath}`;
     this.primaryDevTerminal = window.createTerminal(wbFilePath);
     this.primaryDevTerminal.show();
     this.primaryDevTerminal.sendText(command);
