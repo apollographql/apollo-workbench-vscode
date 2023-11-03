@@ -10,15 +10,15 @@ const mocks = {
   }),
 };
 
-//Add this to your schema to test out the resolver below
+//Add this to this subgraphs schema to test out the resolver below
 //type Query {
 //  catFact: String
 //}
 const resolvers = {
-  Product: {
-    fact: async (parent) => {
-      console.log(`Getting fact for ${parent.id}`);
-      const response = await fetch('https://catfact.ninja/fact');
+  Query: {
+    catFact: async () => {
+      console.log(`Getting random cat fact`);
+      const response = await fetch("https://catfact.ninja/fact");
       const jsonResponse = await response.json();
       return jsonResponse.fact;
     },
