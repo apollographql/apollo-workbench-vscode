@@ -50,5 +50,11 @@ export async function openFolder() {
     canSelectFolders: true,
     canSelectMany: false,
   });
-  if (folder) await commands.executeCommand('openFolder', folder[0]);
+  if (folder) {
+    try {
+      await commands.executeCommand('vscode.openFolder', folder[0]);
+    } catch (err) {
+      console.log(err);
+    }
+  }
 }
