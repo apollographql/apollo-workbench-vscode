@@ -369,7 +369,7 @@ export class FileProvider {
       Uri.parse(normalizePath(resolve(homedir(), '.apollo-workbench'))),
     );
 
-    const tempWbFile = ApolloConfig.copy(wbFile);
+    const tempWbFile: ApolloConfig = ApolloConfig.copy(wbFile);
     Object.keys(tempWbFile.subgraphs).forEach((subgraphName) => {
       if (tempWbFile.subgraphs[subgraphName].schema.workbench_design) {
         tempWbFile.subgraphs[subgraphName].schema.file = normalizePath(
@@ -399,6 +399,8 @@ export class FileProvider {
 
         delete tempWbFile.subgraphs[subgraphName].schema.mocks;
       }
+
+      if (tempWbFile.operations) tempWbFile.operations = {};
     });
 
     await workspace.fs.writeFile(
