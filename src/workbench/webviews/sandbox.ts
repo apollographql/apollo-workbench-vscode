@@ -1,8 +1,15 @@
 import path from 'path';
-import { Uri, ViewColumn, WebviewPanel, window } from 'vscode';
+import {
+  ProgressLocation,
+  Uri,
+  ViewColumn,
+  WebviewPanel,
+  window,
+} from 'vscode';
 import { Rover } from '../rover';
 import { StateManager } from '../stateManager';
 import { OperationTreeItem } from '../tree-data-providers/tree-items/local-supergraph-designs/operationTreeItem';
+import { parse, print } from 'graphql';
 
 let panel: WebviewPanel | undefined;
 
@@ -12,14 +19,22 @@ export async function refreshSandbox() {
 }
 
 export async function openSandbox(item?: OperationTreeItem, document?: string) {
-  await openSandboxWebview();
+  if (!Rover.instance.primaryDevTerminal && item?.wbFilePath) {
+    await window.withProgress(
+      {
+        title: `Starting rover dev session`,
+        cancellable: false,
+        location: ProgressLocation.Notification,
+      },
+      async (progress) => {
+        await Rover.instance.startRoverDev(item.wbFilePath, progress);
+      },
+    );
+    await openSandboxWebview(print(parse(item?.operationConfig?.document)));
+  } else window.showErrorMessage('Unable to open sandbox, no design running.');
 }
 
 export async function openSandboxWebview(document?: string) {
-  if (!Rover.instance.primaryDevTerminal) {
-    window.showErrorMessage('Unable to open sandbox, no design running.');
-  }
-
   if (!panel) {
     panel = window.createWebviewPanel(
       'apolloSandbox',
