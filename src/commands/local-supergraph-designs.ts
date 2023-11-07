@@ -35,7 +35,6 @@ import {
 } from '../workbench/docProviders';
 import { openFolder } from './extension';
 import { whichDesign, whichOperation, whichSubgraph } from '../utils/uiHelpers';
-import { openSandboxWebview } from '../workbench/webviews/sandbox';
 import { OperationTreeItem } from '../workbench/tree-data-providers/tree-items/local-supergraph-designs/operationTreeItem';
 import { SubgraphTreeItem } from '../workbench/tree-data-providers/tree-items/local-supergraph-designs/subgraphTreeItem';
 import { SubgraphSummaryTreeItem } from '../workbench/tree-data-providers/tree-items/local-supergraph-designs/subgraphSummaryTreeItem';
@@ -66,13 +65,11 @@ export async function viewOperationDesignSideBySide(item?: OperationTreeItem) {
       const editor = await window.showTextDocument(uri, {
         viewColumn: ViewColumn.Two,
       });
-      console.log(editor);
     } catch (err) {
-      console.log(err);
+      log(JSON.stringify(err));
     }
   } else {
     const editor = await window.showTextDocument(uri);
-    console.log(editor);
   }
 }
 

@@ -392,7 +392,7 @@ export class Rover {
 
   stopRoverDev() {
     if (Rover.instance.primaryDevTerminal) {
-      Rover.instance.primaryDevTerminal.sendText('\x03');
+      Rover.instance.primaryDevTerminal.sendText('\u0003');
       Rover.instance.primaryDevTerminal.dispose();
     }
 

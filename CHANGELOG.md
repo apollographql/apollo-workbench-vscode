@@ -1,4 +1,10 @@
-## Apollo Workbench VSCpde 3.2.10
+## Apollo Workbench VSCode 3.2.11
+
+- Fix [#168](https://github.com/apollographql/apollo-workbench-vscode/issues/168) - fix "openFolder" command. It needed to include "vscode.openFolder".
+- Fix [#162](https://github.com/apollographql/apollo-workbench-vscode/issues/162) - operations with variabels in the design were being copied to the temporary wbfile used for composition
+- Fix start design from operation - auto-start `rover dev` and pretty print document into sandbox on open
+
+## Apollo Workbench VSCode 3.2.10
 
 - Forward all headers sent to the router to any mocked subgraph. All header values will be exposed on the `context` in resolvers to be accessed in custom mocks
 - Support `apollo-workbench.routerConfigFile` for a custom router configuration file to pass to `rover dev`
@@ -24,7 +30,6 @@
 - Rover commands now favor `--profile` vs using `APOLLO_KEY`. This can be set in `apollo-workbench.roverConfigProfile` of your VS Code settings.
 - Reintroduced "Example Designs" that users don't have to login to try out. They open in read only and are copied locally when you want to edit the files.
 - Resolving file paths has been centralized through utils.uri with a fix for relative path definitions.
--
 
 ## Apollo Workbench VSCode 3.2.2
 
