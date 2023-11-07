@@ -59,6 +59,11 @@ export class StateManager {
         ?.get('openSandboxOnStartMocks') ?? true
     );
   }
+  static get settings_routerVersion(): string | undefined {
+    return workspace
+      ?.getConfiguration('apollo-workbench')
+      ?.get('routerVersion');
+  }
   static get settings_routerPort(): number {
     return (
       workspace?.getConfiguration('apollo-workbench')?.get('routerPort') ??

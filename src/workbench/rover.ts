@@ -489,7 +489,10 @@ export class Rover {
       : normalizePath(
           resolve(__dirname, '..', 'media', `preloaded-files`, 'router.yaml'),
         );
-    const command = `rover dev --supergraph-config=${config} --supergraph-port=${StateManager.settings_routerPort} --router-config=${configPath}`;
+    let command = `rover dev --supergraph-config=${config} --supergraph-port=${StateManager.settings_routerPort} --router-config=${configPath}`;
+    if (StateManager.settings_routerVersion) {
+      command = `APOLLO_ROVER_DEV_ROUTER_VERSION=${StateManager.settings_routerVersion} ${command}`;
+    }
     this.primaryDevTerminal = window.createTerminal(wbFilePath);
     this.primaryDevTerminal.show();
     this.primaryDevTerminal.sendText(command);
