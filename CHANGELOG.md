@@ -1,3 +1,7 @@
+## Apollo Workbench VSCode 3.2.12
+
+- Enable setting Router Version in VSCode settings
+
 ## Apollo Workbench VSCode 3.2.11
 
 - Fix [#168](https://github.com/apollographql/apollo-workbench-vscode/issues/168) - fix "openFolder" command. It needed to include "vscode.openFolder".
