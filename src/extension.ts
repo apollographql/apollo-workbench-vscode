@@ -21,6 +21,7 @@ import {
   ApolloStudioOperationsProvider,
   DesignOperationsDocumentProvider,
   PreloadedSchemaProvider,
+  SubgraphUrlSchemaProvider,
 } from './workbench/docProviders';
 import { addToDesign } from './commands/studio-operations';
 import {
@@ -259,6 +260,10 @@ export async function activate(context: ExtensionContext) {
   workspace.registerTextDocumentContentProvider(
     ApolloStudioOperationsProvider.scheme,
     new ApolloStudioOperationsProvider(),
+  );
+  workspace.registerTextDocumentContentProvider(
+    SubgraphUrlSchemaProvider.scheme,
+    new SubgraphUrlSchemaProvider(),
   );
   workspace.registerTextDocumentContentProvider(
     ApolloRemoteSchemaProvider.scheme,

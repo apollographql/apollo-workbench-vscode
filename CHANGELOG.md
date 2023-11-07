@@ -1,6 +1,7 @@
 ## Apollo Workbench VSCode 3.2.12
 
 - Enable setting Router Version in VSCode settings
+- Better support `subgraph_url` to load read-only schema
 
 ## Apollo Workbench VSCode 3.2.11
 
