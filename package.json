@@ -141,6 +141,20 @@
           "default": 4001,
           "description": "Specifies the url endpoint to be used for the Apollo Studio Graph"
         },
+        "apollo-workbench.enableSubgraphUrlWatcher": {
+          "type": [
+            "boolean"
+          ],
+          "default": true,
+          "description": "Runs a watcher in the background to fetch updates from subgraph_url's defined in designs"
+        },
+        "apollo-workbench.subgraphWatcherPingInterval": {
+          "type": [
+            "number"
+          ],
+          "default": 1000,
+          "description": "Determines the interval of pings `rover subgraph introspect` shoud be called by the watcher"
+        },
         "apollo-workbench.daysOfOperationsToFetch": {
           "type": [
             "number"

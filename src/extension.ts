@@ -64,6 +64,7 @@ import { openSandbox, refreshSandbox } from './workbench/webviews/sandbox';
 import { FederationReferenceProvider } from './workbench/federationReferenceProvider';
 import { viewPreloadedSchema } from './commands/preloaded';
 import { log } from './utils/logger';
+import { SubgraphWatcher } from './utils/subgraphWatcher';
 
 export const outputChannel = window.createOutputChannel('Apollo Workbench');
 
@@ -285,6 +286,9 @@ export async function activate(context: ExtensionContext) {
       isCaseSensitive: true,
     },
   );
+
+  SubgraphWatcher.instance.start();
+
   workspace.onDidDeleteFiles((e) => {
     let deletedWorkbenchFile = false;
     e.files.forEach((f) => {

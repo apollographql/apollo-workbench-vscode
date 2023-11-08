@@ -19,6 +19,7 @@ import { getFileName, normalizePath } from '../../utils/path';
 import { homedir } from 'os';
 import { print, parse as gqlParse } from 'graphql';
 import { extractEntities } from '../federationCompletionProvider';
+import { SubgraphWatcher } from '../../utils/subgraphWatcher';
 
 export const schemaFileUri = (filePath: string, wbFilePath: string) => {
   const path = normalizePath(
@@ -189,7 +190,6 @@ export class FileProvider {
     if (shouldMock && !wbFile.subgraphs[subgraphName].schema.workbench_design) {
       wbFile.subgraphs[subgraphName].schema.workbench_design =
         wbFile.subgraphs[subgraphName].schema.file;
-      // await this.copySchemaToDeisgnFolder(subgraphName, wbFilePath);
     }
 
     await workspace.fs.writeFile(
@@ -252,8 +252,7 @@ export class FileProvider {
                     wbFilePath,
                   )}. Failed to execute command with rover, do you have rover installed?`,
                 );
-              } //if (compResults.error.details) {
-              else
+              } else
                 await WorkbenchDiagnostics.instance.setCompositionErrors(
                   wbFilePath,
                   wbFile,
@@ -261,9 +260,6 @@ export class FileProvider {
                     { ...compResults.error, nodes: [] },
                   ],
                 );
-              // } else {
-              //   window.showErrorMessage(compResults.error.message);
-              // }
             }
           }
         } catch (err: any) {
@@ -311,6 +307,8 @@ export class FileProvider {
         }
       }
     }
+
+    SubgraphWatcher.instance.refresh();
   }
   getWorkbenchFiles() {
     return this.workbenchFiles;
@@ -409,6 +407,37 @@ export class FileProvider {
     );
 
     return tempPath;
+  }
+
+  async updateTempSubgraphUrlSchema(
+    wbFilePath: string,
+    subgraphName: string,
+    url: string,
+  ) {
+    try {
+      const sdl = await Rover.instance.subgraphIntrospect(url);
+      const tempSdlPath = normalizePath(
+        resolve(
+          homedir(),
+          '.apollo-workbench',
+          getFileName(wbFilePath),
+          `${subgraphName}.graphql`,
+        ),
+      );
+      const tempSdlUri = Uri.parse(tempSdlPath);
+      if (existsSync(tempSdlPath)) {
+        const tempSdlContent = await workspace.fs.readFile(tempSdlUri);
+        const tempSdl = tempSdlContent.toString();
+        if (sdl == tempSdl) return false;
+
+        await workspace.fs.writeFile(tempSdlUri, tempSdlContent);
+      } else
+        await workspace.fs.writeFile(tempSdlUri, new TextEncoder().encode(sdl));
+    } catch (err) {
+      log(JSON.stringify(err));
+      return false;
+    }
+    return true;
   }
 
   getTempWorkbenchFilePath() {

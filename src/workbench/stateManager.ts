@@ -77,6 +77,20 @@ export class StateManager {
         ?.get('routerConfigFile') ?? ''
     );
   }
+  static get settings_enableSubgraphUrlWatcher(): boolean {
+    return (
+      workspace
+        ?.getConfiguration('apollo-workbench')
+        ?.get('enableSubgraphUrlWatcher') ?? true
+    );
+  }
+  static get settings_subgraphWatcherPingInterval(): number {
+    return (
+      workspace
+        ?.getConfiguration('apollo-workbench')
+        ?.get('subgraphWatcherPingInterval') ?? 1000
+    );
+  }
   static get settings_apiKey() {
     return (
       (workspace

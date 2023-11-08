@@ -47,7 +47,7 @@ export class Rover {
   runningFilePath: string | undefined;
   primaryDevTerminal: Terminal | undefined;
 
-  private async execute(command: string, json = true) {
+  private async execute(command: string, json = true, shouldLog = true) {
     let cmd = json ? `${command} --format=json` : command;
     if (StateManager.settings_roverConfigProfile) {
       cmd = `${cmd} --profile=${StateManager.settings_roverConfigProfile}`;
@@ -60,7 +60,7 @@ export class Rover {
     //     cmd = `APOLLO_KEY=${StateManager.instance.globalState_userApiKey} ${cmd}`;
     // }
 
-    this.logCommand(cmd);
+    if (shouldLog) this.logCommand(cmd);
 
     if (process.platform !== 'win32') {
       //workaround, source rover binary from install location
@@ -222,9 +222,13 @@ export class Rover {
     return result ? result : '';
   }
   async subgraphIntrospect(url: string) {
-    let sdl = await this.execute(`rover subgraph introspect ${url}`, false);
+    let sdl = await this.execute(
+      `rover subgraph introspect ${url}`,
+      false,
+      false,
+    );
     if (!sdl ?? sdl == '') {
-      sdl = await this.execute(`rover graph introspect ${url}`, false);
+      sdl = await this.execute(`rover graph introspect ${url}`, false, false);
     }
     return sdl ? sdl : '';
   }
