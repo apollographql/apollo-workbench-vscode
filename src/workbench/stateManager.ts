@@ -59,6 +59,11 @@ export class StateManager {
         ?.get('openSandboxOnStartMocks') ?? true
     );
   }
+  static get settings_routerVersion(): string | undefined {
+    return workspace
+      ?.getConfiguration('apollo-workbench')
+      ?.get('routerVersion');
+  }
   static get settings_routerPort(): number {
     return (
       workspace?.getConfiguration('apollo-workbench')?.get('routerPort') ??
@@ -70,6 +75,20 @@ export class StateManager {
       workspace
         ?.getConfiguration('apollo-workbench')
         ?.get('routerConfigFile') ?? ''
+    );
+  }
+  static get settings_enableSubgraphUrlWatcher(): boolean {
+    return (
+      workspace
+        ?.getConfiguration('apollo-workbench')
+        ?.get('enableSubgraphUrlWatcher') ?? true
+    );
+  }
+  static get settings_subgraphWatcherPingInterval(): number {
+    return (
+      workspace
+        ?.getConfiguration('apollo-workbench')
+        ?.get('subgraphWatcherPingInterval') ?? 1000
     );
   }
   static get settings_apiKey() {

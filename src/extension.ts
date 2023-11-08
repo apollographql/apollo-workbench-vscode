@@ -21,6 +21,7 @@ import {
   ApolloStudioOperationsProvider,
   DesignOperationsDocumentProvider,
   PreloadedSchemaProvider,
+  SubgraphUrlSchemaProvider,
 } from './workbench/docProviders';
 import { addToDesign } from './commands/studio-operations';
 import {
@@ -63,6 +64,7 @@ import { openSandbox, refreshSandbox } from './workbench/webviews/sandbox';
 import { FederationReferenceProvider } from './workbench/federationReferenceProvider';
 import { viewPreloadedSchema } from './commands/preloaded';
 import { log } from './utils/logger';
+import { SubgraphWatcher } from './utils/subgraphWatcher';
 
 export const outputChannel = window.createOutputChannel('Apollo Workbench');
 
@@ -261,6 +263,10 @@ export async function activate(context: ExtensionContext) {
     new ApolloStudioOperationsProvider(),
   );
   workspace.registerTextDocumentContentProvider(
+    SubgraphUrlSchemaProvider.scheme,
+    new SubgraphUrlSchemaProvider(),
+  );
+  workspace.registerTextDocumentContentProvider(
     ApolloRemoteSchemaProvider.scheme,
     new ApolloRemoteSchemaProvider(),
   );
@@ -280,6 +286,9 @@ export async function activate(context: ExtensionContext) {
       isCaseSensitive: true,
     },
   );
+
+  SubgraphWatcher.instance.start();
+
   workspace.onDidDeleteFiles((e) => {
     let deletedWorkbenchFile = false;
     e.files.forEach((f) => {

@@ -1,3 +1,11 @@
+## Apollo Workbench VSCode 3.2.12
+
+- Enable setting Router Version in VSCode settings `routerVersion`
+- Better support `subgraph_url` to load read-only schema
+- Create `subgraph_url` watcher to ping changes
+  - Introduce settings `enableSubgraphUrlWatcher` and `subgraphWatcherPingInterval` to allow a user to disable/enable the watcher and set the interval the watcher pings `subgraph_url` for updates.
+  - Any updates in the watcher will trigger refreshing composition for that design file
+
 ## Apollo Workbench VSCode 3.2.11
 
 - Fix [#168](https://github.com/apollographql/apollo-workbench-vscode/issues/168) - fix "openFolder" command. It needed to include "vscode.openFolder".

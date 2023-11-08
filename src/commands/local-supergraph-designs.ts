@@ -32,6 +32,7 @@ import { viewOperationDesign } from '../workbench/webviews/operationDesign';
 import {
   ApolloRemoteSchemaProvider,
   DesignOperationsDocumentProvider,
+  SubgraphUrlSchemaProvider,
 } from '../workbench/docProviders';
 import { openFolder } from './extension';
 import { whichDesign, whichOperation, whichSubgraph } from '../utils/uiHelpers';
@@ -278,6 +279,13 @@ export async function editSubgraph(item?: SubgraphTreeItem) {
     } else if (subgraphSchemaConfig.workbench_design) {
       await window.showTextDocument(
         resolvePath(subgraphSchemaConfig.workbench_design),
+      );
+    } else if (subgraphSchemaConfig.subgraph_url) {
+      await window.showTextDocument(
+        SubgraphUrlSchemaProvider.Uri(
+          subgraphName,
+          subgraphSchemaConfig.subgraph_url,
+        ),
       );
     } else {
       const tempLocation = ApolloRemoteSchemaProvider.Uri(

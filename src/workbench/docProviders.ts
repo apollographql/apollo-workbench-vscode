@@ -16,6 +16,8 @@ import {
 } from 'vscode';
 import { FileProvider } from './file-system/fileProvider';
 import { normalizePath } from '../utils/path';
+import { Subgraph } from './file-system/ApolloConfig';
+import { Rover } from '../../out/workbench/rover';
 
 export class DesignOperationsDocumentProvider implements FileSystemProvider {
   static scheme = 'workbench';
@@ -129,6 +131,19 @@ export class ApolloStudioOperationsProvider
     const ast = getOperationAST(doc, operationName);
     if (ast) return print(ast);
     return uri.query;
+  }
+}
+
+export class SubgraphUrlSchemaProvider implements TextDocumentContentProvider {
+  static scheme = 'apollo-workbench-subgraph-url';
+  static Uri(subgraphName: string, url: string): Uri {
+    return Uri.parse(
+      `${SubgraphUrlSchemaProvider.scheme}:${subgraphName}.graphql?${url}`,
+    );
+  }
+
+  async provideTextDocumentContent(uri: Uri): Promise<string> {
+    return await Rover.instance.subgraphIntrospect(uri.query);
   }
 }
 
