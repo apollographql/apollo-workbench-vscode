@@ -514,10 +514,15 @@ export class FileProvider {
           const yamlFile = await workspace.fs.readFile(
             Uri.parse(directoryPath),
           );
-          const yaml = load(new TextDecoder().decode(yamlFile)) as ApolloConfig;
-          if (yaml?.federation_version) {
-            workbenchFiles.push(Uri.parse(directoryPath));
+          try {
+            const yaml = load(new TextDecoder().decode(yamlFile)) as ApolloConfig;
+            if (yaml?.federation_version) {
+              workbenchFiles.push(Uri.parse(directoryPath));
+            }
+          } catch (error) {
+            console.log(`Error parsing ${directoryPath}\nError: ${error}`);
           }
+
         }
       }
 
