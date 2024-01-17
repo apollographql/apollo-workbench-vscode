@@ -10,7 +10,7 @@
     "noImplicitAny": false,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "allowJs": true
+    "allowJs": false
   },
   "exclude": ["node_modules"],
   "lib": ["dom"]

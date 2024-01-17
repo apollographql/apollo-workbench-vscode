@@ -18,6 +18,9 @@ export class PreloadedWorkbenchFile extends TreeItem {
     const wbFile = await FileProvider.instance.getPreloadedWorkbenchFile(
       this.filePath,
     );
+    if (!wbFile || !wbFile.subgraphs) {
+      return [];
+    }
     Object.keys(wbFile.subgraphs).forEach((s) =>
       this.children.push(
         new PreloadedSubgraph(s, this.fileName, this.filePath),
