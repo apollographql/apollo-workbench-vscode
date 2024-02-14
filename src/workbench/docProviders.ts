@@ -16,8 +16,7 @@ import {
 } from 'vscode';
 import { FileProvider } from './file-system/fileProvider';
 import { normalizePath } from '../utils/path';
-import { Subgraph } from './file-system/ApolloConfig';
-import { Rover } from '../../out/workbench/rover';
+import { Rover } from './rover';
 
 export class DesignOperationsDocumentProvider implements FileSystemProvider {
   static scheme = 'workbench';

@@ -1,3 +1,13 @@
+## Apollo Workbench VSCode 3.3.0
+
+- Fix taken ports for subgraphs by setting `port: 0`
+  - Temporary workbench file in `.apollo-workbench` folder contains dynamic `subgraph_url`
+  - Mocked `subgraph_url` is printed to output window
+- Set `APOLLO_ROVER_DEV_COMPOSITION_VERSION` when `federation_version` is set to `={major}.{minor}.{patch}` in config file
+- [PR#175](https://github.com/apollographql/apollo-workbench-vscode/pull/175) - Thank you to @lleadbet 
+- [PR#173](https://github.com/apollographql/apollo-workbench-vscode/pull/173) - Thank you @dimaMachina
+- [PR#152](https://github.com/apollographql/apollo-workbench-vscode/pull/152) - includes eslint package updates
+
 ## Apollo Workbench VSCode 3.2.12
 
 - Enable setting Router Version in VSCode settings `routerVersion`

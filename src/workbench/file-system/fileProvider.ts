@@ -388,15 +388,8 @@ export class FileProvider {
         );
       }
 
-      if (tempWbFile.subgraphs[subgraphName].schema.mocks?.enabled) {
-        const mockedPort = Rover.instance.portMapping[subgraphName];
-        if (mockedPort)
-          tempWbFile.subgraphs[
-            subgraphName
-          ].routing_url = `http://localhost:${mockedPort}`;
-
+      if (tempWbFile.subgraphs[subgraphName].schema.mocks?.enabled)
         delete tempWbFile.subgraphs[subgraphName].schema.mocks;
-      }
 
       if (tempWbFile.operations) tempWbFile.operations = {};
     });

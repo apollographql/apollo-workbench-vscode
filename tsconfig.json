@@ -12,6 +12,6 @@
     "skipLibCheck": true,
     "allowJs": false
   },
-  "exclude": ["node_modules"],
+  "exclude": ["node_modules","apollo.config.js", "out/**"],
   "lib": ["dom"]
 }
