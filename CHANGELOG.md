@@ -1,4 +1,4 @@
-## Apollo Workbench VSCode 3.3.0
+## Apollo Workbench VSCode 3.3.6
 
 - Fix taken ports for subgraphs by setting `port: 0`
   - Temporary workbench file in `.apollo-workbench` folder contains dynamic `subgraph_url`
@@ -7,6 +7,8 @@
 - [PR#175](https://github.com/apollographql/apollo-workbench-vscode/pull/175) - Thank you to @lleadbet 
 - [PR#173](https://github.com/apollographql/apollo-workbench-vscode/pull/173) - Thank you @dimaMachina
 - [PR#152](https://github.com/apollographql/apollo-workbench-vscode/pull/152) - includes eslint package updates
+
+*Note - Versions 3.3.0-3.3.5 were skipped due to old release tokens no longer working*
 
 ## Apollo Workbench VSCode 3.2.12
 
