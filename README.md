@@ -106,7 +106,7 @@ You can stop the design at anytime by pressing the "Stop" icon when hovering ove
 
 ### Mocking designs locally
 
-By default, designs running locally will route traffice to the `routing_url` defined in the `yaml`. If you want to mock any schema, you can right click that schema and select "Mock Subgraph in Design":
+By default, designs running locally will route traffic to the `routing_url` defined in the `yaml`. If you want to mock any schema, you can right click that schema and select "Mock Subgraph in Design":
 
 ![](images/mock-subgraph.png)
 
