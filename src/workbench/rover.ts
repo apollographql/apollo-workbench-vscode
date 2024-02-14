@@ -242,42 +242,42 @@ export class Rover {
       return data.profiles;
     } else return [];
   }
-  //For any subgraph being mocked, we will store a port mapping of subgraphName to port
-  portMapping: { [subgraphName: string]: number } = {};
+  // //For any subgraph being mocked, we will store a port mapping of subgraphName to port
+  // portMapping: { [subgraphName: string]: number } = {};
   //subgraphState will hold the ApolloServer instances based on the ports they are running on
-  private subgraphState: { [port: number]: ApolloServer } = {};
+  private subgraphState: { [subgraphName: string]: ApolloServer } = {};
   ports: number[] = [];
 
-  private getNextAvailablePort() {
-    let port = StateManager.settings_startingServerPort;
-    while (this.subgraphState[port]) port++;
+  // private getNextAvailablePort() {
+  //   let port = StateManager.settings_startingServerPort;
+  //   while (this.subgraphState[port]) port++;
 
-    return port;
-  }
+  //   return port;
+  // }
 
   async restartMockedSubgraph(subgraphName: string, subgraph: Subgraph) {
     if (!this.primaryDevTerminal) return;
 
     log(`Restarting subgraph: ${subgraphName}`);
 
-    let port = 0;
-    for (const sn in this.portMapping)
-      if (sn == subgraphName) port = this.portMapping[sn];
+    // let port = 0;
+    // for (const sn in this.portMapping)
+    //   if (sn == subgraphName) port = this.portMapping[sn];
 
-    if (port != 0) {
-      log(`Stopping subgraph on port: ${port}`);
-      this.stopSubgraphOnPort(port);
-      await this.startMockedSubgraph(subgraphName, subgraph, port);
-    }
+    // if (port != 0) {
+      log(`Stopping subgraph: ${subgraphName}`);
+      this.stopMockedSubgraph(subgraphName);
+      await this.startMockedSubgraph(subgraphName, subgraph);
+    // }
   }
 
   async startMockedSubgraph(
     subgraphName: string,
     subgraph: Subgraph,
-    port?: number,
+    // port?: number,
   ) {
-    if (!port)
-      port = this.portMapping[subgraphName] ?? this.getNextAvailablePort();
+    // if (!port)
+    //   port = this.portMapping[subgraphName] ?? this.getNextAvailablePort();
 
     try {
       const schemaPath =
@@ -366,32 +366,32 @@ export class Rover {
             }),
       });
 
-      //Set the port and server to local state
-      this.subgraphState[port] = server;
-      this.portMapping[subgraphName] = port;
-
-      startStandaloneServer(server, {
-        listen: { port },
+      const { url } = await startStandaloneServer(server, {
+        listen: { port: 0 },
         context: async ({ req }) => ({ ...req.headers }),
-      }).then(({ url }) =>
-        log(`\t${subgraphName} mock server running at ${url}`),
-      );
-    } catch (err) {
-      this.subgraphState[port].stop();
-      delete this.subgraphState[port];
+      });
 
+      // .then(({ url }) => {
+        log(`\t${subgraphName} mock server running at ${url}`);
+        this.subgraphState[subgraphName] = server;
+        //Set the port and server to local state
+        // this.portMapping[subgraphName] = port;
+      // });
+      return url;
+    } catch (err: any) {
+      this.subgraphState[subgraphName]?.stop();
+      delete this.subgraphState[subgraphName];
+
+      log(err.message);
       console.log('unable to start mocked subgraph');
+      return undefined;
     }
   }
-  private stopSubgraphOnPort(port: number) {
-    let subgraphName = '';
-    for (const sn in this.portMapping)
-      if (this.portMapping[sn] == port) subgraphName = sn;
-
-    this.subgraphState[port].stop();
-    delete this.subgraphState[port];
-
-    if (this.portMapping[subgraphName]) delete this.portMapping[subgraphName];
+  private stopMockedSubgraph(subgraphName: string) {
+    if(this.subgraphState[subgraphName]){
+      this.subgraphState[subgraphName].stop();
+      delete this.subgraphState[subgraphName];
+    }
   }
 
   stopRoverDev() {
@@ -402,10 +402,9 @@ export class Rover {
 
     Rover.instance.primaryDevTerminal = undefined;
 
-    for (const port in Rover.instance.subgraphState) {
-      Rover.instance.stopSubgraphOnPort(Number.parseInt(port));
-    }
-    Rover.instance.portMapping = {};
+    Object.keys(Rover.instance.subgraphState).forEach((subgraphName) =>
+      Rover.instance.stopMockedSubgraph(subgraphName),
+    );
   }
 
   async startRoverDev(
@@ -427,28 +426,20 @@ export class Rover {
     //  must ensure all mocks are stopped and rover dev is restarted.
     //  Otherwise mocked ports can be kept alive and provide a very
     //  confusing experience
-    if (!this.primaryDevTerminal && Object.keys(this.portMapping).length > 0) {
+    if (!this.primaryDevTerminal && Object.keys(this.subgraphState).length > 0) {
       //  Terminal window has kill sig from user, old mock ports alive
-      Object.values(this.portMapping).forEach((port) =>
-        this.stopSubgraphOnPort(port),
+      Object.keys(this.subgraphState).forEach((subgraphName) =>
+        this.stopMockedSubgraph(subgraphName),
       );
     } else if (!this.primaryDevTerminal) {
-      //  No terminal window created -  no running mocks - good ot go
+      //  No terminal window created -  no running mocks - good to go
     } else if (this.primaryDevTerminal?.name != wbFilePath) {
       //  Terminal window running rover dev - new design
-      // window.showInformationMessage(
-      //   'Currently running another design, switching to new design...',
-      // );
       statusBar.text = 'Switching Design';
       statusBar.show();
-
       this.stopRoverDev();
     } else if (wbFilePath == this.primaryDevTerminal?.name) {
       //  Terminal window running rover dev - same design
-      // window.showInformationMessage(
-      //   'Design is already running. Refreshing terminal and mocks...',
-      // );
-
       statusBar.text = 'Refreshing Design';
       statusBar.show();
       this.stopRoverDev();
@@ -477,12 +468,15 @@ export class Rover {
       for (let i = 0; i < numberOfSubgraphsToMock; i++) {
         const subgraphName = subgraphNamesToMock[i];
         const subgraph = subgraphsToMock[subgraphName];
-        await Rover.instance.startMockedSubgraph(subgraphName, subgraph);
+        const subgraphUrl = await Rover.instance.startMockedSubgraph(subgraphName, subgraph);
 
-        progress?.report({
-          message: `Mocked subgraph ${subgraphName}`,
-          increment,
-        });
+        if(subgraphUrl){
+          progress?.report({
+            message: `Mocked subgraph ${subgraphName}`,
+            increment,
+          });
+          wbFile.subgraphs[subgraphName].routing_url = subgraphUrl;
+        }
       }
     }
 
@@ -494,6 +488,17 @@ export class Rover {
           resolve(__dirname, '..', 'media', `preloaded-files`, 'router.yaml'),
         );
     let command = `rover dev --supergraph-config=${config} --supergraph-port=${StateManager.settings_routerPort} --router-config=${configPath}`;
+    if (wbFile.federation_version) {
+      //wbFile.federation_version should have '=' in it
+      if (wbFile.federation_version.includes('='))
+        command = `APOLLO_ROVER_DEV_COMPOSITION_VERSION${wbFile.federation_version} ${command}`;
+      else {
+        log(
+          `You must have the federation_version formatted to '={major}.{minor}.{patch}' to specify the version of router to run with rover dev.`,
+        );
+        log(`Defaulting to latest version of composition.`);
+      }
+    }
     if (StateManager.settings_routerVersion) {
       command = `APOLLO_ROVER_DEV_ROUTER_VERSION=${StateManager.settings_routerVersion} ${command}`;
     }
