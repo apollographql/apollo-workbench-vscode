@@ -55,7 +55,7 @@ export class LocalSupergraphTreeDataProvider
           });
       }
 
-      return Promise.resolve(this.items);
+      return this.items;
     } else {
       switch (element.contextValue) {
         case 'supergraphTreeItem': {
@@ -79,18 +79,18 @@ export class LocalSupergraphTreeDataProvider
             );
           }
 
-          return Promise.resolve(treeItems);
+          return treeItems;
         }
         case 'subgraphSummaryTreeItem':
-          return Promise.resolve(
+          return (
             (element as SubgraphSummaryTreeItem).subgraphs,
           );
         case 'operationSummaryTreeItem':
-          return Promise.resolve(
+          return (
             (element as OperationSummaryTreeItem).operations,
           );
         default:
-          return Promise.resolve([]);
+          return [];
       }
     }
   }
