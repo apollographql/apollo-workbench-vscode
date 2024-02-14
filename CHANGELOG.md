@@ -1,4 +1,4 @@
-## Apollo Workbench VSCode 3.3.1
+## Apollo Workbench VSCode 3.3.0
 
 - Fix taken ports for subgraphs by setting `port: 0`
   - Temporary workbench file in `.apollo-workbench` folder contains dynamic `subgraph_url`
