@@ -83,12 +83,10 @@ export class LocalSupergraphTreeDataProvider
         }
         case 'subgraphSummaryTreeItem':
           return (
-            (element as SubgraphSummaryTreeItem).subgraphs,
+            (element as SubgraphSummaryTreeItem).subgraphs
           );
         case 'operationSummaryTreeItem':
-          return (
-            (element as OperationSummaryTreeItem).operations,
-          );
+          return (element as OperationSummaryTreeItem).operations;
         default:
           return [];
       }
