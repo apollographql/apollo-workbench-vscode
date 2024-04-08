@@ -1,4 +1,4 @@
-federation_version: '=2.5.2'
+federation_version: '=2.7.2'
 subgraphs:
   users:
     routing_url: https://apollosolutions--retail-supergraph.fly.dev/users/graphql

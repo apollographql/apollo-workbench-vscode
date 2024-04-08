@@ -14,3 +14,7 @@ headers:
     request:
       - propagate:
           matching: .*
+telemetry:
+  instrumentation:
+    spans:
+      mode: spec_compliant

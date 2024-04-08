@@ -4,7 +4,7 @@ export class ApolloConfig {
   operations: { [name: string]: Operation } = {};
 
   constructor() {
-    this.federation_version = '=2.5.2';
+    this.federation_version = '=2.7.2';
   }
 
   public static copy(config: ApolloConfig) {

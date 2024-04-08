@@ -139,6 +139,16 @@ export class StateManager {
       .getConfiguration('apollo-workbench')
       .get('local-designs.expandOperationsByDefault') as boolean;
   }
+  static get settings_graphRef(): string {
+    return workspace
+      .getConfiguration('apollo-workbench')
+      .get('graphRef') as string;
+  }
+  static set settings_graphRef(profile: string) {
+    workspace
+      .getConfiguration('apollo-workbench')
+      .update('graphRef', profile);
+  }
   static get settings_roverConfigProfile(): string {
     return workspace
       .getConfiguration('apollo-workbench')

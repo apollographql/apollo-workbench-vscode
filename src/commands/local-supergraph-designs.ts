@@ -668,7 +668,9 @@ export async function changeDesignFederationVersion(
   const wbFilePath = item.wbFilePath;
   if (wbFilePath) {
     const versions = [
-      '2.5.6',
+      '2.7.2',
+      '2.6.3',
+      '2.5.7',
       '2.4.13',
       '2.3.5',
       '2.2.3',
@@ -678,7 +680,7 @@ export async function changeDesignFederationVersion(
     ];
     const selectedVersion = await window.showQuickPick(versions, {
       title: 'Select Federation Version',
-      placeHolder: '=2.5.2',
+      placeHolder: '=2.7.2',
     });
     if (selectedVersion) {
       const wbFile = FileProvider.instance.workbenchFileFromPath(wbFilePath);

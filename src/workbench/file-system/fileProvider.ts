@@ -232,10 +232,10 @@ export class FileProvider {
                 Rover.instance.primaryDevTerminal != undefined
               ) {
                 //Need to restart any mocked subgraphs running with `rover dev`
-                Object.keys(wbFile.subgraphs).forEach((subgraphName) => {
+                Object.keys(wbFile.subgraphs).forEach(async (subgraphName) => {
                   const subgraph = wbFile.subgraphs[subgraphName];
                   if (subgraph.schema.mocks?.enabled) {
-                    Rover.instance.restartMockedSubgraph(
+                    await Rover.instance.restartMockedSubgraph(
                       subgraphName,
                       subgraph,
                     );

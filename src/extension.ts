@@ -320,13 +320,8 @@ export async function activate(context: ExtensionContext) {
                 await FileProvider.instance.refreshWorkbenchFileComposition(
                   wbFilePath,
                 );
-
-              if (composedSchema)
-                await Rover.instance.restartMockedSubgraph(
-                  subgraphName,
-                  wbFile.subgraphs[subgraphName],
-                );
-              else if (Rover.instance.primaryDevTerminal) {
+                
+              if (!composedSchema && Rover.instance.primaryDevTerminal) {
                 window.showErrorMessage(
                   `Stopping rover dev session because of invalid composition`,
                 );

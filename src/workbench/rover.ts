@@ -248,37 +248,20 @@ export class Rover {
   private subgraphState: { [subgraphName: string]: ApolloServer } = {};
   ports: number[] = [];
 
-  // private getNextAvailablePort() {
-  //   let port = StateManager.settings_startingServerPort;
-  //   while (this.subgraphState[port]) port++;
-
-  //   return port;
-  // }
-
   async restartMockedSubgraph(subgraphName: string, subgraph: Subgraph) {
     if (!this.primaryDevTerminal) return;
 
     log(`Restarting subgraph: ${subgraphName}`);
 
-    // let port = 0;
-    // for (const sn in this.portMapping)
-    //   if (sn == subgraphName) port = this.portMapping[sn];
-
-    // if (port != 0) {
       log(`Stopping subgraph: ${subgraphName}`);
       this.stopMockedSubgraph(subgraphName);
       await this.startMockedSubgraph(subgraphName, subgraph);
-    // }
   }
 
   async startMockedSubgraph(
     subgraphName: string,
     subgraph: Subgraph,
-    // port?: number,
   ) {
-    // if (!port)
-    //   port = this.portMapping[subgraphName] ?? this.getNextAvailablePort();
-
     try {
       const schemaPath =
         subgraph.schema.workbench_design ?? subgraph.schema.file ?? '';
@@ -371,12 +354,9 @@ export class Rover {
         context: async ({ req }) => ({ ...req.headers }),
       });
 
-      // .then(({ url }) => {
         log(`\t${subgraphName} mock server running at ${url}`);
         this.subgraphState[subgraphName] = server;
-        //Set the port and server to local state
-        // this.portMapping[subgraphName] = port;
-      // });
+
       return url;
     } catch (err: any) {
       this.subgraphState[subgraphName]?.stop();
@@ -501,6 +481,12 @@ export class Rover {
     }
     if (StateManager.settings_routerVersion) {
       command = `APOLLO_ROVER_DEV_ROUTER_VERSION=${StateManager.settings_routerVersion} ${command}`;
+    }
+    if (StateManager.settings_graphRef) {
+      command = `APOLLO_GRAPH_REF=${StateManager.settings_graphRef} ${command}`;
+    }
+    if(StateManager.settings_roverConfigProfile){
+      command = `${command} --profile=${StateManager.settings_roverConfigProfile}`;
     }
     this.primaryDevTerminal = window.createTerminal(wbFilePath);
     this.primaryDevTerminal.show();
