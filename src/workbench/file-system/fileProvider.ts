@@ -438,6 +438,18 @@ export class FileProvider {
       resolve(homedir(), '.apollo-workbench', 'supergraph.yaml'),
     );
   }
+  async getTempWorkbenchFileAsync() {
+    const tempFile = await workspace.fs.readFile(
+      Uri.parse(
+        normalizePath(
+          resolve(homedir(), '.apollo-workbench', 'supergraph.yaml'),
+        ),
+      ),
+    );
+    const content = tempFile?.toString();
+
+    return load(tempFile?.toString()) as ApolloConfig;
+  }
 
   async writeWorkbenchConfig(
     path: string,
@@ -508,14 +520,15 @@ export class FileProvider {
             Uri.parse(directoryPath),
           );
           try {
-            const yaml = load(new TextDecoder().decode(yamlFile)) as ApolloConfig;
+            const yaml = load(
+              new TextDecoder().decode(yamlFile),
+            ) as ApolloConfig;
             if (yaml?.federation_version) {
               workbenchFiles.push(Uri.parse(directoryPath));
             }
           } catch (error) {
             console.log(`Error parsing ${directoryPath}\nError: ${error}`);
           }
-
         }
       }
 
