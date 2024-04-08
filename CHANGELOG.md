@@ -1,3 +1,11 @@
+## Apollo Workbench VSCode 3.3.9
+
+- Create `graphRef` setting - when using the play button to start a design locally, `rover dev` needs to pass a graph ref to an enterprise graph in GraphOS. This setting enables a user to set the name of their graph for the extension to work with.  
+
+## Apollo Workbench VSCode 3.3.8
+
+- Introduced auto upload to VS Code marketplace.
+
 ## Apollo Workbench VSCode 3.3.6
 
 - Fix taken ports for subgraphs by setting `port: 0`
