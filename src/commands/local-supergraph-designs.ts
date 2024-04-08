@@ -362,7 +362,7 @@ export async function addSubgraph(item?: SubgraphSummaryTreeItem) {
   } else {
     const wbFile = FileProvider.instance.workbenchFileFromPath(wbFilePath);
     let schemaString =
-      'extend schema \n\t@link(url: "https://specs.apollo.dev/federation/v", import: ["@key"])\n\ntype Product @key(fields:"id") { \n\tid: ID!\n}';
+      'extend schema \n\t@link(url: "https://specs.apollo.dev/federation/v2.7", import: ["@key"])\n\ntype Product @key(fields:"id") { \n\tid: ID!\n}';
     if (Object.keys(wbFile.subgraphs).length == 0) {
       schemaString += '\ntype Query {\n\tproducts: [Product]\n}';
     }
@@ -399,7 +399,7 @@ export async function addSubgraph(item?: SubgraphSummaryTreeItem) {
     await FileProvider.instance.writeWorkbenchConfig(wbFilePath, wbFile);
   }
 }
-// }
+
 export async function deleteSubgraph(item?: SubgraphTreeItem) {
   const wbFilePath = item ? item.wbFilePath : await whichDesign();
   if (!wbFilePath) return;

@@ -30,6 +30,7 @@ import { URI } from 'vscode-uri';
 
 export class Rover {
   private static _instance: Rover;
+  private wbFilePath: string = '';
   static get instance(): Rover {
     if (!this._instance) this._instance = new Rover();
 
@@ -442,6 +443,7 @@ export class Rover {
       this.stopRoverDev();
     }
 
+    this.wbFilePath = wbFilePath;
     const wbFile = FileProvider.instance.workbenchFileFromPath(wbFilePath);
     const subgraphNames = Object.keys(wbFile.subgraphs);
     const subgraphsToMock: { [name: string]: Subgraph } = {};
@@ -519,6 +521,19 @@ export class Rover {
     });
     await openSandboxWebview();
     statusBar.hide();
+  }
+
+  /**
+   * If rover dev is already running, it will be restarted with the same config
+   * If rover dev is not running, nothing will be changed.
+   * We need to do this for adding or removing subgraphs from a config file because rover dev doesn't currently watch for those changes.
+   * See https://github.com/apollographql/rover/issues/1885.
+   */
+  async tryRestartRoverDev(wbFilePath: string) {
+    if (this.wbFilePath == wbFilePath && this.primaryDevTerminal) {
+      this.stopRoverDev();
+      await this.startRoverDev(this.wbFilePath);
+    }
   }
 
   static extractDefinedEntities(schema: string) {

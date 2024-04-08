@@ -468,6 +468,8 @@ export class FileProvider {
 
     if (shouldRefresh)
       StateManager.instance.localSupergraphTreeDataProvider.refresh();
+
+    await Rover.instance.tryRestartRoverDev(path);
   }
 
   workbenchFileByGraphName(name: string) {
