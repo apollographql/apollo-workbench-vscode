@@ -232,10 +232,10 @@ export class FileProvider {
                 Rover.instance.primaryDevTerminal != undefined
               ) {
                 //Need to restart any mocked subgraphs running with `rover dev`
-                Object.keys(wbFile.subgraphs).forEach((subgraphName) => {
+                Object.keys(wbFile.subgraphs).forEach(async (subgraphName) => {
                   const subgraph = wbFile.subgraphs[subgraphName];
                   if (subgraph.schema.mocks?.enabled) {
-                    Rover.instance.restartMockedSubgraph(
+                    await Rover.instance.restartMockedSubgraph(
                       subgraphName,
                       subgraph,
                     );
@@ -438,6 +438,18 @@ export class FileProvider {
       resolve(homedir(), '.apollo-workbench', 'supergraph.yaml'),
     );
   }
+  async getTempWorkbenchFileAsync() {
+    const tempFile = await workspace.fs.readFile(
+      Uri.parse(
+        normalizePath(
+          resolve(homedir(), '.apollo-workbench', 'supergraph.yaml'),
+        ),
+      ),
+    );
+    const content = tempFile?.toString();
+
+    return load(tempFile?.toString()) as ApolloConfig;
+  }
 
   async writeWorkbenchConfig(
     path: string,
@@ -456,6 +468,8 @@ export class FileProvider {
 
     if (shouldRefresh)
       StateManager.instance.localSupergraphTreeDataProvider.refresh();
+
+    await Rover.instance.tryRestartRoverDev(path);
   }
 
   workbenchFileByGraphName(name: string) {
@@ -508,14 +522,15 @@ export class FileProvider {
             Uri.parse(directoryPath),
           );
           try {
-            const yaml = load(new TextDecoder().decode(yamlFile)) as ApolloConfig;
+            const yaml = load(
+              new TextDecoder().decode(yamlFile),
+            ) as ApolloConfig;
             if (yaml?.federation_version) {
               workbenchFiles.push(Uri.parse(directoryPath));
             }
           } catch (error) {
             console.log(`Error parsing ${directoryPath}\nError: ${error}`);
           }
-
         }
       }
 

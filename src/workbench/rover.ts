@@ -26,9 +26,11 @@ import { statusBar } from '../extension';
 import { resolvePath } from '../utils/uri';
 import { normalizePath } from '../utils/path';
 import { resolve } from 'path';
+import { URI } from 'vscode-uri';
 
 export class Rover {
   private static _instance: Rover;
+  private wbFilePath: string = '';
   static get instance(): Rover {
     if (!this._instance) this._instance = new Rover();
 
@@ -246,39 +248,23 @@ export class Rover {
   // portMapping: { [subgraphName: string]: number } = {};
   //subgraphState will hold the ApolloServer instances based on the ports they are running on
   private subgraphState: { [subgraphName: string]: ApolloServer } = {};
-  ports: number[] = [];
-
-  // private getNextAvailablePort() {
-  //   let port = StateManager.settings_startingServerPort;
-  //   while (this.subgraphState[port]) port++;
-
-  //   return port;
-  // }
+  ports: { [subgraphName: string]: number } = {};
 
   async restartMockedSubgraph(subgraphName: string, subgraph: Subgraph) {
     if (!this.primaryDevTerminal) return;
 
     log(`Restarting subgraph: ${subgraphName}`);
 
-    // let port = 0;
-    // for (const sn in this.portMapping)
-    //   if (sn == subgraphName) port = this.portMapping[sn];
-
-    // if (port != 0) {
-      log(`Stopping subgraph: ${subgraphName}`);
-      this.stopMockedSubgraph(subgraphName);
-      await this.startMockedSubgraph(subgraphName, subgraph);
-    // }
+    log(`Stopping subgraph: ${subgraphName}`);
+    this.stopMockedSubgraph(subgraphName);
+    await this.startMockedSubgraph(subgraphName, subgraph);
   }
 
   async startMockedSubgraph(
     subgraphName: string,
     subgraph: Subgraph,
-    // port?: number,
+    port: number = this.ports[subgraphName] ?? 0,
   ) {
-    // if (!port)
-    //   port = this.portMapping[subgraphName] ?? this.getNextAvailablePort();
-
     try {
       const schemaPath =
         subgraph.schema.workbench_design ?? subgraph.schema.file ?? '';
@@ -367,16 +353,21 @@ export class Rover {
       });
 
       const { url } = await startStandaloneServer(server, {
-        listen: { port: 0 },
+        listen: { port },
         context: async ({ req }) => ({ ...req.headers }),
       });
 
-      // .then(({ url }) => {
-        log(`\t${subgraphName} mock server running at ${url}`);
-        this.subgraphState[subgraphName] = server;
-        //Set the port and server to local state
-        // this.portMapping[subgraphName] = port;
-      // });
+      log(`\t${subgraphName} mock server running at ${url}`);
+      this.subgraphState[subgraphName] = server;
+
+      if (port == 0) {
+        port = Number.parseInt(new URL(url).port);
+        this.ports[subgraphName] = port;
+        // const wbFile = await FileProvider.instance.getTempWorkbenchFileAsync();
+        // wbFile.subgraphs[subgraphName].routing_url = `http://localhost:${port}`;
+        // await FileProvider.instance.updateTempWorkbenchFile(wbFile);
+      }
+
       return url;
     } catch (err: any) {
       this.subgraphState[subgraphName]?.stop();
@@ -388,7 +379,7 @@ export class Rover {
     }
   }
   private stopMockedSubgraph(subgraphName: string) {
-    if(this.subgraphState[subgraphName]){
+    if (this.subgraphState[subgraphName]) {
       this.subgraphState[subgraphName].stop();
       delete this.subgraphState[subgraphName];
     }
@@ -405,6 +396,8 @@ export class Rover {
     Object.keys(Rover.instance.subgraphState).forEach((subgraphName) =>
       Rover.instance.stopMockedSubgraph(subgraphName),
     );
+
+    this.ports = {};
   }
 
   async startRoverDev(
@@ -426,7 +419,10 @@ export class Rover {
     //  must ensure all mocks are stopped and rover dev is restarted.
     //  Otherwise mocked ports can be kept alive and provide a very
     //  confusing experience
-    if (!this.primaryDevTerminal && Object.keys(this.subgraphState).length > 0) {
+    if (
+      !this.primaryDevTerminal &&
+      Object.keys(this.subgraphState).length > 0
+    ) {
       //  Terminal window has kill sig from user, old mock ports alive
       Object.keys(this.subgraphState).forEach((subgraphName) =>
         this.stopMockedSubgraph(subgraphName),
@@ -447,6 +443,7 @@ export class Rover {
       this.stopRoverDev();
     }
 
+    this.wbFilePath = wbFilePath;
     const wbFile = FileProvider.instance.workbenchFileFromPath(wbFilePath);
     const subgraphNames = Object.keys(wbFile.subgraphs);
     const subgraphsToMock: { [name: string]: Subgraph } = {};
@@ -468,9 +465,12 @@ export class Rover {
       for (let i = 0; i < numberOfSubgraphsToMock; i++) {
         const subgraphName = subgraphNamesToMock[i];
         const subgraph = subgraphsToMock[subgraphName];
-        const subgraphUrl = await Rover.instance.startMockedSubgraph(subgraphName, subgraph);
+        const subgraphUrl = await Rover.instance.startMockedSubgraph(
+          subgraphName,
+          subgraph,
+        );
 
-        if(subgraphUrl){
+        if (subgraphUrl) {
           progress?.report({
             message: `Mocked subgraph ${subgraphName}`,
             increment,
@@ -502,6 +502,12 @@ export class Rover {
     if (StateManager.settings_routerVersion) {
       command = `APOLLO_ROVER_DEV_ROUTER_VERSION=${StateManager.settings_routerVersion} ${command}`;
     }
+    if (StateManager.settings_graphRef) {
+      command = `APOLLO_GRAPH_REF=${StateManager.settings_graphRef} ${command}`;
+    }
+    if (StateManager.settings_roverConfigProfile) {
+      command = `${command} --profile=${StateManager.settings_roverConfigProfile}`;
+    }
     this.primaryDevTerminal = window.createTerminal(wbFilePath);
     this.primaryDevTerminal.show();
     this.primaryDevTerminal.sendText(command);
@@ -515,6 +521,19 @@ export class Rover {
     });
     await openSandboxWebview();
     statusBar.hide();
+  }
+
+  /**
+   * If rover dev is already running, it will be restarted with the same config
+   * If rover dev is not running, nothing will be changed.
+   * We need to do this for adding or removing subgraphs from a config file because rover dev doesn't currently watch for those changes.
+   * See https://github.com/apollographql/rover/issues/1885.
+   */
+  async tryRestartRoverDev(wbFilePath: string) {
+    if (this.wbFilePath == wbFilePath && this.primaryDevTerminal) {
+      this.stopRoverDev();
+      await this.startRoverDev(this.wbFilePath);
+    }
   }
 
   static extractDefinedEntities(schema: string) {

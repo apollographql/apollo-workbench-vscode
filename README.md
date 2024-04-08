@@ -63,7 +63,7 @@ subgraphs:
       graphref: hack-the-e-commerce@main
       subgraph: orders
 operations: {}
-federation_version: '=2.5.2'
+federation_version: '=2.7.2'
 ```
 
 ### Creating a design from scratch

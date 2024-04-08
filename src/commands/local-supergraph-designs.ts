@@ -362,7 +362,7 @@ export async function addSubgraph(item?: SubgraphSummaryTreeItem) {
   } else {
     const wbFile = FileProvider.instance.workbenchFileFromPath(wbFilePath);
     let schemaString =
-      'extend schema \n\t@link(url: "https://specs.apollo.dev/federation/v2.5", import: ["@key"])\n\ntype Product @key(fields:"id") { \n\tid: ID!\n}';
+      'extend schema \n\t@link(url: "https://specs.apollo.dev/federation/v2.7", import: ["@key"])\n\ntype Product @key(fields:"id") { \n\tid: ID!\n}';
     if (Object.keys(wbFile.subgraphs).length == 0) {
       schemaString += '\ntype Query {\n\tproducts: [Product]\n}';
     }
@@ -399,7 +399,7 @@ export async function addSubgraph(item?: SubgraphSummaryTreeItem) {
     await FileProvider.instance.writeWorkbenchConfig(wbFilePath, wbFile);
   }
 }
-// }
+
 export async function deleteSubgraph(item?: SubgraphTreeItem) {
   const wbFilePath = item ? item.wbFilePath : await whichDesign();
   if (!wbFilePath) return;
@@ -628,7 +628,7 @@ export async function addFederationDirective(
   } else {
     await editor?.insertSnippet(
       new SnippetString(
-        `extend schema @link(url: "https://specs.apollo.dev/federation/v2.5", import: ["${directive}"])\n\n`,
+        `extend schema @link(url: "https://specs.apollo.dev/federation/v2.7", import: ["${directive}"])\n\n`,
       ),
       new Position(0, 0),
     );
@@ -668,7 +668,9 @@ export async function changeDesignFederationVersion(
   const wbFilePath = item.wbFilePath;
   if (wbFilePath) {
     const versions = [
-      '2.5.6',
+      '2.7.2',
+      '2.6.3',
+      '2.5.7',
       '2.4.13',
       '2.3.5',
       '2.2.3',
@@ -678,7 +680,7 @@ export async function changeDesignFederationVersion(
     ];
     const selectedVersion = await window.showQuickPick(versions, {
       title: 'Select Federation Version',
-      placeHolder: '=2.5.2',
+      placeHolder: '=2.7.2',
     });
     if (selectedVersion) {
       const wbFile = FileProvider.instance.workbenchFileFromPath(wbFilePath);
