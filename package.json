@@ -90,9 +90,10 @@
       "properties": {
         "apollo-workbench.apolloApiUrl": {
           "type": [
-            "string"
+            "string",
+            "null"
           ],
-          "default": "https://api.apollographql.com/graphql",
+          "default": null,
           "description": "Specifies the url endpoint to be used for the Apollo GraphOS Platform API"
         },
         "apollo-workbench.apolloOrg": {

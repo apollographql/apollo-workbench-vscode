@@ -154,6 +154,11 @@ export class StateManager {
       .getConfiguration('apollo-workbench')
       .get('roverConfigProfile') as string;
   }
+  static get settings_apolloApiUrl(): string {
+    return workspace
+      .getConfiguration('apollo-workbench')
+      .get('apolloApiUrl') as string;
+  }
   static set settings_roverConfigProfile(profile: string) {
     workspace
       .getConfiguration('apollo-workbench')

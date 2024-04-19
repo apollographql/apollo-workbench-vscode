@@ -54,15 +54,10 @@ export class Rover {
     if (StateManager.settings_roverConfigProfile) {
       cmd = `${cmd} --profile=${StateManager.settings_roverConfigProfile}`;
     }
-    // TODO: Verify this doesn't actually work on mac, it probably can be removed
-    // else if (StateManager.instance.globalState_userApiKey) {
-    //   if (process.platform != 'win32')
-    //     cmd = `set APOLLO_KEY=${StateManager.instance.globalState_userApiKey};${cmd}`;
-    //   else
-    //     cmd = `APOLLO_KEY=${StateManager.instance.globalState_userApiKey} ${cmd}`;
-    // }
 
-    if (shouldLog) this.logCommand(cmd);
+    if(StateManager.settings_apolloApiUrl) {
+      cmd = `APOLLO_REGISTRY_URL=${StateManager.settings_apolloApiUrl} ${cmd}`;
+    }
 
     if (process.platform !== 'win32') {
       //workaround, source rover binary from install location
@@ -73,6 +68,7 @@ export class Rover {
       //  TODO: Make this a osx specific setting in VSCode, then test in Windows
       cmd = `source /$HOME/.rover/env && ${cmd}`;
     }
+    if (shouldLog) this.logCommand(cmd);
 
     return await new Promise<string | undefined>((resolve, reject) => {
       try {
@@ -507,6 +503,9 @@ export class Rover {
     }
     if (StateManager.settings_roverConfigProfile) {
       command = `${command} --profile=${StateManager.settings_roverConfigProfile}`;
+    }
+    if(StateManager.settings_apolloApiUrl){
+      command = `APOLLO_REGISTRY_URL=${StateManager.settings_apolloApiUrl} ${command}`;
     }
     this.primaryDevTerminal = window.createTerminal(wbFilePath);
     this.primaryDevTerminal.show();
