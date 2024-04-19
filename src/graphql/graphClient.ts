@@ -40,9 +40,12 @@ const getGraphOperations = gql`
 
 export async function isValidKey(apiKey: string) {
   const result = await toPromise(
-    execute(createLink(getOperationName(CheckUserApiKeyDocument) ?? '', apiKey), {
-      query: CheckUserApiKeyDocument,
-    }),
+    execute(
+      createLink(getOperationName(CheckUserApiKeyDocument) ?? '', apiKey),
+      {
+        query: CheckUserApiKeyDocument,
+      },
+    ),
   );
   const data = result.data as CheckUserApiKeyQuery;
   if (data.me?.id) return true;
@@ -107,12 +110,13 @@ function createLink(
 
   if (StateManager.settings_apolloOrg) headers['apollo-sudo'] = 'true';
 
-  const uri =
+  let uri =
     operationName == 'GraphOperations'
       ? 'https://graphql.api.apollographql.com/api/graphql'
-      : (vscode.workspace
-          .getConfiguration('apollo-workbench')
-          .get('apolloApiUrl') as string);
+      : 'https://api.apollographql.com/graphql';
+
+  if (StateManager.settings_apolloApiUrl)
+    uri = StateManager.settings_apolloApiUrl;
 
   return createHttpLink({
     fetch: fetch as any,

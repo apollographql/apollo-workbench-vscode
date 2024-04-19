@@ -1,3 +1,7 @@
+## Apollo Workbench VSCode 3.3.10
+
+- Fix `apolloApiUrl` setting to work with all `rover` commands. This is primarily for internal Apollo debugging purposes against pre-prod environments of GraphOS.
+
 ## Apollo Workbench VSCode 3.3.9
 
 - Create `graphRef` setting - when using the play button to start a design locally, `rover dev` needs to pass a graph ref to an enterprise graph in GraphOS. This setting enables a user to set the name of their graph for the extension to work with.
