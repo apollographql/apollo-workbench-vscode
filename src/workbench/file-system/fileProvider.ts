@@ -1,5 +1,5 @@
 import { existsSync, readdirSync } from 'fs';
-import path, { join, resolve } from 'path';
+import path, { dirname, join, resolve } from 'path';
 import {
   commands,
   FileType,
@@ -496,6 +496,25 @@ export class FileProvider {
         ) {
           path = wbFilePath;
           name = subgraphName;
+        } else {
+          //It could be the user has relative paths in their config files
+          const wbFileFolder = dirname(wbFilePath);
+          const sanitizedPath = resolve(
+            wbFileFolder,
+            subgraph.schema.file ?? '',
+          );
+          const workbenchDesignPath = resolve(
+            wbFileFolder,
+            subgraph.schema.workbench_design ?? '',
+          );
+
+          if (
+            sanitizedPath == schemaPath ||
+            workbenchDesignPath == schemaPath
+          ) {
+            path = wbFilePath;
+            name = subgraphName;
+          }
         }
       });
     });
