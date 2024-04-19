@@ -9,6 +9,15 @@ apollo.config.js
 .vscode
 .github
 .gitignore
+docs
+images
+
+.vscode
+node_modules
+src/
+tsconfig.json
+webpack.config.js
+
 
 apollo.config.js
 node_modules/**/LICENSE*

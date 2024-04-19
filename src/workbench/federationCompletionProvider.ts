@@ -55,6 +55,7 @@ export function extractEntities(supergraphSdl: string) {
   const entities: { [subgraphName: string]: Entity[] } = {};
   const typeInfo = new TypeInfo(buildSchema(supergraphSdl));
   const doc = gql(supergraphSdl);
+  const enumSubgraphValues = {};
   visit(
     doc,
     visitWithTypeInfo(typeInfo, {
@@ -65,9 +66,8 @@ export function extractEntities(supergraphSdl: string) {
             const graphArg = d.arguments?.find((a) => a.name.value == 'graph');
             const keysArg = d.arguments?.find((a) => a.name.value == 'key');
             if (graphArg && keysArg) {
-              const subgraphName = (
-                graphArg.value as EnumValueNode
-              ).value.toLowerCase();
+              const subgraphName =
+                enumSubgraphValues[(graphArg.value as EnumValueNode).value];
               if (!entities[subgraphName]) entities[subgraphName] = [];
               const keyString = (keysArg.value as StringValueNode).value;
               const keys = keyString.split(' ');
@@ -107,6 +107,19 @@ export function extractEntities(supergraphSdl: string) {
           }
         });
       },
+      EnumTypeDefinition(node) {
+        if (node.name.value == 'join__Graph') {
+          node.values?.forEach((v) => {
+            if (v?.directives && v?.directives[0]) {
+              const subgraph = (
+                v?.directives[0].arguments?.find((a) => a.name.value == 'name')
+                  ?.value as StringValueNode
+              )?.value;
+              if (subgraph) enumSubgraphValues[v.name.value] = subgraph;
+            }
+          });
+        }
+      },
     }),
   );
 
@@ -134,12 +147,23 @@ export const federationCompletionProvider = {
       const extendableTypes =
         StateManager.instance.workspaceState_availableEntities;
 
-      if (extendableTypes[wbFilePath])
+      if (extendableTypes[wbFilePath]) {
+        const originatingSubgraphEntities =
+          extendableTypes[wbFilePath][originatingSubgraph];
         Object.keys(extendableTypes[wbFilePath]).forEach((subgraphName) => {
+          const subgraphEntities = extendableTypes[wbFilePath][subgraphName];
           if (originatingSubgraph != subgraphName) {
             const subgraphEntities = extendableTypes[wbFilePath][subgraphName];
             if (subgraphEntities) {
               subgraphEntities.forEach((entity) => {
+                //Need to check if entity is already in originatingSubgraph
+                if (
+                  originatingSubgraphEntities?.find(
+                    (e) =>
+                      e.type == entity.type && e.keyString == entity.keyString,
+                  )
+                )
+                  return;
                 const uniqueKey = `${entity.type}:${entity.keyString}`;
                 if (!addedEntities.includes(uniqueKey)) {
                   if (
@@ -147,7 +171,8 @@ export const federationCompletionProvider = {
                       (e) =>
                         e.type == entity.type &&
                         e.keyString == entity.keyString,
-                    ) ?? -1 < 0
+                    ) ??
+                    -1 < 0
                   ) {
                     addedEntities.push(uniqueKey);
 
@@ -164,6 +189,7 @@ export const federationCompletionProvider = {
             }
           }
         });
+      }
 
       completionItems.push(new EntityObjectTypeCompletionItem());
     }
@@ -184,7 +210,6 @@ export class EntityObjectTypeCompletionItem extends CompletionItem {
     insertSnippet.appendText(`") {\n\t`);
     insertSnippet.appendTabstop(3);
     insertSnippet.appendText(`\n}`);
-
 
     this.detail = 'Define a new Entity Object Type';
     this.insertText = insertSnippet;

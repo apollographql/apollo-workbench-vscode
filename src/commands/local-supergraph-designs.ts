@@ -617,7 +617,9 @@ export async function addFederationDirective(
     },
   });
 
-  const editor = window.activeTextEditor;
+  
+  const openedDoc = await workspace.openTextDocument(document.uri);
+  const editor = await window.showTextDocument(openedDoc);
   if (addedDirective) {
     await editor?.edit((editBuilder) => {
       editBuilder.delete(

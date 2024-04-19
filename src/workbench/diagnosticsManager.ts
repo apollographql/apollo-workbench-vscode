@@ -127,13 +127,17 @@ export class WorkbenchDiagnostics {
               buildSubgraphSchema({ typeDefs: gql(errorNode.source) });
             } catch (error) {
               console.log(error);
-              const location = (error as any)?.locations[0];
-              const range = new Range(
-                location.line - 1,
-                location.column - 1,
-                location.line - 1,
-                location.column - 1,
-              );
+              let range: Range | undefined = undefined;
+
+              if((error as any)?.locations){
+                const location = (error as any)?.locations[0];
+                range = new Range(
+                  location.line - 1,
+                  location.column - 1,
+                  location.line - 1,
+                  location.column - 1,
+                );
+              }
               const diagnostic = this.generateDiagnostic(errorMessage, range);
 
               if (!diagnosticsGroups[subgraphName])

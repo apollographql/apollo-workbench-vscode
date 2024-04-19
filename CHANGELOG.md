@@ -2,6 +2,9 @@
 
 - Add changelog GitHub Action to ensure a changelog entry is there for every PR
 - Fix error locations for `INVALID_GRAPHQL` errors. Workebnch now tries to rebuild the source schema from the error and then uses the `error.nodes.location` for the VS Code diagnostic.
+- Fix a small edge case where a user could use a completion action to add Apollo Federation directives that updates the wrong editor. The correct schema is now displayed to the user and then updated. 
+- Fix relative path references for files and operation viewer 
+- When custom mocks fail to load, the error is now printed to the Apollo Workbench Output panel
 
 ## Apollo Workbench VSCode 3.3.10
 
