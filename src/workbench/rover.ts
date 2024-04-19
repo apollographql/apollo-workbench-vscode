@@ -331,8 +331,9 @@ export class Rover {
                 preserveResolvers: true,
               });
           }
-        } catch (error) {
-          log(`Unable to eval custom mocks. Did you export your mocks?`);
+        } catch (error: any) {
+          log(`Unable to eval custom mocks. Did you export your mocks? Error:`);
+          log(`\t${error?.message}`);
         }
       }
 
