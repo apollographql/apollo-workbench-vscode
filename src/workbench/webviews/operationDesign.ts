@@ -10,6 +10,8 @@ import { whichDesign, whichOperation } from '../../utils/uiHelpers';
 import { FileProvider } from '../file-system/fileProvider';
 import { StateManager } from '../stateManager';
 import { OperationTreeItem } from '../tree-data-providers/tree-items/local-supergraph-designs/operationTreeItem';
+import { existsSync } from 'fs';
+import { dirname, join } from 'path';
 
 function getWebviewContent(webview: Webview, src: any) {
   return `
@@ -45,7 +47,11 @@ function viewDesignImage(url: Uri) {
   return operationDesignPanel;
 }
 
-async function viewDesignImageFromFile(path: string, operationName?: string) {
+async function viewDesignImageFromFile(
+  wbFilePath: string,
+  path: string,
+  operationName?: string,
+) {
   const panel = operationDesignPanel;
   if (panel) {
     //Copy image file to extension directory, media/temp is in gitignore
@@ -55,7 +61,13 @@ async function viewDesignImageFromFile(path: string, operationName?: string) {
       'temp',
       `${operationName}.graphql`,
     );
-    await workspace.fs.copy(Uri.parse(path), tempUri, { overwrite: true });
+    let uri = Uri.parse(path);
+    if (!existsSync(path)) {
+      const dir = dirname(wbFilePath);
+      const newPath = join(dir, path);
+      uri = Uri.parse(newPath);
+    }
+    await workspace.fs.copy(uri, tempUri, { overwrite: true });
     const localFile = panel.webview.asWebviewUri(tempUri);
     panel.webview.html = getWebviewContent(panel.webview, localFile);
 
@@ -110,7 +122,8 @@ export async function viewOperationDesign(item?: OperationTreeItem) {
 
   if (operation.ui_design) {
     const uri = Uri.parse(operation.ui_design);
-    if (uri.scheme === 'file') return await viewDesignImageFromFile(uri.fsPath);
+    if (uri.scheme === 'file')
+      return await viewDesignImageFromFile(wbFilePath, uri.fsPath);
     else return viewDesignImage(uri);
   }
 }
