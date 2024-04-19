@@ -1,3 +1,7 @@
+## Apollo Workbench VSCode 3.3.12
+
+- [HotFix] Need to bundle `@faker-js` into extension
+
 ## Apollo Workbench VSCode 3.3.11
 
 - Add changelog GitHub Action to ensure a changelog entry is there for every PR
