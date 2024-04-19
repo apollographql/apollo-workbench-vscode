@@ -13,30 +13,13 @@ docs
 images
 
 .vscode
-node_modules
+node_modules/!(@faker-js)/**/*
 src/
 tsconfig.json
 webpack.config.js
 
 
 apollo.config.js
-node_modules/**/LICENSE*
-node_modules/**/README*
-node_modules/**/jest.config.js
-node_modules/**/CHANGELOG*
-node_modules/**/CONTRIBUTING*
-node_modules/**/HISTORY*
-node_modules/**/SECURITY*
-node_modules/**/tsconfig.*
-node_modules/**/src
-node_modules/**/.github
-node_modules/**/*.editorconfig
-node_modules/**/*.npmignore
-node_modules/**/tests
-node_modules/**/scripts
-node_modules/**/bin
-node_modules/**/*.txt
-node_modules/**/*.html
 **/*.zip
 codegen.yml
 target
