@@ -1,3 +1,8 @@
+## Apollo Workbench VSCode 3.3.11
+
+- Add changelog GitHub Action to ensure a changelog entry is there for every PR
+- Fix error locations for `INVALID_GRAPHQL` errors. Workebnch now tries to rebuild the source schema from the error and then uses the `error.nodes.location` for the VS Code diagnostic.
+
 ## Apollo Workbench VSCode 3.3.10
 
 - Fix `apolloApiUrl` setting to work with all `rover` commands. This is primarily for internal Apollo debugging purposes against pre-prod environments of GraphOS.

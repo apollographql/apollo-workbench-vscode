@@ -18,6 +18,9 @@ import { getFileName } from '../utils/path';
 import { ApolloRemoteSchemaProvider } from './docProviders';
 import { existsSync, readFileSync } from 'fs';
 import { resolvePath } from '../utils/uri';
+import { buildSchema } from 'graphql';
+import { buildSubgraphSchema } from '@apollo/subgraph';
+import gql from 'graphql-tag';
 
 interface WorkbenchDiagnosticCollections {
   compositionDiagnostics: DiagnosticCollection;
@@ -115,51 +118,75 @@ export class WorkbenchDiagnostics {
       const error = errors[i];
       const errorMessage = error.message;
 
-      if (error.nodes && error.nodes.length > 0)
-        error.nodes.forEach((errorNode) => {
-          let subgraphName = errorNode.subgraph;
-          if (!subgraphName && errorMessage.slice(0, 1) == '[') {
-            subgraphName = errorMessage.split(']')[0].split('[')[1];
-          } else if (!subgraphName) {
-            Object.keys(wbFile.subgraphs).forEach((subgraph) => {
-              const schema = wbFile.subgraphs[subgraph].schema;
-              let schemaPath: Uri;
-              if (schema.workbench_design) {
-                schemaPath = resolvePath(schema.workbench_design);
-              } else if (schema.file) {
-                schemaPath = resolvePath(schema.file);
-              } else {
-                schemaPath = ApolloRemoteSchemaProvider.Uri(
-                  wbFilePath,
-                  subgraphName,
-                );
-              }
-              if (existsSync(schemaPath.fsPath)) {
-                const typeDefs = readFileSync(schemaPath.fsPath, {
-                  encoding: 'utf-8',
-                });
-                if (errorNode.source == typeDefs) subgraphName = subgraph;
-              }
-            });
+      if (error.nodes && error.nodes.length > 0) {
+        if (error.code == 'INVALID_GRAPHQL') {
+          console.log(error);
+          error.nodes.forEach((errorNode) => {
+            const subgraphName = errorNode.subgraph;
+            try {
+              buildSubgraphSchema({ typeDefs: gql(errorNode.source) });
+            } catch (error) {
+              console.log(error);
+              const location = (error as any)?.locations[0];
+              const range = new Range(
+                location.line - 1,
+                location.column - 1,
+                location.line - 1,
+                location.column - 1,
+              );
+              const diagnostic = this.generateDiagnostic(errorMessage, range);
 
-            if (!subgraphName) subgraphName = getFileName(wbFilePath);
-          }
+              if (!diagnosticsGroups[subgraphName])
+                diagnosticsGroups[subgraphName] = [diagnostic];
+              else diagnosticsGroups[subgraphName].push(diagnostic);
+            }
+          });
+        } else {
+          error.nodes.forEach((errorNode) => {
+            let subgraphName = errorNode.subgraph;
+            if (!subgraphName && errorMessage.slice(0, 1) == '[') {
+              subgraphName = errorMessage.split(']')[0].split('[')[1];
+            } else if (!subgraphName) {
+              Object.keys(wbFile.subgraphs).forEach((subgraph) => {
+                const schema = wbFile.subgraphs[subgraph].schema;
+                let schemaPath: Uri;
+                if (schema.workbench_design) {
+                  schemaPath = resolvePath(schema.workbench_design);
+                } else if (schema.file) {
+                  schemaPath = resolvePath(schema.file);
+                } else {
+                  schemaPath = ApolloRemoteSchemaProvider.Uri(
+                    wbFilePath,
+                    subgraphName,
+                  );
+                }
+                if (existsSync(schemaPath.fsPath)) {
+                  const typeDefs = readFileSync(schemaPath.fsPath, {
+                    encoding: 'utf-8',
+                  });
+                  if (errorNode.source == typeDefs) subgraphName = subgraph;
+                }
+              });
 
-          const range = new Range(
-            errorNode.start ? errorNode.start.line - 1 : 0,
-            errorNode.start ? errorNode.start.column - 1 : 0,
-            errorNode.end ? errorNode.end.line - 1 : 0,
-            errorNode.start && errorNode.end
-              ? errorNode.start.column + errorNode.end.column - 1
-              : 0,
-          );
-          const diagnostic = this.generateDiagnostic(errorMessage, range);
+              if (!subgraphName) subgraphName = getFileName(wbFilePath);
+            }
 
-          if (!diagnosticsGroups[subgraphName])
-            diagnosticsGroups[subgraphName] = [diagnostic];
-          else diagnosticsGroups[subgraphName].push(diagnostic);
-        });
-      else {
+            const range = new Range(
+              errorNode.start ? errorNode.start.line - 1 : 0,
+              errorNode.start ? errorNode.start.column - 1 : 0,
+              errorNode.end ? errorNode.end.line - 1 : 0,
+              errorNode.start && errorNode.end
+                ? errorNode.start.column + errorNode.end.column - 1
+                : 0,
+            );
+            const diagnostic = this.generateDiagnostic(errorMessage, range);
+
+            if (!diagnosticsGroups[subgraphName])
+              diagnosticsGroups[subgraphName] = [diagnostic];
+            else diagnosticsGroups[subgraphName].push(diagnostic);
+          });
+        }
+      } else {
         const diagnostic = this.generateDiagnostic(errorMessage);
 
         if (!diagnosticsGroups[wbFilePath])
