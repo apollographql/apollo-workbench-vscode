@@ -7,7 +7,7 @@
     "url": "https://github.com/apollographql/apollo-workbench-vscode"
   },
   "license": "SEE LICENSE IN LICENSE",
-  "version": "3.3.12",
+  "version": "3.3.13",
   "publisher": "ApolloGraphQL",
   "engines": {
     "vscode": "^1.80.0"
