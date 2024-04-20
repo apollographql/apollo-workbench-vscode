@@ -41,7 +41,7 @@
     "@graphql-codegen/typed-document-node": "2.3.13",
     "@graphql-codegen/typescript": "2.8.8",
     "@graphql-codegen/typescript-operations": "2.5.13",
-    "@types/glob": "7.2.0",
+    "@types/glob": "8.1.0",
     "@types/js-yaml": "4.0.5",
     "@types/lodash": "4.14.196",
     "@types/mocha": "10.0.1",
