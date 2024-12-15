@@ -46,7 +46,7 @@
     "@types/lodash": "4.14.196",
     "@types/mocha": "10.0.1",
     "@types/node": "20.4.5",
-    "@types/vscode": "1.80.0",
+    "@types/vscode": "1.96.0",
     "@vscode/test-electron": "2.3.3",
     "@vscode/vsce": "2.19.0",
     "esbuild": "0.17.19",
