@@ -43,7 +43,7 @@
     "@graphql-codegen/typescript-operations": "2.5.13",
     "@types/glob": "7.2.0",
     "@types/js-yaml": "4.0.5",
-    "@types/lodash": "4.14.196",
+    "@types/lodash": "4.17.15",
     "@types/mocha": "10.0.1",
     "@types/node": "20.4.5",
     "@types/vscode": "1.80.0",
