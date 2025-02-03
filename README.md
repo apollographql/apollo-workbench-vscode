@@ -1,4 +1,6 @@
-# Apollo Workbench for VS Code
+# Apollo Workbench for VS Code (DEPRECATED)
+
+Apollo Workbench has been officially deprecated and is no longer being maintained. Please use the new Apollo Language Server for Apollo Federation, which can be used in the Apollo VS Code Extension (or other IDE) - ([docs](https://www.apollographql.com/docs/graphos/schema-design/federated-schemas/ide-support))
 
 The Apollo Workbench extension lets you design your schemas using [Apollo Federation](https://www.apollographql.com/docs/federation) and Schema Definition Language (SDL). This extension exposes the functionality of [`rover`](https://www.apollographql.com/docs/rover/) for GraphOS in a friendly VS Code way.
 
